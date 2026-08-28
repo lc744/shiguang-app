@@ -1,0 +1,50 @@
+# ä¾èµ–
+node_modules/
+
+# æ„å»ºäº§ç‰©
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+www/
+ios/App/build/
+ios/App/DerivedData/
+*.apk
+*.ipa
+*.zip
+
+# æµ‹è¯•è„šæœ¬ä¸ä¸´æ—¶æ–‡ä»¶
+cdp_*.js
+test_*.js
+e2e_test.js
+inspect_cdp.js
+cleanup*.js
+gen_icons.ps1
+ui_*.xml
+ui_*.png
+home_screen.png
+icon_preview.png
+cal_*.png
+shiguang_check_*.apk
+
+# IDE / ç³»ç»Ÿ
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ÒÅÁô UI dump ÎÄ¼ş
+*.xml
+!android/**/*.xml
+!ios/**/*.xml
+!app/**/*.xml
+
+*.png
+!app/**/*.png
+!android/**/*.png
+!ios/**/*.png
+
+# °²×¿ÖØĞÍ¶ş½øÖÆ£¨±¾µØ¹¹½¨ÓÃ£¬²»½ø²Ö¿â£»Codemagic Ö»¹¹½¨ iOS ²»ĞèÒª£©
+android/app/src/main/jniLibs/
+android/app/src/main/assets/offline_tts/
+android/app/src/main/assets/public/

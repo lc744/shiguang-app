@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>拾光</title>
+  <link rel="stylesheet" href="app/styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <div class="header">
+      <div class="brand">
+        <strong>拾光</strong>
+        <span>记事 · 闹钟 · 语音包 · 表情包</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toast('数据已保存在本机')">↻</button>
+      </div>
+    </div>
+
+    <!-- 幻灯片介绍区 -->
+    <section class="hero">
+      <!-- 切换按钮 -->
+      <button type="button" class="slide-nav-btn slide-prev" onclick="prevSlide()">‹</button>
+      <button type="button" class="slide-nav-btn slide-next" onclick="nextSlide()">›</button>
+      
+      <div class="hero-content">
+        <div class="hero-text" id="heroText">
+          <h4 id="heroCat">拾光</h4>
+          <b id="heroMainTitle">让提醒不只是响一下</b>
+          <p id="heroDesc" class="hero-desc">到点准时提醒，给你更有温度的陪伴。</p>
+        </div>
+      </div>
+      <!-- 装饰性小动物/二次元角色 -->
+      <div class="hero-decoration" id="heroDecoration"></div>
+    </section>
+
+    <div class="stats">
+      <div class="card stat"><b id="statTodo">0</b><span>今日待办</span></div>
+      <div class="card stat"><b id="statDone">0</b><span>已完成</span></div>
+    </div>
+
+    <main class="pages">
+      <section class="page active" id="page-home">
+        <div class="subhead"><h3>今天的事件</h3><small id="homeDate">—</small></div>
+        <div id="missedBanner" class="missed-wrap"></div>
+        <div class="today-list" id="todayList"></div>
+      </section>
+
+      <section class="page" id="page-calendar">
+        <div class="subhead"><h3>日历</h3><small>选择日期查看详情</small></div>
+        <div class="calendar-wrap">
+          <div class="month-card">
+            <div class="month-top">
+              <strong id="monthTitle">—</strong>
+              <div class="month-nav">
+                <button onclick="changeMonth(-1)">‹</button>
+                <button onclick="changeMonth(0)">今</button>
+                <button onclick="changeMonth(1)">›</button>
+              </div>
+            </div>
+            <div class="weekdays">
+              <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+            </div>
+            <div class="days" id="daysGrid"></div>
+          </div>
+          <div class="subhead" style="padding-left:0;padding-right:0"><h3 id="agendaTitle">—</h3><small id="agendaCount">0 个事件</small></div>
+          <div class="agenda" id="agendaList"></div>
+        </div>
+      </section>
+
+      <section class="page" id="page-detail">
+        <div class="subhead"><h3>事件详情</h3><small onclick="goBack()">返回</small></div>
+        <div class="detail-wrap">
+          <div class="detail-card">
+            <div class="detail-title">
+              <strong id="detailName">—</strong>
+              <span class="status-pill" id="detailStatus">—</span>
+            </div>
+            <div class="mini" id="detailTimeLine">—</div>
+            <div class="meta-grid">
+              <div class="meta"><small>提醒表情包</small><b id="detailEmoji">—</b></div>
+              <div class="meta"><small>提示音</small><b id="detailVoice">—</b></div>
+            </div>
+            <div class="detail-note" id="detailNote">—</div>
+            <div class="action-row">
+              <button class="danger-btn" onclick="deleteCurrentEvent()">删除</button>
+              <button class="secondary" onclick="snoozeCurrentEvent()">延后 10 分钟</button>
+              <button class="primary" onclick="completeCurrentEvent()">完成</button>
+            </div>
+            <div class="action-row">
+              <button class="secondary" style="flex:none;width:100%" onclick="openEditor(currentDetailId)">✎ 编辑此事件</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="page-create">
+        <div class="subhead"><h3 id="formTitle">新建提醒</h3><small onclick="goBack()">返回</small></div>
+        <div class="create-wrap">
+          <div class="form-card">
+            <div class="field">
+              <label>事件名称（必填）</label>
+              <input id="fName" placeholder="例如：下班、提交周报" maxlength="30" />
+              <div class="err" id="errName">请填写事件名称</div>
+            </div>
+            <div class="field">
+              <label>备注</label>
+              <textarea id="fNote" placeholder="选填，提醒时一并展示"></textarea>
+            </div>
+            <div class="meta-grid">
+              <div class="meta"><small>日期（可选任意未来日期）</small><input type="date" id="fDate" style="border:0;background:transparent;outline:none;width:100%;font-weight:700;color:var(--text)" /></div>
+              <div class="meta"><small>时间</small><input type="time" id="fTime" style="border:0;background:transparent;outline:none;width:100%;font-weight:700;color:var(--text)" /></div>
+            </div>
+            <div class="field">
+              <label>重复提醒</label>
+              <div class="chips" id="repeatChips">
+                <button type="button" class="chip" data-repeat="none" onclick="pickRepeat(this)">不重复</button>
+                <button type="button" class="chip" data-repeat="daily" onclick="pickRepeat(this)">每天</button>
+                <button type="button" class="chip" data-repeat="weekdays" onclick="pickRepeat(this)">周一到周五</button>
+                <button type="button" class="chip" data-repeat="custom" onclick="pickRepeat(this)">自定义</button>
+              </div>
+              <div class="chips" id="weekdayChips" style="margin-top:8px;display:none"></div>
+            </div>
+            <div class="field">
+              <label>🎂 生日提醒</label>
+              <div class="chips">
+                <button type="button" class="chip" id="birthdayChip" onclick="toggleBirthday(this)">关闭</button>
+                <button type="button" class="chip" id="lunarBirthdayChip" onclick="toggleLunarBirthday(this)" style="display:none">公历生日</button>
+              </div>
+              <p class="mini" style="margin:8px 0 0">开启后每年当天提醒并送上生日祝福（支持公历或农历生日）</p>
+            </div>
+            <div class="err" id="errTime" style="margin:0 0 8px">请选择有效的未来日期和时间</div>
+            <div class="field">
+              <label>提醒表情包</label>
+              <div class="chips" id="emojiChips"></div>
+              <button type="button" class="secondary" style="margin-top:8px;width:100%" onclick="document.getElementById('emojiImport').click()">＋ 导入表情图片</button>
+              <input type="file" id="emojiImport" accept="image/*" multiple style="display:none" onchange="importEmojiImages(event)" />
+            </div>
+            <div class="field">
+              <label>语音播报音色</label>
+              <div class="chips" id="voiceChips"></div>
+              <p class="mini" style="margin:8px 0 0">到点后会使用 Android 中文语音朗读事件名称和备注；实际音质取决于手机中安装的语音引擎。</p>
+              <div class="recorder" id="recorderBox">
+                <div class="rec-head"><small id="recTip">录一段自己的声音作为提示音（最长 30 秒）</small><span class="rec-time" id="recTime">00:00</span></div>
+                <div class="rec-actions">
+                  <button type="button" class="rec-main" id="recBtn" onclick="toggleRecord()">● 开始录音</button>
+                  <button type="button" id="recPlayBtn" onclick="playRecording()" style="display:none">▶ 试听</button>
+                  <button type="button" id="recRedoBtn" onclick="clearRecording()" style="display:none">✕ 重录</button>
+                </div>
+                <audio id="recAudio" style="display:none"></audio>
+              </div>
+            </div>
+            <div class="action-row">
+              <button class="secondary" onclick="goBack()">取消</button>
+              <button class="primary" id="saveBtn" onclick="saveEvent()">保存提醒</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 预告页：未来提醒 -->
+      <section class="page" id="page-upcoming">
+        <div class="subhead"><h3>预告</h3><small>接下来会发生什么</small></div>
+        <div class="today-list" id="upcomingList"></div>
+      </section>
+
+      <section class="page" id="page-settings">
+        <div class="subhead"><h3>设置</h3><small>本机数据</small></div>
+        <div class="detail-wrap">
+          <div class="detail-card">
+            <h4 style="margin:0 0 8px">外观</h4>
+            <div class="chips" id="themeChips">
+              <button type="button" class="chip" data-theme="system" onclick="setTheme('system',this)">跟随系统</button>
+              <button type="button" class="chip" data-theme="light" onclick="setTheme('light',this)">浅色</button>
+              <button type="button" class="chip" data-theme="dark" onclick="setTheme('dark',this)">深色</button>
+            </div>
+          </div>
+          <!-- 背景颜色选择器 -->
+          <div class="detail-card" style="margin-top:10px">
+            <h4 style="margin:0 0 8px">背景颜色</h4>
+            <p class="mini">选择喜欢的配色方案，让界面更舒适。</p>
+            <div class="chips" id="bgColorChips"></div>
+            <div class="action-row" style="margin-top:12px">
+              <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+                <span style="font-size:13px;color:var(--sub)">或自定义颜色：</span>
+                <input type="color" value="#eef4f1" onchange="saveBgColor(this.value)" 
+                       style="width:40px;height:32px;border:none;border-radius:8px;cursor:pointer" />
+                <small style="color:var(--sub)">点击取色</small>
+              </label>
+            </div>
+          </div>
+          <!-- 原生提醒权限卡片（仅 Android App 内显示） -->
+          <div class="detail-card" id="nativePermCard" style="margin-top:10px;display:none">
+            <h4 style="margin:0 0 8px">原生提醒权限</h4>
+            <p class="mini">保证后台闹钟可靠触发所需的系统权限。</p>
+            <div id="nativePermRows"><small class="mini">正在读取权限状态…</small></div>
+            <div class="action-row">
+              <button class="secondary" onclick="renderNativePerms()">刷新状态</button>
+            </div>
+          </div>
+          <div class="detail-card" style="margin-top:10px">
+            <h4 style="margin:0 0 8px">离线语音包</h4>
+            <p class="mini">内置校园少女组合可直接使用；高清自然音色可以按需下载，下载后断网也能播报。</p>
+            <div id="voicePackList"><small>正在读取语音包…</small></div>
+            <div class="action-row">
+              <button class="secondary" onclick="loadVoicePacks()">刷新语音包</button>
+            </div>
+          </div>
+          <div class="detail-card" style="margin-top:10px">
+            <h4 style="margin:0 0 8px">自动备份</h4>
+            <p class="mini">每次保存事件都会自动生成快照（最多保留 10 条），误删后可一键恢复。</p>
+            <div id="backupList"><small class="mini">暂无历史备份（保存事件后自动生成）</small></div>
+            <div class="action-row web-only">
+              <button class="secondary" onclick="exportData()">导出 JSON 文件</button>
+              <button class="secondary" onclick="document.getElementById('importFile').click()">导入 JSON 文件</button>
+            </div>
+            <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importData(event)" />
+          </div>
+          <div class="action-row">
+            <button class="danger-btn" onclick="clearAll()">清空全部事件</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <button class="fab" id="fabAdd" onclick="openEditor(null)">+</button>
+
+    <nav class="tabs">
+      <button class="tab active" data-target="page-home" onclick="showPage('page-home',this)"><i>⌂</i>今天</button>
+      <button class="tab" data-target="page-upcoming" onclick="showPage('page-upcoming',this)"><i>⏳</i>预告</button>
+      <button class="tab" data-target="page-calendar" onclick="showPage('page-calendar',this)"><i>◫</i>日历</button>
+      <button class="tab" data-target="page-settings" onclick="showPage('page-settings',this)"><i>⚙</i>设置</button>
+    </nav>
+  </div>
+
+  <!-- 到点全屏提醒 -->
+  <div class="remind-fullscreen" id="remindOverlay">
+    <div class="remind-card card">
+      <div class="emoji" id="rEmoji">⏰</div>
+      <h2 id="rName">提醒</h2>
+      <p id="rNote"></p>
+      <time id="rTime">00:00</time>
+      <div class="snooze-row">
+        <button class="secondary" onclick="snoozeRemind(5)">5 分钟</button>
+        <button class="secondary" onclick="snoozeRemind(10)">10 分钟</button>
+        <button class="secondary" onclick="snoozeRemind(30)">30 分钟</button>
+      </div>
+      <div class="action-row">
+        <button class="secondary" onclick="completeRemind()">✓ 完成</button>
+        <button class="primary" onclick="dismissRemind()">知道啦</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app/storage.js"></script>
+  <script src="app/lunar.js"></script>
+  <script src="app/core.js"></script>
+  <script src="app/ui.js"></script>
+  <script src="app/editor.js"></script>
+  <script src="app/reminder.js"></script>
+  <script src="app/settings.js"></script>
+  <script src="app/hero.js"></script>
+  <script src="app/main.js"></script>
+  
+  <!-- 幻灯片功能 -->
+  <script>window.addEventListener('load', () => { initHeroSlideshow(); })</script>
+</body>
+</html>

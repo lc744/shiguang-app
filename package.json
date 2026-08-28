@@ -1,0 +1,29 @@
+{
+  "name": "shiguang-mobile-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "拾光：记事、闹钟、语音包和表情包提醒 APP",
+  "scripts": {
+    "start": "node server.js",
+    "build:www": "node build-www.js",
+    "cap:sync": "node build-www.js && cap sync android",
+    "cap:run": "node build-www.js && cap run android",
+    "test": "node test_runtime.js",
+    "test:e2e": "node e2e_test.js",
+    "test:all": "node test_runtime.js && node e2e_test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}

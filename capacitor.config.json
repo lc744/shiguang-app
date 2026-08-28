@@ -1,0 +1,15 @@
+{
+  "appId": "com.shiguang.reminder",
+  "appName": "拾光",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_launcher",
+      "iconColor": "#246353",
+      "schedule": {
+        "allowWhileIdle": true
+      }
+    }
+  }
+}
