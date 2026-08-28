@@ -51,7 +51,7 @@ public class NativeAlarmPlugin: CAPPlugin, CAPBridgedPlugin {
 
     /* ---------------- 权限 ---------------- */
 
-    @objc func requestPermissions(_ call: CAPPluginCall) {
+    @objc public override func requestPermissions(_ call: CAPPluginCall) {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
             self.finishPermissionRequest(call)
         }
