@@ -50,7 +50,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com   # ← 改成你的邮箱，构建完成自动通知
+          - 2835112874@qq.com
 
   # ---------- 工作流 2：签名发布（需配置证书）----------
   ios-release-signed:
@@ -106,4 +106,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com   # ← 改成你的邮箱
+          - 2835112874@qq.com
