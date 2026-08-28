@@ -52,7 +52,7 @@
         <div class="calendar-wrap">
           <div class="month-card">
             <div class="month-top">
-              <strong id="monthTitle">—</strong>
+              <strong id="monthTitle" onclick="openMonthPicker()" style="cursor:pointer" title="点击选择年月">— <small style="font-size:11px;color:var(--sub);font-weight:400">▾</small></strong>
               <div class="month-nav">
                 <button onclick="changeMonth(-1)">‹</button>
                 <button onclick="changeMonth(0)">今</button>
@@ -232,6 +232,23 @@
       <button class="tab" data-target="page-calendar" onclick="showPage('page-calendar',this)"><i>◫</i>日历</button>
       <button class="tab" data-target="page-settings" onclick="showPage('page-settings',this)"><i>⚙</i>设置</button>
     </nav>
+  </div>
+
+  <!-- 年月选择弹层 -->
+  <div class="remind-fullscreen" id="monthPickerOverlay" style="display:none" onclick="if(event.target===this)closeMonthPicker()">
+    <div class="remind-card card" style="max-width:340px;padding:20px 18px">
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">选择年月</h2>
+      <div class="yp-year-row">
+        <button type="button" class="yp-btn" onclick="shiftPickerYear(-1)">‹</button>
+        <strong id="ypYearLabel" style="font-size:20px">2026</strong>
+        <button type="button" class="yp-btn" onclick="shiftPickerYear(1)">›</button>
+      </div>
+      <div class="yp-months" id="ypMonths"></div>
+      <div class="action-row" style="margin-top:14px">
+        <button class="secondary" onclick="closeMonthPicker()">取消</button>
+        <button class="primary" onclick="jumpToTodayMonth()">回到今天</button>
+      </div>
+    </div>
   </div>
 
   <!-- 到点全屏提醒 -->

@@ -206,6 +206,50 @@ function pickDay(ds){
   renderCalendar();
   toast(`已切换到 ${dateLabel(ds)}`);
 }
+
+/* ---------------- 年月选择器 ---------------- */
+let pickerYear = 2026;
+function openMonthPicker(){
+  pickerYear = calYear;
+  renderMonthPicker();
+  document.getElementById('monthPickerOverlay').style.display = 'flex';
+}
+function closeMonthPicker(){
+  document.getElementById('monthPickerOverlay').style.display = 'none';
+}
+function shiftPickerYear(delta){
+  pickerYear += delta;
+  if(pickerYear < 1901) pickerYear = 1901;
+  if(pickerYear > 2099) pickerYear = 2099;
+  renderMonthPicker();
+}
+function pickMonth(m){
+  calYear = pickerYear;
+  calMonth = m;
+  closeMonthPicker();
+  renderCalendar();
+  toast(`${calYear} 年 ${m+1} 月`);
+}
+function jumpToTodayMonth(){
+  const d = new Date();
+  calYear = d.getFullYear(); calMonth = d.getMonth();
+  closeMonthPicker();
+  renderCalendar();
+  toast('已回到本月');
+}
+function renderMonthPicker(){
+  document.getElementById('ypYearLabel').textContent = pickerYear;
+  const now = new Date();
+  const isThisYear = pickerYear === now.getFullYear();
+  document.getElementById('ypMonths').innerHTML = Array.from({length:12}, (_, i) => {
+    const isCur = isThisYear && i === now.getMonth();
+    const isSel = pickerYear === calYear && i === calMonth;
+    const cls = ['yp-month'];
+    if(isCur) cls.push('yp-current');
+    if(isSel) cls.push('yp-selected');
+    return `<button type="button" class="${cls.join(' ')}" onclick="pickMonth(${i})">${i+1}<small>月</small></button>`;
+  }).join('');
+}
 function renderAgenda(){
   const items = events.filter(e => occursOn(e, selDate)).sort((a,b)=>a.time.localeCompare(b.time));
   const lunarInfo = dayFullLabel(selDate);
