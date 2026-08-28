@@ -23,13 +23,22 @@ workflows:
       - name: 安装 npm 依赖
         script: npm ci
 
-      - name: 同步 Capacitor iOS 资源（webDir + JS/CSS）
+      - name: 构建 Web 资源（生成 www/）
         script: |
-          npx cap sync ios --skip-loading-plugins
+          set -e
+          node build-www.js
+          test -f www/index.html || { echo "❌ www/index.html 未生成"; exit 1; }
+          echo "✓ www/ 构建完成"
+
+      - name: 同步 Capacitor iOS 资源（www → public/）
+        script: |
+          set -e
+          npx cap sync ios
           # Windows 生成的 Package.swift 可能带反斜杠路径，macOS 必须是正斜杠
-          sed -i '' 's#\\#/#g' ios/App/CapApp-SPM/Package.swift || sed -i 's#\\#/#g' ios/App/CapApp-SPM/Package.swift
-          echo "--- Package.swift 校验 ---"
-          grep "local-notifications" ios/App/CapApp-SPM/Package.swift
+          sed -i '' 's#\\#/#g' ios/App/CapApp-SPM/Package.swift 2>/dev/null || sed -i 's#\\#/#g' ios/App/CapApp-SPM/Package.swift
+          # 关键验证：public/index.html 必须存在（cap sync 的 copy 失败会被 CLI 静默吞掉，必须显式检查）
+          test -f ios/App/App/public/index.html || { echo "❌ ios/App/App/public/index.html 不存在 —— cap sync 实际失败了"; exit 1; }
+          ls ios/App/App/public/
           echo "✓ Web assets synced"
 
       - name: 解析 SPM 依赖
@@ -93,10 +102,18 @@ workflows:
       - name: 安装 npm 依赖
         script: npm ci
 
+      - name: 构建 Web 资源（生成 www/）
+        script: |
+          set -e
+          node build-www.js
+          test -f www/index.html || { echo "❌ www/index.html 未生成"; exit 1; }
+
       - name: 同步 Capacitor iOS 资源
         script: |
-          npx cap sync ios --skip-loading-plugins
-          sed -i '' 's#\\#/#g' ios/App/CapApp-SPM/Package.swift || sed -i 's#\\#/#g' ios/App/CapApp-SPM/Package.swift
+          set -e
+          npx cap sync ios
+          sed -i '' 's#\\#/#g' ios/App/CapApp-SPM/Package.swift 2>/dev/null || sed -i 's#\\#/#g' ios/App/CapApp-SPM/Package.swift
+          test -f ios/App/App/public/index.html || { echo "❌ ios/App/App/public/index.html 不存在 —— cap sync 实际失败了"; exit 1; }
 
       - name: 解析 SPM 依赖
         script: |
