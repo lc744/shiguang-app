@@ -17,8 +17,9 @@
     body{min-height:100vh}
     button,input,textarea,select{font:inherit}
     /* 注意：.shell 不能加 backdrop-filter/filter/transform，否则其内部的 position:fixed 底栏会相对它定位，随页面滚动沉底 */
-    .shell{max-width:420px;margin:0 auto;min-height:100vh;background:rgba(255,255,255,.88);box-shadow:var(--shadow);position:relative;padding-bottom:calc(76px + env(safe-area-inset-bottom,0px));padding-top: var(--safe-top, env(safe-area-inset-top, 0px));}
-    .header{padding:12px 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .shell{max-width:420px;margin:0 auto;min-height:100vh;background:rgba(255,255,255,.88);box-shadow:var(--shadow);position:relative;padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+    /* 吸顶头部：滚动时固定在顶部（含状态栏区域），内容从其下方滚过，解决与状态栏重叠 */
+    .header{position:sticky;top:0;z-index:30;background:var(--page-bg);padding:calc(10px + var(--safe-top, env(safe-area-inset-top, 0px))) 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;box-shadow:0 1px 0 rgba(17,45,36,.05)}
     .brand{display:flex;flex-direction:column;gap:4px}
     .brand strong{font-size:22px;line-height:1;letter-spacing:.02em}
     .brand span{font-size:12px;color:var(--sub)}
@@ -80,9 +81,16 @@
     .weekdays div{font-size:11px;color:var(--sub);text-align:center}
     .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
     .days .pad{visibility:hidden}
-    .day{position:relative;aspect-ratio:1/1;border-radius:14px;border:1px solid transparent;background:#fff;text-align:center;padding:6px 4px;display:flex;flex-direction:column;justify-content:center;gap:3px;cursor:pointer}
+    .day{position:relative;min-width:0;overflow:hidden;aspect-ratio:1/1;border-radius:14px;border:1px solid transparent;background:#fff;text-align:center;padding:6px 4px;display:flex;flex-direction:column;justify-content:center;gap:3px;cursor:pointer}
     .day span{font-size:13px;font-weight:600;line-height:1}
-    .day small{font-size:10px;color:var(--sub);line-height:1;white-space:nowrap;overflow:hidden;max-width:100%}
+    .day small{font-size:10px;color:var(--sub);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    /* 小屏手机：缩小格子内边距与字号，保持正方形格子不溢出 */
+    @media (max-width:380px){
+      .day{padding:3px 2px;gap:2px}
+      .day span{font-size:12px}
+      .day small{font-size:9px}
+      .day-mark{top:2px;right:3px;font-size:7px;padding:1px 2px}
+    }
     .day.today{border-color:var(--main);background:#f4fbf8}
     .day.has-event{background:#f8fbf9;border-color:#dfe9e3}
     .day.selected{background:var(--main);color:#fff;border-color:var(--main)}
