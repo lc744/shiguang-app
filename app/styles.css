@@ -34,8 +34,8 @@
     .hero-desc{margin-top:4px;font-size:13px;line-height:1.6;opacity:.9;color:#3a6b56}
     
     /* 装饰性小动物/二次元角色 */
-    .hero-decoration{position:absolute;top:50%;right:-14px;width:130px;height:130px;transform:translateY(-50%);pointer-events:none;z-index:1}
-    .decoration-item{font-size:76px;filter:drop-shadow(2px 4px 6px rgba(0,0,0,.16));transform:rotate(-15deg);animation:bounce 3s ease-in-out infinite;opacity:.9}
+    .hero-decoration{position:absolute;top:50%;right:-14px;width:130px;height:130px;transform:translateY(-50%);pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center}
+    .decoration-item{font-size:68px;line-height:1;filter:drop-shadow(2px 4px 6px rgba(0,0,0,.16));transform:rotate(-15deg);animation:bounce 3s ease-in-out infinite;opacity:.9}
     
     @keyframes bounce {
       0%, 100% { transform: rotate(-15deg) translateY(0px); }
