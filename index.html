@@ -226,6 +226,25 @@
 
     <button class="fab" id="fabAdd" onclick="openEditor(null)">+</button>
 
+    <!-- 拾光精灵 -->
+    <button class="genie-fab" onclick="toggleGenie()" title="拾光精灵">🧚</button>
+    <div class="genie-panel" id="geniePanel">
+      <div class="genie-head">
+        <div class="genie-avatar">🧚</div>
+        <div>
+          <b>拾光精灵</b>
+          <small>语音或文字告诉我你想做什么</small>
+        </div>
+        <button class="genie-close" onclick="closeGenie()">✕</button>
+      </div>
+      <div class="genie-bubbles" id="genieBubbles"></div>
+      <div class="genie-inputbar">
+        <input id="genieInput" placeholder="例如：明天下午3点开会" onkeydown="onGenieKeydown(event)" />
+        <button id="genieVoiceBtn" onclick="toggleGenieVoice()" title="语音输入">🎤</button>
+        <button onclick="submitGenieText()" title="发送">➤</button>
+      </div>
+    </div>
+
     <nav class="tabs">
       <button class="tab active" data-target="page-home" onclick="showPage('page-home',this)"><i>⌂</i>今天</button>
       <button class="tab" data-target="page-upcoming" onclick="showPage('page-upcoming',this)"><i>⏳</i>预告</button>
@@ -280,6 +299,7 @@
   <script src="app/reminder.js"></script>
   <script src="app/settings.js"></script>
   <script src="app/hero.js"></script>
+  <script src="app/genie.js"></script>
   <script src="app/main.js"></script>
   
   <!-- 幻灯片功能 -->
