@@ -35,8 +35,38 @@ function addGenieBubble(role, text){
 }
 
 /* ---------------- 语音识别 ---------------- */
-function toggleGenieVoice(){
+async function toggleGenieVoice(){
   if(genieRecording){ stopGenieListening(); return; }
+
+  // 优先使用原生语音识别（Android SpeechRecognizer，国产 ROM 可用）
+  if(window.__NATIVE__ && window.__startSpeechRecognition){
+    genieRecording = true;
+    const btn = document.getElementById('genieVoiceBtn');
+    btn.textContent = '⏹';
+    btn.classList.add('recording');
+    try{
+      const result = await window.__startSpeechRecognition();
+      genieRecording = false;
+      btn.textContent = '🎤';
+      btn.classList.remove('recording');
+      if(result.text){
+        addGenieBubble('user', result.text);
+        processGenie(result.text);
+      } else if(result.error || result.errorCode){
+        if(result.errorCode === -1) addGenieBubble('assistant', '原生语音识别失败，请用文字输入。国产手机建议安装讯飞输入法或系统语音引擎。');
+        else addGenieBubble('assistant', '语音识别失败，试试文字输入吧');
+      }
+      return;
+    }catch(e){
+      genieRecording = false;
+      btn.textContent = '🎤';
+      btn.classList.remove('recording');
+      addGenieBubble('assistant', '语音识别出错……改用文字输入吧');
+      return;
+    }
+  }
+
+  // 回退：WebView 的 webkitSpeechRecognition（依赖 Google 服务，国产 ROM 可能不可用）
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ addGenieBubble('assistant', '抱歉，当前环境不支持语音识别。请用文字输入吧～'); return; }
   try{

@@ -53,6 +53,14 @@ const bridge = `
   window.__deleteVoicePack = async function(id){ return await NativeAlarm.deleteVoicePack({id}); };
   window.__previewVoice = async function(voice,text){ return await NativeAlarm.previewVoice({voice,text}); };
 
+  // 原生语音识别（拾光精灵）：返回 {text} 或 {error}，比 WebView 的 webkitSpeechRecognition 更可靠（不依赖 Google 服务）
+  window.__startSpeechRecognition = async function(){
+    try{ return await NativeAlarm.startSpeechRecognition(); }catch(e){ return {error:-1, message:e.message || String(e)}; }
+  };
+  window.__stopSpeechRecognition = async function(){
+    try{ return await NativeAlarm.stopSpeechRecognition(); }catch(e){ return {}; }
+  };
+
   // 注册未来一组本地通知。每次最多 30 条，覆盖 App 被杀后的重复提醒。
   window.__scheduleNotif = async function(payload){
     try{

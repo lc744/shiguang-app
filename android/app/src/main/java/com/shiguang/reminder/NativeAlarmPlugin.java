@@ -7,7 +7,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.provider.Settings;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -20,13 +24,19 @@ import com.getcapacitor.annotation.PermissionCallback;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 @CapacitorPlugin(
         name = "NativeAlarm",
         permissions = {
-                @Permission(strings = {Manifest.permission.POST_NOTIFICATIONS}, alias = "notifications")
+                @Permission(strings = {Manifest.permission.POST_NOTIFICATIONS}, alias = "notifications"),
+                @Permission(strings = {Manifest.permission.RECORD_AUDIO}, alias = "microphone")
         }
 )
 public class NativeAlarmPlugin extends Plugin {
+
+    private SpeechRecognizer speechRecognizer = null;
+    private PluginCall pendingSpeechCall = null;
 
     /* ---- 权限入口（前端启动时调用） ---- */
 
@@ -252,6 +262,95 @@ public class NativeAlarmPlugin extends Plugin {
             call.resolve(new JSObject(data.toString()));
         } catch (Exception ex) {
             call.reject("consumeNativeActions failed", ex);
+        }
+    }
+
+    /* ---- 语音识别（拾光精灵） ---- */
+
+    @PluginMethod
+    public void startSpeechRecognition(PluginCall call) {
+        if (pendingSpeechCall != null) {
+            call.reject("already listening");
+            return;
+        }
+        if (getPermissionState("microphone") != PermissionState.GRANTED) {
+            requestPermissionForAlias("microphone", call, "onMicrophonePermissionResult");
+            return;
+        }
+        startListening(call);
+    }
+
+    @PluginMethod
+    public void stopSpeechRecognition(PluginCall call) {
+        if (speechRecognizer != null) {
+            try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
+        }
+        if (pendingSpeechCall != null) {
+            JSObject out = new JSObject();
+            out.put("text", "");
+            pendingSpeechCall.resolve(out);
+            pendingSpeechCall = null;
+        }
+        call.resolve();
+    }
+
+    private void startListening(PluginCall call) {
+        try {
+            if (!SpeechRecognizer.isRecognitionAvailable(getContext())) {
+                call.reject("语音识别不可用：本机未安装语音识别服务");
+                return;
+            }
+            pendingSpeechCall = call;
+            if (speechRecognizer == null) {
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(getContext());
+            }
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override public void onReadyForSpeech(Bundle params) {}
+                @Override public void onBeginningOfSpeech() {}
+                @Override public void onRmsChanged(float rmsdB) {}
+                @Override public void onBufferReceived(byte[] buffer) {}
+                @Override public void onEndOfSpeech() {}
+                @Override public void onPartialResults(Bundle partialResults) {}
+                @Override public void onEvent(int eventType, Bundle params) {}
+                @Override
+                public void onResults(Bundle results) {
+                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    String text = (matches != null && !matches.isEmpty()) ? matches.get(0) : "";
+                    JSObject out = new JSObject();
+                    out.put("text", text);
+                    if (pendingSpeechCall != null) {
+                        pendingSpeechCall.resolve(out);
+                        pendingSpeechCall = null;
+                    }
+                }
+                @Override
+                public void onError(int error) {
+                    JSObject out = new JSObject();
+                    out.put("error", error);
+                    if (pendingSpeechCall != null) {
+                        pendingSpeechCall.resolve(out);
+                        pendingSpeechCall = null;
+                    }
+                }
+            });
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN");
+            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+            speechRecognizer.startListening(intent);
+        } catch (Exception ex) {
+            pendingSpeechCall = null;
+            call.reject("startSpeechRecognition failed", ex);
+        }
+    }
+
+    @PermissionCallback
+    private void onMicrophonePermissionResult(PluginCall call) {
+        if (getPermissionState("microphone") == PermissionState.GRANTED) {
+            startListening(call);
+        } else {
+            call.reject("microphone permission denied");
         }
     }
 
