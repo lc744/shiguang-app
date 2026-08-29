@@ -161,6 +161,8 @@ function stripForBackup(e){
   return c;
 }
 function writeAutoBackup(){
+  // 空事件不生成备份快照（清空/初始化等 0 事件场景不应污染备份历史）
+  if(!events.length) return;
   try{
     const snapshot = { at: new Date().toISOString(), count: events.length, events: events.map(stripForBackup) };
     localStorage.setItem(BACKUP_LATEST_KEY, JSON.stringify(snapshot));
