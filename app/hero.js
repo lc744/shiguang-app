@@ -60,6 +60,15 @@ function initHeroSlideshow(){
   slideInterval = setInterval(() => { nextSlide(); }, 5000);
 }
 
+// 页面切到后台时暂停轮播（省电），回前台恢复
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    if(slideInterval){ clearInterval(slideInterval); slideInterval = null; }
+  } else {
+    initHeroSlideshow();
+  }
+});
+
 function renderDecoration(){
   const el = document.getElementById('heroDecoration');
   if(!el) return;
