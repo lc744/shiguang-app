@@ -45,16 +45,21 @@ async function toggleGenieVoice(){
     btn.textContent = '⏹';
     btn.classList.add('recording');
     try{
-      const result = await window.__startSpeechRecognition();
+      // 15 秒超时保护：真机语音识别通常在 5-8 秒内返回
+      const result = await Promise.race([
+        window.__startSpeechRecognition(),
+        new Promise(r => setTimeout(() => r({errorCode: -99, message: '语音识别超时，请用文字输入，或检查网络后再试'}), 15000))
+      ]);
       genieRecording = false;
       btn.textContent = '🎤';
       btn.classList.remove('recording');
-      if(result.text){
+      if(result && result.text){
         addGenieBubble('user', result.text);
         processGenie(result.text);
-      } else if(result.error || result.errorCode){
-        if(result.errorCode === -1) addGenieBubble('assistant', '原生语音识别失败，请用文字输入。国产手机建议安装讯飞输入法或系统语音引擎。');
-        else addGenieBubble('assistant', '语音识别失败，试试文字输入吧');
+      } else if(result && result.message){
+        addGenieBubble('assistant', result.message);
+      } else {
+        addGenieBubble('assistant', '语音识别失败，请用文字输入');
       }
       return;
     }catch(e){

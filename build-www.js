@@ -53,9 +53,13 @@ const bridge = `
   window.__deleteVoicePack = async function(id){ return await NativeAlarm.deleteVoicePack({id}); };
   window.__previewVoice = async function(voice,text){ return await NativeAlarm.previewVoice({voice,text}); };
 
-  // 原生语音识别（拾光精灵）：返回 {text} 或 {error}，比 WebView 的 webkitSpeechRecognition 更可靠（不依赖 Google 服务）
+  // 原生语音识别（拾光精灵）：返回 {text} 或 {errorCode, message}，比 WebView 的 webkitSpeechRecognition 更可靠（不依赖 Google 服务）
   window.__startSpeechRecognition = async function(){
-    try{ return await NativeAlarm.startSpeechRecognition(); }catch(e){ return {error:-1, message:e.message || String(e)}; }
+    try{ return await NativeAlarm.startSpeechRecognition(); }
+    catch(e){
+      const msg = (e && e.message) ? e.message : '语音识别启动失败';
+      return { errorCode: -1, message: msg };
+    }
   };
   window.__stopSpeechRecognition = async function(){
     try{ return await NativeAlarm.stopSpeechRecognition(); }catch(e){ return {}; }
