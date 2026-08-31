@@ -152,7 +152,7 @@ public class NativeAlarmPlugin extends Plugin {
     @PluginMethod
     public void previewVoice(PluginCall call) {
         String voice = call.getString("voice", "甜美学妹");
-        String text = call.getString("text", "你好呀，这里是拾光。记得按时完成今天的安排哦。");
+        String text = call.getString("text", "你好呀，这里是绸缪。记得按时完成今天的安排哦。");
         new Thread(() -> {
             OfflineVoiceEngine engine = new OfflineVoiceEngine(getContext());
             try {
@@ -260,7 +260,7 @@ public class NativeAlarmPlugin extends Plugin {
         }
     }
 
-    /* ---- 语音识别（拾光精灵） ---- */
+    /* ---- 语音识别（绸缪精灵） ---- */
 
     @PluginMethod
     public void startSpeechRecognition(PluginCall call) {
@@ -333,7 +333,7 @@ public class NativeAlarmPlugin extends Plugin {
         } else {
             JSObject out = new JSObject();
             out.put("errorCode", -4);
-            out.put("message", "麦克风权限被拒绝，请在系统设置中允许拾光使用麦克风");
+            out.put("message", "麦克风权限被拒绝，请在系统设置中允许绸缪使用麦克风");
             call.resolve(out);
         }
     }

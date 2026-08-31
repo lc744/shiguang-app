@@ -1,9 +1,9 @@
-// 拾光 App 模拟测试脚本 - 模拟完整用户使用流程
+// 绸缪 App 模拟测试脚本 - 模拟完整用户使用流程
 const { execSync } = require('child_process');
 const path = require('path');
 
 console.log('='.repeat(70));
-console.log('📱 拾光移动端应用 - 模拟测试脚本');
+console.log('📱 绸缪移动端应用 - 模拟测试脚本');
 console.log('='.repeat(70));
 
 async function runTest(name, fn) {

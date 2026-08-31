@@ -33,5 +33,5 @@ http.createServer((req, res) => {
     res.end(data);
   });
 }).listen(port, () => {
-  console.log(`拾光应用已启动：http://localhost:${port}`);
+  console.log(`绸缪应用已启动：http://localhost:${port}`);
 });

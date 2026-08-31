@@ -34,7 +34,7 @@ public class AlarmAlertActivity extends AppCompatActivity {
         int notificationId = intent.getIntExtra(AlarmRingingService.EXTRA_NOTIFICATION_ID, 0);
 
         ((TextView) findViewById(R.id.alarmEmoji)).setText(emoji != null && !emoji.isEmpty() ? emoji.split(" ")[0] : "⏰");
-        ((TextView) findViewById(R.id.alarmTitle)).setText(title != null ? title : "拾光提醒");
+        ((TextView) findViewById(R.id.alarmTitle)).setText(title != null ? title : "绸缪提醒");
         ((TextView) findViewById(R.id.alarmBody)).setText(body != null ? body : "到点提醒");
 
         Button doneBtn = findViewById(R.id.doneBtn);

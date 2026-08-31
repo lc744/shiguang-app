@@ -39,10 +39,10 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "拾光提醒",
+                    "绸缪提醒",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("拾光事件到点提醒");
+            channel.setDescription("绸缪事件到点提醒");
             channel.enableVibration(true);
             NotificationManager manager = context.getSystemService(NotificationManager.class);
             if (manager != null) {

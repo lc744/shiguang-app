@@ -20,7 +20,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="拾光精灵正在听"
+        android:text="绸缪精灵正在听"
         android:textColor="#1C2A26"
         android:textSize="17sp"
         android:textStyle="bold" />

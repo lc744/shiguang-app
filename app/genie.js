@@ -1,4 +1,4 @@
-// 拾光精灵 · 智能语音/文字助手
+// 绸缪精灵 · 智能语音/文字助手
 /* ---------------- 对话 UI ---------------- */
 let genieMessages = [];
 let genieRecognition = null;
@@ -14,7 +14,7 @@ function openGenie(){
   const panel = document.getElementById('geniePanel');
   panel.classList.add('show');
   if(!genieMessages.length){
-    addGenieBubble('assistant', '你好呀，我是拾光精灵 🧚 可以陪你聊天，也能帮你添加提醒、换背景、查日程。试试对我说"明天上午9点开会"，或者随便跟我聊聊～');
+    addGenieBubble('assistant', '你好呀，我是绸缪精灵 🧚 可以陪你聊天，也能帮你添加提醒、换背景、查日程。试试对我说"明天上午9点开会"，或者随便跟我聊聊～');
   }
   document.getElementById('genieInput').focus();
 }
@@ -87,7 +87,7 @@ async function toggleGenieVoice(){
     };
     genieRecognition.onerror = (ev) => {
       stopGenieListening();
-      if(ev.error === 'not-allowed') addGenieBubble('assistant', '麦克风权限未开启，请在系统设置中允许拾光使用麦克风');
+      if(ev.error === 'not-allowed') addGenieBubble('assistant', '麦克风权限未开启，请在系统设置中允许绸缪使用麦克风');
       else if(ev.error === 'no-speech') addGenieBubble('assistant', '没有听到声音，请再试一次');
       else addGenieBubble('assistant', '语音识别失败，试试文字输入吧');
     };
@@ -139,7 +139,7 @@ function smallTalk(t){
     else if(hour >= 18 && hour < 23) greet = '晚上好';
     else greet = '夜深了';
     return pick([
-      `${greet}！我是拾光精灵 🧚 有什么可以帮你的吗？`,
+      `${greet}！我是绸缪精灵 🧚 有什么可以帮你的吗？`,
       `${greet}～ 我在呢。添加事件、换背景、查日程，都可以跟我说`,
       `${greet}！今天想让我做点什么？`,
       `${greet}！需要添加提醒或者查安排，直接说就行`
@@ -149,9 +149,9 @@ function smallTalk(t){
   // 自我介绍
   if(/你是谁|你叫什么|你的名字|介绍一下你|自我介绍|你是什么/.test(t)){
     return pick([
-      '我是拾光精灵 🧚 你的贴身小助手。我能帮你添加事件提醒、换背景色、切换主题、查询日程，还能陪你聊聊天～',
-      '我叫拾光精灵，是拾光 App 里的智能助手，专门帮你打理提醒和日程，有什么需要尽管说～',
-      '我是拾光精灵呀 🧚 负责让你不错过任何重要的事，也能陪你解解闷'
+      '我是绸缪精灵 🧚 你的贴身小助手。我能帮你添加事件提醒、换背景色、切换主题、查询日程，还能陪你聊聊天～',
+      '我叫绸缪精灵，是绸缪 App 里的智能助手，专门帮你打理提醒和日程，有什么需要尽管说～',
+      '我是绸缪精灵呀 🧚 负责让你不错过任何重要的事，也能陪你解解闷'
     ]);
   }
 

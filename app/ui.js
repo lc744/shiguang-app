@@ -1,4 +1,4 @@
-// 拾光 · 通用 UI 与页面渲染（今天/预告/日历/详情）
+// 绸缪 · 通用 UI 与页面渲染（今天/预告/日历/详情）
 /* ---------------- 通用 UI ---------------- */
 function toast(text){
   const el = document.getElementById('toast');

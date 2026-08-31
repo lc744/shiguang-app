@@ -1,6 +1,6 @@
 # 原生闹钟提醒
 
-拾光的 Android 版本使用 `AlarmManager + BroadcastReceiver + NotificationChannel`，不依赖 WebView 定时器。
+绸缪的 Android 版本使用 `AlarmManager + BroadcastReceiver + NotificationChannel`，不依赖 WebView 定时器。
 
 ## 行为
 
@@ -32,7 +32,7 @@ App 内的「设置 → 原生提醒权限」卡片会实时检测以下状态�
 
 ## 测试
 
-`拾光-原生闹钟-最终.apk` 已在 Android 34 模拟器中验证：
+`绸缪-原生闹钟-最终.apk` 已在 Android 34 模拟器中验证：
 
 1. 注册 60 秒后的 `AlarmManager` 精确闹钟。
 2. 使用 `adb shell am kill` 杀掉 App 进程。

@@ -1,4 +1,4 @@
-# 拾光 iOS 版 · macOS 构建与真机测试指南
+# 绸缪 iOS 版 · macOS 构建与真机测试指南
 
 > 本 iOS 工程已在 Windows 环境完成全部开发与配置，**只需一台 Mac（macOS 14+，Xcode 15+）即可编译运行**。
 > 无法在 Windows 上编译 iOS 是 Apple 平台限制（Xcode 仅支持 macOS），与工程本身无关。
@@ -76,7 +76,7 @@ open ios/App/App.xcodeproj
 
 ## 四、图标与名称
 
-- App 名称：**拾光**（Info.plist 已配置）
+- App 名称：**绸缪**（Info.plist 已配置）
 - 图标：已生成 `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`（深绿渐变时钟）
 - 想换图标：直接替换该 PNG（1024×1024，不透明）即可
 

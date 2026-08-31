@@ -53,7 +53,7 @@ const bridge = `
   window.__deleteVoicePack = async function(id){ return await NativeAlarm.deleteVoicePack({id}); };
   window.__previewVoice = async function(voice,text){ return await NativeAlarm.previewVoice({voice,text}); };
 
-  // 原生语音识别（拾光精灵）：返回 {text} 或 {errorCode, message}，比 WebView 的 webkitSpeechRecognition 更可靠（不依赖 Google 服务）
+  // 原生语音识别（绸缪精灵）：返回 {text} 或 {errorCode, message}，比 WebView 的 webkitSpeechRecognition 更可靠（不依赖 Google 服务）
   window.__startSpeechRecognition = async function(){
     try{ return await NativeAlarm.startSpeechRecognition(); }
     catch(e){

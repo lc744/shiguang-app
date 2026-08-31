@@ -1,4 +1,4 @@
-// 拾光 · 设置页（导入导出、清空、离线语音包、主题与备份）
+// 绸缪 · 设置页（导入导出、清空、离线语音包、主题与备份）
 /* ---------------- 设置页操作 ---------------- */
 function exportData(){
   try{
@@ -8,7 +8,7 @@ function exportData(){
     const a = document.createElement('a');
     a.href = url;
     const d = new Date();
-    a.download = `拾光备份_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+    a.download = `绸缪备份_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -25,7 +25,7 @@ function importData(fileEv){
   reader.onload = () => {
     try{
       const data = JSON.parse(reader.result);
-      if(!data || data.app !== 'shiguang' || !Array.isArray(data.events)){ toast('导入失败：不是有效的拾光备份文件'); return; }
+      if(!data || data.app !== 'shiguang' || !Array.isArray(data.events)){ toast('导入失败：不是有效的绸缪备份文件'); return; }
       const incoming = []; const skipped = [];
       data.events.forEach(raw => { const e = sanitizeEvent(raw); if(e) incoming.push(e); else skipped.push(raw); });
       if(!incoming.length){ toast('导入失败：文件中没有有效事件'); return; }
@@ -196,5 +196,5 @@ async function previewVoicePack(id){
   const voice=(p.voices&&p.voices[0]&&p.voices[0].id)||'甜美学妹';
   if(!window.__previewVoice){ toast('请在 Android App 中试听'); return; }
   toast(`正在生成「${voice}」试听语音…`);
-  try{ await window.__previewVoice(voice,'你好呀，这里是拾光。记得按时完成今天的安排哦。'); }catch(e){ toast('试听失败'); }
+  try{ await window.__previewVoice(voice,'你好呀，这里是绸缪。记得按时完成今天的安排哦。'); }catch(e){ toast('试听失败'); }
 }

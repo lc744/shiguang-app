@@ -3,7 +3,7 @@ import UserNotifications
 import UIKit
 import AVFoundation
 
-/// 拾光 · iOS 原生提醒插件
+/// 绸缪 · iOS 原生提醒插件
 /// 与 Android 版 NativeAlarmPlugin 方法一一对应，前端桥接无需改动。
 /// iOS 通知机制：UNUserNotificationCenter 本地通知（系统级调度，App 被杀也能准时触发）。
 @objc(NativeAlarmPlugin)
@@ -101,7 +101,7 @@ public class NativeAlarmPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("missing id/items")
             return
         }
-        let name = call.getString("name") ?? "拾光提醒"
+        let name = call.getString("name") ?? "绸缪提醒"
         let emoji = call.getString("emoji") ?? ""
         let center = UNUserNotificationCenter.current()
 
@@ -194,7 +194,7 @@ public class NativeAlarmPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func previewVoice(_ call: CAPPluginCall) {
         let voice = call.getString("voice", "标准播报")
-        let text = call.getString("text", "你好呀，这里是拾光。记得按时完成今天的安排哦。")
+        let text = call.getString("text", "你好呀，这里是绸缪。记得按时完成今天的安排哦。")
         DispatchQueue.main.async {
             if self.previewSynth == nil {
                 self.previewSynth = AVSpeechSynthesizer()

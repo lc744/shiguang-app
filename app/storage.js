@@ -1,4 +1,4 @@
-// 拾光 · 存储层：IndexedDB 大对象仓库（录音、自定义表情图片）
+// 绸缪 · 存储层：IndexedDB 大对象仓库（录音、自定义表情图片）
 // localStorage 只保存小体积引用，避免大 base64 撑爆 5MB 配额。
 // 不可用（如旧浏览器/无痕受限）时自动降级：调用方保持 legacy 内联数据路径。
 const MEDIA_DB_NAME = 'shiguang_media';

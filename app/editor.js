@@ -1,4 +1,4 @@
-// 拾光 · 新建/编辑表单（chips、重复规则选择、自定义录音）
+// 绸缪 · 新建/编辑表单（chips、重复规则选择、自定义录音）
 /* ---------------- 新建 / 编辑 ---------------- */
 let selectedRepeat = 'none';      // none | daily | weekdays | custom
 let selectedWeekdays = [];        // 自定义重复时选中的星期（1..7，1=周一）

@@ -12,7 +12,7 @@ import android.widget.Button;
 import java.util.ArrayList;
 
 /**
- * 拾光精灵语音识别弹窗 —— 半透明 Activity，显示自制正弦波 UI。
+ * 绸缪精灵语音识别弹窗 —— 半透明 Activity，显示自制正弦波 UI。
  * 交互：点击"开始录制"→ 开始识别 → 按钮变"说完了"→ 点击"说完了"→ 停止并返回。
  * 结果通过 setResult 返回：data 含 text（识别文本）与 errorCode（0=成功，非 0=错误/取消）。
  */

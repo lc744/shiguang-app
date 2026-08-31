@@ -2,7 +2,7 @@
   "name": "shiguang-mobile-app",
   "private": true,
   "version": "1.0.0",
-  "description": "拾光：记事、闹钟、语音包和表情包提醒 APP",
+  "description": "绸缪：记事、闹钟、语音包和表情包提醒 APP",
   "scripts": {
     "start": "node server.js",
     "build:www": "node build-www.js",

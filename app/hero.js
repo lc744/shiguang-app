@@ -1,9 +1,9 @@
-// 拾光 · 首页幻灯片介绍区
+// 绸缪 · 首页幻灯片介绍区
 
 /* ---------------- 幻灯片数据 ---------------- */
 const HERO_QUOTES = [
   {
-    title: "拾光",
+    title: "绸缪",
     subtitle: "让提醒不只是响一下",
     text: "到点准时提醒，给你更有温度的陪伴。"
   },
@@ -83,7 +83,7 @@ function showSlide(index){
   // 淡出 → 更新文字 → 淡入
   textEl.style.opacity = '0';
   setTimeout(() => {
-    catEl.textContent = data.title;        // 小分类标签：拾光 / 今日寄语 / 古风·励志…
+    catEl.textContent = data.title;        // 小分类标签：绸缪 / 今日寄语 / 古风·励志…
     mainTitle.textContent = data.subtitle; // 主句：励志语句 / 古诗词
     descEl.textContent = data.text;        // 释义与鼓励文字
     textEl.style.opacity = '1';

@@ -101,7 +101,7 @@ public class AlarmRingingService extends Service {
 
         return new NotificationCompat.Builder(this, AlarmReceiver.CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(safe(title, "拾光提醒"))
+                .setContentTitle(safe(title, "绸缪提醒"))
                 .setContentText(safe(body, "到点提醒"))
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(safe(body, "到点提醒")))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -125,14 +125,14 @@ public class AlarmRingingService extends Service {
         String prefix;
         switch (style) {
             case "温柔女声": prefix = "温馨提醒。"; break;
-            case "清晰女声": prefix = "拾光提醒你。"; break;
+            case "清晰女声": prefix = "绸缪提醒你。"; break;
             case "活力女声": prefix = "嗨，该行动啦。"; break;
             case "沉稳男声": prefix = "请注意，你有一项安排。"; break;
             case "活力男声": prefix = "加油，现在开始完成它。"; break;
-            case "电台主播": prefix = "这里是拾光，现在为你播报提醒。"; break;
+            case "电台主播": prefix = "这里是绸缪，现在为你播报提醒。"; break;
             case "童声音色": prefix = "叮咚，别忘记这件事。"; break;
             case "舒缓播报": prefix = "慢下来，记得处理这项安排。"; break;
-            default: prefix = "拾光提醒。";
+            default: prefix = "绸缪提醒。";
         }
         String cleanTitle = safe(title, "提醒").replaceFirst("^[^\\p{L}\\p{N}]+\\s*", "");
         String cleanBody = safe(body, "");

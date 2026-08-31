@@ -19,7 +19,7 @@
         android:id="@+id/alarmTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="拾光提醒"
+        android:text="绸缪提醒"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         android:textSize="26sp"

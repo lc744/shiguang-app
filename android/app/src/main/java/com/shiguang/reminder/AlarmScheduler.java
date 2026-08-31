@@ -22,7 +22,7 @@ public final class AlarmScheduler {
         JSONArray items = payload.optJSONArray("items");
         if (items == null) return;
 
-        String name = payload.optString("name", "拾光提醒");
+        String name = payload.optString("name", "绸缪提醒");
         String emoji = payload.optString("emoji", "");
         String voice = payload.optString("voice", "标准播报");
         for (int i = 0; i < items.length(); i++) {
