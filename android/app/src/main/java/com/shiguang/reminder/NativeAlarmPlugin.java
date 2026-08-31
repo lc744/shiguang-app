@@ -1,22 +1,16 @@
 package com.shiguang.reminder;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.provider.Settings;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
-import android.util.Log;
 
 import androidx.activity.result.ActivityResult;
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -30,8 +24,6 @@ import com.getcapacitor.annotation.PermissionCallback;
 
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-
 @CapacitorPlugin(
         name = "NativeAlarm",
         permissions = {
@@ -40,9 +32,6 @@ import java.util.ArrayList;
         }
 )
 public class NativeAlarmPlugin extends Plugin {
-
-    private SpeechRecognizer speechRecognizer = null;
-    private PluginCall pendingSpeechCall = null;
 
     /* ---- 权限入口（前端启动时调用） ---- */
 
@@ -275,147 +264,46 @@ public class NativeAlarmPlugin extends Plugin {
 
     @PluginMethod
     public void startSpeechRecognition(PluginCall call) {
-        if (pendingSpeechCall != null) {
-            call.reject("already listening");
-            return;
-        }
         if (getPermissionState("microphone") != PermissionState.GRANTED) {
             requestPermissionForAlias("microphone", call, "onMicrophonePermissionResult");
             return;
         }
-        beginSpeechRecognition(call);
+        // 启动自定义弹窗 Activity（正弦波 + 录制按钮）
+        Intent intent = new Intent(getContext(), SpeechDialogActivity.class);
+        startActivityForResult(call, intent, "onSpeechDialogResult");
     }
 
     @PluginMethod
     public void stopSpeechRecognition(PluginCall call) {
-        AppCompatActivity activity = getActivity();
-        if (activity != null) {
-            activity.runOnUiThread(() -> {
-                if (speechRecognizer != null) {
-                    try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
-                }
-            });
-        }
-        if (pendingSpeechCall != null) {
-            JSObject out = new JSObject();
-            out.put("text", "");
-            pendingSpeechCall.resolve(out);
-            pendingSpeechCall = null;
-        }
         call.resolve();
     }
 
-    private void beginSpeechRecognition(PluginCall call) {
-        AppCompatActivity activity = getActivity();
-        if (activity == null) {
-            call.reject("no activity");
-            return;
-        }
-        // SpeechRecognizer 必须在主线程创建和调用，Capacitor 插件方法默认在后台线程
-        activity.runOnUiThread(() -> {
-            boolean available = false;
-            try {
-                available = SpeechRecognizer.isRecognitionAvailable(getContext());
-            } catch (Exception ex) {
-                Log.w("ShiguangSpeech", "isRecognitionAvailable check failed", ex);
-            }
-            Log.d("ShiguangSpeech", "SpeechRecognizer available=" + available);
-            if (available) {
-                startListeningOnMainThread(call);
-            } else {
-                // 系统没有语音识别服务，尝试用 ACTION_RECOGNIZE_SPEECH 拉起系统语音对话框
-                tryActivityRecognition(call);
-            }
-        });
-    }
-
-    private void tryActivityRecognition(PluginCall call) {
-        try {
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN");
-            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-            startActivityForResult(call, intent, "onSpeechResult");
-        } catch (Exception ex) {
-            Log.e("ShiguangSpeech", "activity recognizer failed", ex);
-            pendingSpeechCall = null;
-            call.reject("本机未安装可用的语音识别服务，请用文字输入，或安装讯飞输入法后重试");
-        }
-    }
-
     @ActivityCallback
-    private void onSpeechResult(PluginCall call, ActivityResult result) {
-        if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-            ArrayList<String> matches = result.getData().getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            String text = (matches != null && !matches.isEmpty()) ? matches.get(0) : "";
-            JSObject out = new JSObject();
-            out.put("text", text);
-            call.resolve(out);
-        } else if (result.getResultCode() == Activity.RESULT_CANCELED) {
-            JSObject out = new JSObject();
-            out.put("errorCode", -3);
-            out.put("message", "已取消语音输入");
-            call.resolve(out);
-        } else {
+    private void onSpeechDialogResult(PluginCall call, ActivityResult result) {
+        Intent data = result.getData();
+        if (data == null) {
             JSObject out = new JSObject();
             out.put("errorCode", -2);
             out.put("message", "语音识别未完成");
             call.resolve(out);
+            return;
         }
-    }
-
-    // 必须在主线程调用
-    private void startListeningOnMainThread(PluginCall call) {
-        try {
-            if (!SpeechRecognizer.isRecognitionAvailable(getContext())) {
-                tryActivityRecognition(call);
-                return;
-            }
-            pendingSpeechCall = call;
-            if (speechRecognizer == null) {
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(getContext());
-            }
-            speechRecognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onReadyForSpeech(Bundle params) {}
-                @Override public void onBeginningOfSpeech() {}
-                @Override public void onRmsChanged(float rmsdB) {}
-                @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() {}
-                @Override public void onPartialResults(Bundle partialResults) {}
-                @Override public void onEvent(int eventType, Bundle params) {}
-                @Override
-                public void onResults(Bundle results) {
-                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    String text = (matches != null && !matches.isEmpty()) ? matches.get(0) : "";
-                    JSObject out = new JSObject();
-                    out.put("text", text);
-                    if (pendingSpeechCall != null) {
-                        pendingSpeechCall.resolve(out);
-                        pendingSpeechCall = null;
-                    }
-                }
-                @Override
-                public void onError(int error) {
-                    Log.e("ShiguangSpeech", "SpeechRecognizer onError code=" + error);
-                    JSObject out = new JSObject();
-                    out.put("errorCode", error);
-                    out.put("message", speechErrorText(error));
-                    if (pendingSpeechCall != null) {
-                        pendingSpeechCall.resolve(out);
-                        pendingSpeechCall = null;
-                    }
-                }
-            });
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN");
-            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
-            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-            speechRecognizer.startListening(intent);
-        } catch (Exception ex) {
-            Log.e("ShiguangSpeech", "startListening failed", ex);
-            pendingSpeechCall = null;
-            call.reject("startSpeechRecognition failed: " + ex.getMessage(), ex);
+        String text = data.getStringExtra("text");
+        int errorCode = data.getIntExtra("errorCode", 0);
+        if (text != null && !text.isEmpty()) {
+            JSObject out = new JSObject();
+            out.put("text", text);
+            call.resolve(out);
+        } else if (errorCode == SpeechDialogActivity.ERR_CANCELED) {
+            JSObject out = new JSObject();
+            out.put("errorCode", errorCode);
+            out.put("message", "已取消语音输入");
+            call.resolve(out);
+        } else {
+            JSObject out = new JSObject();
+            out.put("errorCode", errorCode);
+            out.put("message", speechErrorText(errorCode));
+            call.resolve(out);
         }
     }
 
@@ -430,14 +318,18 @@ public class NativeAlarmPlugin extends Plugin {
             case SpeechRecognizer.ERROR_NO_MATCH: return "没有识别到内容，请说清楚一点";
             case SpeechRecognizer.ERROR_RECOGNIZER_BUSY: return "语音识别服务忙，请稍后再试";
             case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: return "麦克风权限不足";
-            default: return "语音识别失败（错误码 " + error + "）";
+            case SpeechDialogActivity.ERR_CANCELED: return "已取消语音输入";
+            case SpeechDialogActivity.ERR_NO_RESULT: return "没有识别到你说的话";
+            case SpeechDialogActivity.ERR_UNAVAILABLE: return "本机未安装可用的语音识别服务，请用文字输入，或安装讯飞输入法后重试";
+            default: return "语音识别失败，请用文字输入";
         }
     }
 
     @PermissionCallback
     private void onMicrophonePermissionResult(PluginCall call) {
         if (getPermissionState("microphone") == PermissionState.GRANTED) {
-            beginSpeechRecognition(call);
+            Intent intent = new Intent(getContext(), SpeechDialogActivity.class);
+            startActivityForResult(call, intent, "onSpeechDialogResult");
         } else {
             JSObject out = new JSObject();
             out.put("errorCode", -4);

@@ -31,6 +31,12 @@
             android:excludeFromRecents="true"
             android:theme="@style/AppTheme.FullScreenAlarm" />
 
+        <activity
+            android:name=".SpeechDialogActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/AppTheme.SpeechDialog" />
+
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"

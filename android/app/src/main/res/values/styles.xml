@@ -25,4 +25,12 @@
         <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowBackground">#10241E</item>
     </style>
+
+    <style name="AppTheme.SpeechDialog" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">#66000000</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+    </style>
 </resources>
