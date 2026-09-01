@@ -1,0 +1,37 @@
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+  <view class="subhead">
+    <text class="subhead-title">预告</text>
+    <text class="subhead-sub">接下来会发生什么</text>
+  </view>
+
+  <view class="today-list">
+    <view wx:if="{{empty}}" class="empty">
+      <view>近期没有待提醒的事件</view>
+      <view>点击右下角 + 计划下一件事</view>
+    </view>
+    <block wx:else>
+      <view class="event" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" data-id="{{item.id}}">
+        <view class="event-time">
+          <text class="et-time">{{item.time}}</text>
+          <text class="et-period">{{item.label}}</text>
+        </view>
+        <view class="event-body">
+          <text class="eb-name">{{item.name}}</text>
+          <text class="eb-note">{{item.note}}</text>
+          <view class="tags">
+            <view class="tag">
+              <image wx:if="{{item.emojiImg}}" class="tag-img" src="{{item.emojiImg}}" mode="aspectFit" />
+              <text wx:else>{{item.emojiText}}</text>
+            </view>
+            <view class="tag"><text>{{item.voiceTag}}</text></view>
+            <view class="tag"><text>{{item.dateTag}}</text></view>
+            <view class="tag" wx:if="{{item.repeatTag}}"><text>{{item.repeatTag}}</text></view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <button class="fab" bindtap="onAddTap">+</button>
+  <genie />
+  </view>

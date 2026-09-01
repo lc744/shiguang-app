@@ -1,0 +1,26 @@
+/* 绸缪 · 编辑页补充样式（WXML 无 h 标签，标题/说明需页面级样式，其余复用全局类） */
+.sub-title { margin: 0; font-size: 15px; font-weight: 600; }
+.sub-side { color: var(--sub); font-size: 12px; }
+
+.field .f-tip { margin: 8px 0 0; font-size: 12px; color: var(--sub); line-height: 1.6; }
+
+/* 日期/时间选择器单元格（替代原 input[type=date/time]） */
+.meta-label { display: block; color: var(--sub); font-size: 12px; margin-bottom: 4px; }
+.meta-value { font-weight: 700; color: var(--text); font-size: 14px; }
+
+/* 自定义周几 chips 展开区 */
+.wd-chips { margin-top: 8px; }
+
+/* 表情 chips */
+.emoji-chip { min-width: 44px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.emoji-img { width: 24px; height: 24px; }
+.add-emoji { margin-top: 8px; width: 100%; }
+
+/* 音色 chips：两行（名称 + 示例短句） */
+.voice-chip { max-width: 100%; }
+.voice-name { font-size: 12px; }
+.voice-phrase { display: block; font-size: 10px; opacity: .75; margin-top: 2px; }
+
+/* 录音块（.recorder/.rec-head/.rec-time/.rec-actions 复用全局；内部 text/button 补齐） */
+.rec-head .rec-tip { color: var(--sub); font-size: 12px; flex: 1; margin-right: 8px; }
+.rec-actions .rec-main { background: linear-gradient(135deg, var(--main) 0%, var(--main2) 100%); color: #fff; border: 0; }

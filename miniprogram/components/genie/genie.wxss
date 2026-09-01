@@ -1,0 +1,101 @@
+/* 绸缪精灵组件样式 · 自包含
+   组件样式默认隔离，app.wxss 全局类在组件内不可用，
+   这里从 Web 版 styles.css 复制 genie 系列全部样式（单位 px 原样保留）。
+   颜色使用 var(--xxx, fallback)：浅色用 fallback，深色模式经页面根节点
+   .theme-dark 重定义的 CSS 变量自动生效（CSS 变量可穿透组件继承）。 */
+
+/* ---------- 悬浮按钮 ---------- */
+.genie-fab{
+  position:fixed; right:18px;
+  bottom:calc(110px + env(safe-area-inset-bottom,0px));
+  width:54px; height:54px; border-radius:50%;
+  border:none; padding:0; overflow:hidden;
+  background:linear-gradient(135deg,#7c5cff 0%,#5b8cff 100%);
+  box-shadow:0 8px 22px rgba(94,99,255,.42);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .2s; z-index:40;
+}
+.genie-fab-img{ width:100%; height:100%; display:block; }
+.genie-fab-hover{ transform:scale(1.08); }
+
+/* ---------- 面板 ---------- */
+.genie-panel{
+  position:fixed; left:50%;
+  bottom:calc(80px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%) translateY(20px);
+  width:min(390px,calc(100vw - 28px));
+  max-height:min(560px,calc(100vh - 120px));
+  background:var(--surface,#fff);
+  border-radius:22px;
+  box-shadow:0 24px 60px rgba(18,48,39,.28);
+  display:flex; flex-direction:column; overflow:hidden;
+  z-index:45; opacity:0; pointer-events:none;
+  transition:opacity .22s,transform .22s;
+}
+.genie-panel.show{
+  opacity:1; pointer-events:auto;
+  transform:translateX(-50%) translateY(0);
+}
+
+/* ---------- 头部 ---------- */
+.genie-head{
+  display:flex; align-items:center; gap:10px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--line,#d7e3dc);
+}
+.genie-avatar{
+  width:40px; height:40px; border-radius:50%;
+  background:linear-gradient(135deg,#7c5cff,#5b8cff);
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; flex-shrink:0;
+}
+.genie-avatar-img{ width:100%; height:100%; display:block; }
+.genie-head-text{ display:flex; flex-direction:column; min-width:0; }
+.genie-title{ font-size:16px; font-weight:700; color:var(--text,#1c2a26); }
+.genie-subtitle{ display:block; color:var(--sub,#6e7f79); font-size:11px; margin-top:2px; }
+.genie-close{
+  margin-left:auto; border:none; padding:4px; line-height:1;
+  font-size:20px; color:var(--sub,#6e7f79);
+}
+.genie-close-hover{ opacity:.6; }
+
+/* ---------- 消息列表 ---------- */
+.genie-bubbles{
+  flex:1; min-height:0; box-sizing:border-box;
+  padding:14px 16px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.genie-bubble{
+  max-width:82%; padding:10px 13px; border-radius:16px;
+  font-size:14px; line-height:1.55;
+  white-space:pre-wrap; word-break:break-word; box-sizing:border-box;
+}
+.genie-bubble text{ white-space:pre-wrap; word-break:break-word; }
+.genie-assistant{
+  align-self:flex-start;
+  background:var(--surface2,#f6faf8);
+  border-bottom-left-radius:4px;
+  color:var(--text,#1c2a26);
+}
+.genie-user{
+  align-self:flex-end;
+  background:linear-gradient(135deg,#7c5cff,#5b8cff);
+  color:#fff;
+  border-bottom-right-radius:4px;
+}
+
+/* ---------- 输入栏 ---------- */
+.genie-inputbar{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 12px;
+  border-top:1px solid var(--line,#d7e3dc);
+}
+.genie-input{
+  flex:1; height:40px; box-sizing:border-box;
+  border:1px solid var(--line,#d7e3dc); border-radius:20px;
+  padding:0 14px; font-size:14px;
+  background:var(--surface,#fff); color:var(--text,#1c2a26);
+}
+.genie-btn{ border:none; padding:6px; line-height:1; font-size:22px; color:var(--text,#1c2a26); }
+.genie-recording{ color:#c65c52; animation:geniePulse 1s infinite; }
+@keyframes geniePulse{ 0%,100%{opacity:1} 50%{opacity:.4} }

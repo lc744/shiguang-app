@@ -1,0 +1,4 @@
+{
+  "desc": "绸缪提醒小程序",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

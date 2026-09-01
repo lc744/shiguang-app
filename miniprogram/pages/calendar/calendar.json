@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "genie": "/components/genie/genie"
+  },
+  "navigationBarTitleText": "日历"
+}

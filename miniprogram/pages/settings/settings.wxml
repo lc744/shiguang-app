@@ -1,0 +1,72 @@
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+  <view class="subhead">
+    <view class="sub-title">设置</view>
+    <text class="sub-side">本机数据</text>
+  </view>
+
+  <view class="detail-wrap">
+    <!-- 外观 -->
+    <view class="detail-card">
+      <view class="card-title">外观</view>
+      <view class="chips">
+        <view wx:for="{{themes}}" wx:key="t"
+              class="{{theme === item.t ? 'chip selected' : 'chip'}}"
+              data-theme="{{item.t}}" bindtap="pickTheme">{{item.label}}</view>
+      </view>
+    </view>
+
+    <!-- 背景颜色 -->
+    <view class="detail-card gap">
+      <view class="card-title">背景颜色</view>
+      <view class="mini">选择喜欢的配色方案，让界面更舒适。</view>
+      <view class="chips bg-chips">
+        <view wx:for="{{defaultColors}}" wx:key="*this"
+              class="{{bgColor === item ? 'bg-chip selected' : 'bg-chip'}}"
+              style="background-color:{{item}}"
+              data-color="{{item}}" bindtap="pickBgColor">
+          <text wx:if="{{bgColor === item}}" class="bg-check">✓</text>
+        </view>
+      </view>
+      <view class="mini bg-note">当前：{{bgColorValue}}（点选色块立即生效）</view>
+    </view>
+
+    <!-- 语音播报说明（替代原“离线语音包”卡：小程序无内置离线引擎） -->
+    <view class="detail-card gap">
+      <view class="card-title">语音播报说明</view>
+      <view class="mini">到点播报使用“微信同声传译”插件在线合成语音（需联网）；选择“自定义录音”的事件到点播放你录制的声音，录音仅保存在本机，换设备后无法播放。小程序没有内置离线语音引擎。</view>
+    </view>
+
+    <!-- 提醒规则说明 -->
+    <view class="detail-card gap">
+      <view class="card-title">提醒规则说明</view>
+      <view class="mini">小程序在前台时，到点会自动弹出全屏提醒；切到后台或被关闭后将无法弹提醒（订阅消息推送规划中）。建议把“绸缪”添加到“我的小程序”，方便到点快速打开查看。</view>
+    </view>
+
+    <!-- 自动备份 -->
+    <view class="detail-card gap">
+      <view class="card-title">自动备份</view>
+      <view class="mini">每次保存事件都会自动生成快照（最多保留 10 条），误删后可一键恢复。</view>
+      <view wx:if="{{!backups.length}}" class="mini">暂无历史备份（保存事件后自动生成）</view>
+      <view wx:for="{{backups}}" wx:key="at" class="backup-item">
+        <view class="backup-info">
+          <view class="bi-title">{{item.atLabel}}</view>
+          <view class="bi-sub">{{item.count}} 个事件</view>
+        </view>
+        <view class="backup-actions">
+          <button class="secondary" data-at="{{item.at}}" bindtap="restoreBackupEntry">恢复</button>
+          <button class="danger-btn" data-at="{{item.at}}" bindtap="removeBackupEntry">删除</button>
+        </view>
+      </view>
+      <view class="action-row">
+        <button class="secondary" bindtap="exportData">导出到剪贴板</button>
+        <button class="secondary" bindtap="importData">从剪贴板导入</button>
+      </view>
+    </view>
+
+    <!-- 清空 -->
+    <view class="action-row clear-row">
+      <button class="danger-btn" bindtap="clearAll">清空全部事件</button>
+    </view>
+  </view>
+  <genie />
+  </view>

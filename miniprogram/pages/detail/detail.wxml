@@ -1,0 +1,41 @@
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+  <view class="subhead">
+    <text class="subhead-title">事件详情</text>
+    <text class="subhead-sub" bindtap="onBack">返回</text>
+  </view>
+
+  <view class="detail-wrap">
+    <view class="detail-card">
+      <view class="detail-title">
+        <text class="detail-name">{{name}}</text>
+        <text class="status-pill">{{status}}</text>
+      </view>
+      <view class="mini"><text>{{timeline}}</text></view>
+
+      <view class="meta-grid">
+        <view class="meta">
+          <text class="meta-label">提醒表情包</text>
+          <view class="meta-value">
+            <image wx:if="{{emojiImg}}" class="detail-emoji-img" src="{{emojiImg}}" mode="aspectFit" />
+            <text wx:else class="detail-emoji">{{emojiText}}</text>
+          </view>
+        </view>
+        <view class="meta">
+          <text class="meta-label">提示音</text>
+          <text class="meta-value">{{voice}}</text>
+        </view>
+      </view>
+
+      <view class="detail-note"><text>{{note}}</text></view>
+
+      <view class="action-row">
+        <button class="danger-btn" bindtap="onDelete">删除</button>
+        <button class="secondary" bindtap="onSnooze">延后 10 分钟</button>
+        <button class="primary" bindtap="onComplete">完成</button>
+      </view>
+      <view class="action-row">
+        <button class="secondary edit-btn" bindtap="onEdit">✎ 编辑此事件</button>
+      </view>
+    </view>
+  </view>
+</view>

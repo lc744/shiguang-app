@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/upcoming/upcoming",
+    "pages/calendar/calendar",
+    "pages/settings/settings",
+    "pages/editor/editor",
+    "pages/detail/detail",
+    "pages/remind/remind"
+  ],
+  "window": {
+    "navigationBarTitleText": "绸缪",
+    "navigationBarBackgroundColor": "@navBgColor",
+    "navigationBarTextStyle": "@navTxtStyle",
+    "backgroundColor": "@bgColor",
+    "backgroundTextStyle": "@bgTxtStyle"
+  },
+  "tabBar": {
+    "color": "#6e7f79",
+    "selectedColor": "#246353",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "今天" },
+      { "pagePath": "pages/upcoming/upcoming", "text": "预告" },
+      { "pagePath": "pages/calendar/calendar", "text": "日历" },
+      { "pagePath": "pages/settings/settings", "text": "设置" }
+    ]
+  },
+  "darkmode": true,
+  "themeLocation": "theme.json",
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.6",
+      "provider": "wx069ba97219f66d99"
+    }
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

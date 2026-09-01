@@ -1,0 +1,22 @@
+<!-- 到点全屏提醒（移植自 index.html remindOverlay） -->
+<view class="remind-fullscreen show {{themeClass}}" style="background:{{bg}};padding-top:{{statusBarHeight}}px">
+  <view class="remind-card">
+    <!-- 表情：自定义表情用 image，内置用文字 emoji；生日显示 🎂 -->
+    <image wx:if="{{emojiImg}}" class="r-emoji-img" src="{{emojiImg}}" mode="aspectFit" />
+    <view wx:else class="emoji">{{emojiText}}</view>
+
+    <view class="r-name">{{name}}</view>
+    <view wx:if="{{note}}" class="r-note">{{note}}</view>
+    <view class="r-time">{{time}}</view>
+
+    <view class="snooze-row">
+      <button class="secondary" hover-class="btn-hover" bindtap="onSnooze" data-min="5">5 分钟</button>
+      <button class="secondary" hover-class="btn-hover" bindtap="onSnooze" data-min="10">10 分钟</button>
+      <button class="secondary" hover-class="btn-hover" bindtap="onSnooze" data-min="30">30 分钟</button>
+    </view>
+    <view class="action-row">
+      <button class="secondary" hover-class="btn-hover" bindtap="onComplete">✓ 完成</button>
+      <button class="primary" hover-class="btn-hover" bindtap="onDismiss">知道啦</button>
+    </view>
+  </view>
+</view>

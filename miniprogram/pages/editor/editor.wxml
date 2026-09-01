@@ -1,0 +1,108 @@
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+  <view class="subhead">
+    <view class="sub-title">{{isEdit ? '编辑提醒' : '新建提醒'}}</view>
+    <text class="sub-side" bindtap="goBack">返回</text>
+  </view>
+
+  <view class="create-wrap">
+    <view class="form-card">
+      <!-- 事件名称 -->
+      <view class="field">
+        <label>事件名称（必填）</label>
+        <input value="{{form.name}}" maxlength="30" placeholder="例如：下班、提交周报" bindinput="onNameInput" />
+      </view>
+
+      <!-- 备注 -->
+      <view class="field">
+        <label>备注</label>
+        <textarea value="{{form.note}}" placeholder="选填，提醒时一并展示" bindinput="onNoteInput" />
+      </view>
+
+      <!-- 日期 / 时间 -->
+      <view class="meta-grid">
+        <picker mode="date" start="{{dateMin}}" value="{{form.date}}" bindchange="onDateChange">
+          <view class="meta">
+            <text class="meta-label">{{isBirthday ? '生日日期（可选过去日期）' : '日期（可选任意未来日期）'}}</text>
+            <view class="meta-value">{{form.date || '选择日期'}}</view>
+          </view>
+        </picker>
+        <picker mode="time" value="{{form.time}}" bindchange="onTimeChange">
+          <view class="meta">
+            <text class="meta-label">时间</text>
+            <view class="meta-value">{{form.time || '选择时间'}}</view>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 重复提醒 -->
+      <view class="field">
+        <label>重复提醒</label>
+        <view class="chips">
+          <view wx:for="{{repeatChips}}" wx:key="mode"
+                class="{{item.mode === repeatMode ? 'chip selected' : 'chip'}}"
+                data-mode="{{item.mode}}" bindtap="pickRepeat">{{item.label}}</view>
+        </view>
+        <view wx:if="{{repeatMode === 'custom'}}" class="chips wd-chips">
+          <view wx:for="{{weekdayChips}}" wx:key="d"
+                class="{{item.selected ? 'chip selected' : 'chip'}}"
+                data-wd="{{item.d}}" bindtap="toggleWeekday">{{item.label}}</view>
+        </view>
+      </view>
+
+      <!-- 生日提醒 -->
+      <view class="field">
+        <label>🎂 生日提醒</label>
+        <view class="chips">
+          <view class="{{isBirthday ? 'chip selected' : 'chip'}}" bindtap="toggleBirthday">{{isBirthday ? '已开启' : '关闭'}}</view>
+          <view wx:if="{{isBirthday}}" class="{{lunarBirthday ? 'chip selected' : 'chip'}}" bindtap="toggleLunarBirthday">{{lunarBirthday ? '农历生日' : '公历生日'}}</view>
+        </view>
+        <view class="f-tip">开启后每年当天提醒并送上生日祝福（支持公历或农历生日）</view>
+      </view>
+
+      <!-- 提醒表情包 -->
+      <view class="field">
+        <label>提醒表情包</label>
+        <view class="chips">
+          <view wx:for="{{emojiList}}" wx:key="value"
+                class="{{item.selected ? 'chip selected' : 'chip'}} emoji-chip"
+                data-emoji="{{item.value}}" bindtap="pickEmoji">
+            <image wx:if="{{item.src}}" class="emoji-img" src="{{item.src}}" mode="aspectFit" />
+            <text wx:else>{{item.label}}</text>
+          </view>
+        </view>
+        <button class="secondary add-emoji" bindtap="importEmoji">＋ 导入表情图片</button>
+      </view>
+
+      <!-- 语音播报音色 -->
+      <view class="field">
+        <label>语音播报音色</label>
+        <view class="chips">
+          <view wx:for="{{voiceList}}" wx:key="value"
+                class="{{item.selected ? 'chip selected' : 'chip'}} voice-chip"
+                data-voice="{{item.value}}" bindtap="pickVoice">
+            <view class="voice-name">♫ {{item.value}}</view>
+            <view wx:if="{{item.phrase}}" class="voice-phrase">{{item.phrase}}</view>
+          </view>
+        </view>
+        <view class="f-tip">到点后使用“微信同声传译”插件在线合成语音播报（需联网）；选择“自定义录音”可改用你自己的声音。</view>
+        <view class="recorder {{selectedVoice === '自定义录音' ? 'show' : ''}}">
+          <view class="rec-head">
+            <text class="rec-tip">{{recTip}}</text>
+            <text class="rec-time {{recActive ? 'recording' : ''}}">{{recTime}}</text>
+          </view>
+          <view class="rec-actions">
+            <button class="rec-main" bindtap="toggleRecord">{{recActive ? '■ 停止录音' : (hasRecording ? '● 重新录音' : '● 开始录音')}}</button>
+            <button wx:if="{{hasRecording}}" bindtap="playRecording">▶ 试听</button>
+            <button wx:if="{{hasRecording}}" bindtap="clearRecording">✕ 重录</button>
+          </view>
+        </view>
+      </view>
+
+      <!-- 保存 / 取消 -->
+      <view class="action-row">
+        <button class="secondary" bindtap="goBack">取消</button>
+        <button class="primary" bindtap="saveEvent">{{isEdit ? '保存修改' : '保存提醒'}}</button>
+      </view>
+    </view>
+  </view>
+</view>

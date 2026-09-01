@@ -1,0 +1,77 @@
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+  <view class="subhead">
+    <text class="subhead-title">日历</text>
+    <text class="subhead-sub">选择日期查看详情</text>
+  </view>
+
+  <view class="calendar-wrap">
+    <!-- 月历卡片 -->
+    <view class="month-card">
+      <view class="month-top">
+        <view class="month-title" bindtap="openMonthPicker">
+          <text class="mt-text">{{monthTitle}}</text>
+          <text class="mt-caret">▾</text>
+        </view>
+        <view class="month-nav">
+          <button class="mn-btn" bindtap="onChangeMonth" data-delta="{{-1}}">‹</button>
+          <button class="mn-btn" bindtap="onChangeMonth" data-delta="{{0}}">今</button>
+          <button class="mn-btn" bindtap="onChangeMonth" data-delta="{{1}}">›</button>
+        </view>
+      </view>
+      <view class="weekdays">
+        <text class="wd" wx:for="{{weekdays}}" wx:key="*this">{{item}}</text>
+      </view>
+      <view class="days">
+        <block wx:for="{{days}}" wx:key="key">
+          <view wx:if="{{item.pad}}" class="{{item.cls}}"></view>
+          <view wx:else class="{{item.cls}}" bindtap="onPickDay" data-ds="{{item.ds}}">
+            <text class="day-num">{{item.main}}</text>
+            <text class="day-sub">{{item.sub}}</text>
+            <text class="day-mark" wx:if="{{item.mark}}">{{item.mark}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 当日议程 -->
+    <view class="subhead agenda-subhead">
+      <text class="subhead-title">{{agendaTitle}}</text>
+      <text class="subhead-sub">{{agendaCount}}</text>
+    </view>
+    <view class="agenda">
+      <view wx:if="{{agendaEmpty}}" class="empty">
+        <view>这一天还没有事件</view>
+        <view>点击 + 新建一个吧</view>
+      </view>
+      <view wx:else class="agenda-item" wx:for="{{agendaList}}" wx:key="id" bindtap="onAgendaTap" data-id="{{item.id}}">
+        <view class="agenda-info">
+          <text class="agenda-name">{{item.name}}</text>
+          <text class="agenda-sub">{{item.sub}}</text>
+        </view>
+        <text class="agenda-arrow">→</text>
+      </view>
+    </view>
+  </view>
+
+  <button class="fab" bindtap="onAddTap">+</button>
+
+  <!-- 年月选择弹层 -->
+  <view class="remind-fullscreen show" wx:if="{{pickerVisible}}" bindtap="closeMonthPicker">
+    <view class="remind-card card" catchtap="noop">
+      <text class="yp-title">选择年月</text>
+      <view class="yp-year-row">
+        <button class="yp-btn" bindtap="shiftPickerYear" data-delta="{{-1}}">‹</button>
+        <text class="yp-year">{{pickerYear}}</text>
+        <button class="yp-btn" bindtap="shiftPickerYear" data-delta="{{1}}">›</button>
+      </view>
+      <view class="yp-months">
+        <button wx:for="{{months}}" wx:key="m" class="{{item.cls}}" bindtap="pickMonth" data-m="{{item.m}}">{{item.m + 1}}<text class="yp-unit">月</text></button>
+      </view>
+      <view class="action-row">
+        <button class="secondary" bindtap="closeMonthPicker">取消</button>
+        <button class="primary" bindtap="jumpToTodayMonth">回到今天</button>
+      </view>
+    </view>
+  </view>
+  <genie />
+  </view>

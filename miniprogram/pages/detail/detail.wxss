@@ -1,0 +1,13 @@
+/* 详情页补充样式：全局 app.wxss 里部分排版依赖 HTML 标签选择器（strong/small/b 等），
+   WXML 不使用这些标签，这里以类名等价补充 */
+.subhead-title{font-size:15px;font-weight:600}
+.subhead-sub{color:var(--sub);font-size:12px}
+
+.detail-name{flex:1;min-width:0;font-size:18px;line-height:1.2;font-weight:700}
+
+.meta-label{display:block;color:var(--sub);font-size:12px;margin-bottom:4px}
+.meta-value{display:block;font-size:14px;line-height:1.4}
+.detail-emoji{font-size:24px;line-height:1}
+.detail-emoji-img{width:36px;height:36px}
+
+.edit-btn{flex:none;width:100%}

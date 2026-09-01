@@ -1,0 +1,27 @@
+/* 绸缪 · 设置页补充样式（复用全局 detail-card/chips/backup-item 等，此处补 WXML 缺失的标签样式） */
+.sub-title { margin: 0; font-size: 15px; font-weight: 600; }
+.sub-side { color: var(--sub); font-size: 12px; }
+.card-title { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+.gap { margin-top: 10px; }
+
+/* 背景色块 chips（全局无 .bg-chip，这里补齐） */
+.bg-chips { margin-top: 10px; }
+.bg-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bg-chip.selected { border-color: var(--main); box-shadow: 0 0 0 2px var(--main); }
+.bg-check { color: #fff; font-weight: 700; font-size: 14px; }
+.bg-note { margin-top: 10px; }
+
+/* 自动备份列表（替代原 b/small 标签） */
+.bi-title { font-size: 13px; font-weight: 600; }
+.bi-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+.clear-row { margin-top: 12px; }

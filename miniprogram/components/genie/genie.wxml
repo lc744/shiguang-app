@@ -1,0 +1,38 @@
+<!-- 绸缪精灵 · 悬浮聊天面板（结构照原版 index.html genie-fab / genie-panel） -->
+<!-- 关闭态：右下角圆形头像悬浮按钮 -->
+<view class="genie-fab" hover-class="genie-fab-hover" bindtap="onFabTap">
+  <image class="genie-fab-img" src="/images/genie.jpg" mode="aspectFill" />
+</view>
+
+<!-- 展开态：底部滑出聊天面板 -->
+<view class="genie-panel {{open ? 'show' : ''}}" catchtouchmove="noop">
+  <view class="genie-head">
+    <view class="genie-avatar">
+      <image class="genie-avatar-img" src="/images/genie.jpg" mode="aspectFill" />
+    </view>
+    <view class="genie-head-text">
+      <text class="genie-title">绸缪精灵</text>
+      <text class="genie-subtitle">语音或文字告诉我你想做什么</text>
+    </view>
+    <view class="genie-close" hover-class="genie-close-hover" bindtap="onCloseTap">✕</view>
+  </view>
+
+  <scroll-view class="genie-bubbles" scroll-y scroll-into-view="{{lastId}}" scroll-with-animation>
+    <view wx:for="{{bubbles}}" wx:key="id" id="{{item.id}}" class="genie-bubble genie-{{item.role}}">
+      <text>{{item.text}}</text>
+    </view>
+  </scroll-view>
+
+  <view class="genie-inputbar">
+    <input
+      class="genie-input"
+      value="{{inputValue}}"
+      placeholder="例如：明天下午3点开会"
+      confirm-type="send"
+      bindinput="onInput"
+      bindconfirm="onSend"
+    />
+    <view class="genie-btn {{recording ? 'genie-recording' : ''}}" hover-class="none" bindtap="onVoiceTap">{{recording ? '⏹' : '🎤'}}</view>
+    <view class="genie-btn" hover-class="none" bindtap="onSend">➤</view>
+  </view>
+</view>

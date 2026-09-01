@@ -1,0 +1,21 @@
+/* 到点提醒页 · 页面级增量样式
+   说明：remind-fullscreen/remind-card/emoji/snooze-row/action-row/primary/secondary
+   均使用 app.wxss 全局类，这里只补 WXML 无法命中全局标签选择器（h2/p/time）的部分 */
+
+/* 兜底：老基础库不支持 inset 简写时仍能全屏 */
+.remind-fullscreen{ top:0; left:0; right:0; bottom:0; }
+
+/* 对应 Web 版 .remind-card h2 */
+.remind-card .r-name{ margin:0 0 6px; font-size:22px; font-weight:700; line-height:1.3; }
+
+/* 对应 Web 版 .remind-card p */
+.remind-card .r-note{ margin:0 0 6px; color:var(--sub); font-size:13px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+
+/* 对应 Web 版 .remind-card time */
+.remind-card .r-time{ display:block; font-size:40px; font-weight:800; color:var(--main); margin:10px 0 20px; letter-spacing:.02em; }
+
+/* 自定义表情图片（对应 Web 版内联 72px img） */
+.r-emoji-img{ width:72px; height:72px; margin:0 auto 14px; display:block; }
+
+/* 按压反馈（view/button 通用） */
+.btn-hover{ opacity:.75; }

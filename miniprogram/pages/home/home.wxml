@@ -1,0 +1,90 @@
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+  <!-- 品牌头 -->
+  <view class="header">
+    <view class="brand">
+      <text class="brand-name">绸缪</text>
+      <text class="brand-sub">记事 · 闹钟 · 语音包 · 表情包</text>
+    </view>
+    <view class="header-actions">
+      <button class="icon-btn" bindtap="onSyncTap">↻</button>
+    </view>
+  </view>
+
+  <!-- hero 幻灯片 -->
+  <view class="hero">
+    <swiper class="hero-swiper" autoplay="{{true}}" circular="{{true}}" interval="5000">
+      <swiper-item wx:for="{{slides}}" wx:key="idx">
+        <view class="hero-text">
+          <text class="hero-cat">{{item.heroCat}}</text>
+          <text class="hero-main">{{item.heroMainTitle}}</text>
+          <text class="hero-desc">{{item.heroDesc}}</text>
+        </view>
+        <view class="hero-decoration">
+          <text class="decoration-item">{{item.deco}}</text>
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 统计卡 -->
+  <view class="stats">
+    <view class="card stat"><text class="stat-num">{{statTodo}}</text><text class="stat-label">今日待办</text></view>
+    <view class="card stat"><text class="stat-num">{{statDone}}</text><text class="stat-label">已完成</text></view>
+  </view>
+
+  <!-- 今天的事件 -->
+  <view class="subhead">
+    <text class="subhead-title">今天的事件</text>
+    <text class="subhead-sub">{{homeDate}}</text>
+  </view>
+
+  <!-- 错过提醒横幅 -->
+  <view class="missed-wrap" wx:if="{{missedVisible}}">
+    <view class="missed-banner">
+      <view class="missed-head">
+        <text class="missed-title">⏰ 有 {{missedCount}} 个提醒已错过</text>
+        <button class="missed-close" bindtap="onHideMissed">知道了</button>
+      </view>
+      <view class="missed-item" wx:for="{{missedItems}}" wx:key="id" bindtap="onMissedTap" data-id="{{item.id}}">
+        <image wx:if="{{item.emojiImg}}" class="mi-emoji-img" src="{{item.emojiImg}}" mode="aspectFit" />
+        <text wx:else class="mi-emoji">{{item.emojiText}}</text>
+        <text class="mi-name">{{item.name}}</text>
+        <text class="mi-time">已错过 {{item.time}}</text>
+      </view>
+      <text class="missed-more" wx:if="{{missedMore > 0}}">还有 {{missedMore}} 个已错过…</text>
+    </view>
+  </view>
+
+  <!-- 今天列表 -->
+  <view class="today-list">
+    <view wx:if="{{empty}}" class="empty">
+      <view>今天还没有事件</view>
+      <view>点击右下角 + 安排一件事，可任选未来日期</view>
+    </view>
+    <block wx:else>
+      <view class="event {{item.done ? 'done' : ''}}" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" data-id="{{item.id}}">
+        <view class="event-time">
+          <text class="et-time">{{item.time}}</text>
+          <text class="et-period">{{item.period}}</text>
+        </view>
+        <view class="event-body">
+          <text class="eb-name">{{item.name}}</text>
+          <text class="eb-note">{{item.note}}</text>
+          <view class="tags">
+            <view class="tag">
+              <image wx:if="{{item.emojiImg}}" class="tag-img" src="{{item.emojiImg}}" mode="aspectFit" />
+              <text wx:else>{{item.emojiText}}</text>
+            </view>
+            <view class="tag"><text>{{item.voiceTag}}</text></view>
+            <view class="tag" wx:if="{{item.repeatTag}}"><text>{{item.repeatTag}}</text></view>
+          </view>
+        </view>
+        <button class="event-check" catchtap="onToggleDone" data-id="{{item.id}}">✓</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 悬浮添加按钮 -->
+  <button class="fab" bindtap="onAddTap">+</button>
+  <genie />
+  </view>
