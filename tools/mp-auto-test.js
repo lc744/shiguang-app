@@ -47,7 +47,8 @@ function t(name, ok, extra){
   const shot = n => miniProgram.screenshot({ path: 'C:/Users/ADMIN/Desktop/新建文件夹/shiguang_mobile_app/tools/mp-shot-' + n + '.png' }).catch(() => {});
 
   try{
-    /* 0. 状态归零：无论应用当前停在哪个页面，先回到首页（上轮测试可能残留提醒页/编辑页） */
+    /* 0. 状态归零：清空事件（防遗留的"下一整点"事件在测试中途到点弹出提醒页劫持流程）+ 回首页 */
+    await miniProgram.callWxMethod('setStorageSync', 'shiguang_events_v2', '[]');
     await miniProgram.reLaunch('/pages/home/home');
     await sleep(800);
 
