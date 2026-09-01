@@ -5,9 +5,10 @@
    .theme-dark 重定义的 CSS 变量自动生效（CSS 变量可穿透组件继承）。 */
 
 /* ---------- 悬浮按钮 ---------- */
+/* bottom 必须 ≥ 页面 + 按钮的顶边（82+58+12px 间距），否则在窄屏（iPhone）上与添加事件的 + 按钮重叠 */
 .genie-fab{
   position:fixed; right:18px;
-  bottom:calc(110px + env(safe-area-inset-bottom,0px));
+  bottom:calc(156px + env(safe-area-inset-bottom,0px));
   width:54px; height:54px; border-radius:50%;
   border:none; padding:0; overflow:hidden;
   background:linear-gradient(135deg,#7c5cff 0%,#5b8cff 100%);
