@@ -87,11 +87,17 @@ function festivalOf(dateStr){
   const lunar = solarToLunar(dateStr);
   const lunarKey = `${lunar.month}-${lunar.day}`;
   if(LUNAR_FESTIVALS[lunarKey]) return LUNAR_FESTIVALS[lunarKey];
-  // 除夕：明天是正月初一
-  const next = todayStr(new Date(Date.UTC(p[0], p[1]-1, p[2]) + 86400000 + 8*3600000));
+  // 除夕：明天是正月初一（Web 版依赖全局 todayStr，小程序模块化后改为本地实现）
+  const next = fmtDate(new Date(Date.UTC(p[0], p[1]-1, p[2]) + 86400000 + 8*3600000));
   const nl = solarToLunar(next);
   if(nl.month === 1 && nl.day === 1) return '除夕';
   return '';
+}
+
+// 本地日期格式化 YYYY-MM-DD（与 core.todayStr 行为一致，避免循环依赖）
+function fmtDate(d){
+  const p2 = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p2(d.getMonth()+1) + '-' + p2(d.getDate());
 }
 
 /* ---------------- 法定假日安排（国务院办公厅发布的官方调休表） ----------------

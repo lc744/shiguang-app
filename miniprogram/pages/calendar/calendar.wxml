@@ -43,12 +43,14 @@
         <view>这一天还没有事件</view>
         <view>点击 + 新建一个吧</view>
       </view>
-      <view wx:else class="agenda-item" wx:for="{{agendaList}}" wx:key="id" bindtap="onAgendaTap" data-id="{{item.id}}">
-        <view class="agenda-info">
-          <text class="agenda-name">{{item.name}}</text>
-          <text class="agenda-sub">{{item.sub}}</text>
+      <view wx:else class="empty-wrap">
+        <view class="agenda-item" wx:for="{{agendaList}}" wx:key="id" bindtap="onAgendaTap" data-id="{{item.id}}">
+          <view class="agenda-info">
+            <text class="agenda-name">{{item.name}}</text>
+            <text class="agenda-sub">{{item.sub}}</text>
+          </view>
+          <text class="agenda-arrow">→</text>
         </view>
-        <text class="agenda-arrow">→</text>
       </view>
     </view>
   </view>
