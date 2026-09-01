@@ -47,6 +47,10 @@ function t(name, ok, extra){
   const shot = n => miniProgram.screenshot({ path: 'C:/Users/ADMIN/Desktop/新建文件夹/shiguang_mobile_app/tools/mp-shot-' + n + '.png' }).catch(() => {});
 
   try{
+    /* 0. 状态归零：无论应用当前停在哪个页面，先回到首页（上轮测试可能残留提醒页/编辑页） */
+    await miniProgram.reLaunch('/pages/home/home');
+    await sleep(800);
+
     /* 1. 首页 */
     let page = await miniProgram.currentPage();
     t('入口页是 home', page.path === 'pages/home/home', page.path);

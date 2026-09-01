@@ -59,5 +59,14 @@ const p2 = n => String(n).padStart(2, '0');
   console.log('--- 导航日志 ---');
   (navLog || []).forEach((n, i) => console.log(i + ': ' + JSON.stringify(n)));
   console.log(sawRemind ? '✓✓ 自动弹窗成功' : '✗ 100 秒高频轮询仍未捕捉到提醒页');
+  // 清理：关掉提醒页，把应用放回首页，避免残留状态影响后续测试
+  try{
+    page = await mp.currentPage();
+    if(page.path === 'pages/remind/remind'){
+      const btn = await page.$('.action-row .primary');
+      if(btn){ await btn.tap(); await sleep(800); }
+    }
+    await mp.switchTab('/pages/home/home');
+  }catch(e){}
   process.exit(sawRemind ? 0 : 1);
 })().catch(e => { console.log('ERR ' + e.message); process.exit(1); });
