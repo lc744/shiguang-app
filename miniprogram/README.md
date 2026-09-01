@@ -7,7 +7,7 @@ Web/App 版「绸缪」的微信小程序移植版。一套代码跑在微信里
 ```
 miniprogram/
 ├── app.js / app.json / app.wxss / theme.json   全局入口、配置、样式（深浅色自适应）
-├── project.config.json                          开发者工具项目配置（appid 占位 touristappid）
+├── project.secret.json                          开发者工具项目配置（appid 占位 touristappid）
 ├── utils/
 │   ├── core.js        纯逻辑：常量、日期、重复规则（与 App 版 core.js 同源）
 │   ├── lunar.js       农历算法（与 App 版同源，生日农历提醒用）
@@ -40,7 +40,7 @@ miniprogram/
 2. **腾讯云账号**：注册[腾讯云](https://cloud.tencent.com)并完成个人实名认证 → 控制台开通「语音合成」和「语音识别」→ [API 密钥管理](https://console.cloud.tencent.com/cam/capi)新建密钥
 3. **配置密钥**（二选一）：
    - 推荐：开发者工具左侧云开发图标 → 云函数列表 → 选中 `tts` / `asr` → 配置 → 环境变量，添加 `TENCENT_SECRET_ID` 和 `TENCENT_SECRET_KEY`
-   - 或本地：复制 `cloudfunctions/tts/config.template.json` 为同目录 `config.json` 填入密钥（`asr` 同理；`config.json` 已被 gitignore，不会提交）
+   - 或本地：复制 `cloudfunctions/tts/secret.template.json` 为同目录 `secret.json` 填入密钥（`asr` 同理；`secret.json` 已被 gitignore，不会提交）
 4. **部署云函数**：开发者工具资源管理器里右键 `cloudfunctions/tts` → 「上传并部署：云端安装依赖」；`cloudfunctions/asr` 同样操作
 5. 编译小程序，到点提醒页即有真人语音播报，精灵🎤按钮可用语音添加提醒
 

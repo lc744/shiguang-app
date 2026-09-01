@@ -1,13 +1,13 @@
 // 绸缪 · 云函数 tts —— 腾讯云语音合成（TextToVoice），文字 → mp3 base64
 // 密钥来源（二选一）：① 云开发控制台给本函数配置环境变量 TENCENT_SECRET_ID / TENCENT_SECRET_KEY
-//                    ② 同目录 config.json（模板 config.template.json，已 gitignore）
+//                    ② 同目录 secret.json（模板 secret.template.json，已 gitignore）
 const cloud = require('wx-server-sdk');
 const TtsClient = require('tencentcloud-sdk-nodejs').tts.v20190823.Client;
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 let cfg = null;
-try{ cfg = require('./config.json'); }catch(e){ cfg = null; }
+try{ cfg = require('./secret.json'); }catch(e){ cfg = null; }
 
 let _client = null;
 function client(){

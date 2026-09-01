@@ -3,6 +3,7 @@ node_modules/
 
 # ÔÆº¯ÊıÃÜÔ¿£¨¾ø²»Èë¿â£©
 cloudfunctions/*/config.json
+cloudfunctions/*/secret.json
 
 # ä¾èµ–
 node_modules/

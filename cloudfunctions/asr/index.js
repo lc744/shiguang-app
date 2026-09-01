@@ -1,12 +1,12 @@
 // 绸缪 · 云函数 asr —— 腾讯云一句话识别（SentenceRecognition），录音 base64 → 文字
-// 密钥来源同 tts：云函数环境变量 TENCENT_SECRET_ID / TENCENT_SECRET_KEY 或 config.json
+// 密钥来源同 tts：云函数环境变量 TENCENT_SECRET_ID / TENCENT_SECRET_KEY 或 secret.json
 const cloud = require('wx-server-sdk');
 const AsrClient = require('tencentcloud-sdk-nodejs').asr.v20190614.Client;
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 let cfg = null;
-try{ cfg = require('./config.json'); }catch(e){ cfg = null; }
+try{ cfg = require('./secret.json'); }catch(e){ cfg = null; }
 
 let _client = null;
 function client(){
@@ -32,7 +32,7 @@ exports.main = async (event) => {
       ProjectId: 0,
       SubServiceType: 2,          // 2 = 一句话识别
       EngSerViceType: '16k_zh',   // 16k 中文普通话
-      SourceLanguageType: 'zh',
+      SourceType: 1,              // 1 = 音频内容在 Data 参数里（实测：0 是 URL 模式）
       VoiceFormat: String((event && event.format) || 'mp3'),
       UsrAudioKey: 'choumou',
       Data: b64,
