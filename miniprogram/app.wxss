@@ -156,6 +156,8 @@ page{
     .field:first-child{margin-top:0}
     .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px}
     .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:#fff;outline:none;color:var(--text)}
+    /* 原生 input 高度固定且不随 padding 撑开：border-box 下必须显式高度，否则内容区被挤没（iOS 上文字不可见） */
+    .field input{height:48px}
     .field input:focus,.field textarea:focus{border-color:var(--main)}
     .field textarea{min-height:88px;resize:none}
     .field .err{color:var(--danger);font-size:11px;margin-top:4px;display:none}
@@ -210,7 +212,8 @@ page{
     .snooze-row button{flex:1;padding:10px 8px;font-size:12px}
 
     /* ============ 自动备份列表 ============ */
-    .backup-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;margin-top:8px;background:var(--surface2)}
+    .backup-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;margin-top:8px;background:var(--surface2);overflow:hidden}
+    .backup-info{flex:1;min-width:0}
     .backup-info b{display:block;font-size:13px}
     .backup-info small{font-size:11px;color:var(--sub)}
     .backup-actions{display:flex;gap:6px;flex-shrink:0}
@@ -277,7 +280,7 @@ page{
     .genie-assistant{align-self:flex-start;background:var(--surface2,#f6faf8);border-bottom-left-radius:4px;color:var(--text,#1c2a26)}
     .genie-user{align-self:flex-end;background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff;border-bottom-right-radius:4px}
     .genie-inputbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line,#d7e3dc)}
-    .genie-inputbar input{flex:1;border:1px solid var(--line,#d7e3dc);border-radius:20px;padding:10px 14px;font-size:14px;background:var(--surface,#fff);color:var(--text,#1c2a26);outline:none}
+    .genie-inputbar input{flex:1;height:40px;border:1px solid var(--line,#d7e3dc);border-radius:20px;padding:10px 14px;font-size:14px;background:var(--surface,#fff);color:var(--text,#1c2a26);outline:none}
     .genie-inputbar input:focus{border-color:var(--main2,#3b8d76)}
     .genie-inputbar button{border:none;background:transparent;cursor:pointer;font-size:22px;padding:6px}
     #genieVoiceBtn.recording{color:#c65c52;animation:geniePulse 1s infinite}
@@ -295,6 +298,8 @@ button {
   color: inherit;
   box-sizing: border-box;
   overflow: visible;
+  width: auto;    /* 覆盖原生默认宽度，避免固定宽度把 flex 行撑爆（设置页备份按钮溢出） */
+  min-width: 0;
 }
 button::after { border: none; }
 input, textarea { font-family: inherit; }

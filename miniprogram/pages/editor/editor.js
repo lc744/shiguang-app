@@ -348,6 +348,11 @@ Page({
 
     if (!name) { wx.showToast({ title: '请填写事件名称', icon: 'none' }); return; }
     if (!date || !time) { wx.showToast({ title: '请选择提醒日期和时间', icon: 'none' }); return; }
+    // 格式校验：畸形日期会让 new Date() 返回 NaN 从而绕过未来时间检查（真机出现过）
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time) || isNaN(new Date(date + 'T' + time + ':00').getTime())) {
+      wx.showToast({ title: '日期或时间格式异常，请重新选择', icon: 'none' });
+      return;
+    }
     // 普通事件要求未来时间；生日每年触发，允许过去日期
     if (!d.isBirthday && new Date(date + 'T' + time + ':00') <= new Date()) {
       wx.showToast({ title: '请选择未来的日期和时间', icon: 'none' });

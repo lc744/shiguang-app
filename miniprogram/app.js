@@ -69,6 +69,7 @@ App({
     const cur = pages[pages.length - 1];
     if(cur && cur.route === 'pages/remind/remind') return;
     notify.markFired(due);
-    wx.navigateTo({ url: 'pages/remind/remind?id=' + due.id, fail: () => {} });
+    // 必须用绝对路径（开头带 /）：相对路径会被解析成 当前页面目录/pages/remind/... 导致页面不存在
+    wx.navigateTo({ url: '/pages/remind/remind?id=' + due.id, fail: e => { console.log('提醒页跳转失败：', e && e.errMsg); } });
   }
 });
