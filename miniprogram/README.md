@@ -27,25 +27,24 @@ miniprogram/
 2. 「导入项目」→ 选择本目录 `miniprogram/` → AppID 先用测试号（默认 `touristappid` 可体验）
 3. 模拟器即可预览；点「预览」扫码真机体验
 
-### 启用语音播报 / 精灵语音输入（可选，需正式 AppID）
+### 启用语音播报 / 精灵语音输入（云开发版，个人主体可用）
 
-用到免费插件「微信同声传译」（provider `wx069ba97219f66d99`）。**测试号无法授权插件，默认未启用**，工程可直接编译；语音播报/语音输入自动降级为静默/文字输入，其余功能不受影响。
+> 「微信同声传译」插件**不支持个人主体小程序**，已弃用插件路线，改为 **微信云开发云函数 + 腾讯云语音接口**（个人实名腾讯云账号即可，均有免费额度）。未开通时语音功能自动降级（播报静默、语音按钮提示用文字），其余功能不受影响。
 
-有了正式 AppID 并在管理后台添加插件后，把下面一段加回 `app.json` 根级即可启用：
+架构：
+- `cloudfunctions/tts`：文字 → 腾讯云语音合成（TextToVoice）→ mp3 base64 → 前端写本地缓存播放
+- `cloudfunctions/asr`：录音 mp3 base64 → 腾讯云一句话识别（SentenceRecognition）→ 文字 → 精灵处理
 
-```json
-"plugins": {
-  "WechatSI": {
-    "version": "0.3.6",
-    "provider": "wx069ba97219f66d99"
-  }
-},
-```
+开通步骤（约 15 分钟，一次性）：
+1. **开通云开发**：微信开发者工具左上角「云开发」→ 开通（按量付费，个人用量基本落在免费额度内），创建环境后若环境 ID 不是默认环境，在 `app.js` 的 `wx.cloud.init({ env: '<环境ID>' })` 指定
+2. **腾讯云账号**：注册[腾讯云](https://cloud.tencent.com)并完成个人实名认证 → 控制台开通「语音合成」和「语音识别」→ [API 密钥管理](https://console.cloud.tencent.com/cam/capi)新建密钥
+3. **配置密钥**（二选一）：
+   - 推荐：开发者工具左侧云开发图标 → 云函数列表 → 选中 `tts` / `asr` → 配置 → 环境变量，添加 `TENCENT_SECRET_ID` 和 `TENCENT_SECRET_KEY`
+   - 或本地：复制 `cloudfunctions/tts/config.template.json` 为同目录 `config.json` 填入密钥（`asr` 同理；`config.json` 已被 gitignore，不会提交）
+4. **部署云函数**：开发者工具资源管理器里右键 `cloudfunctions/tts` → 「上传并部署：云端安装依赖」；`cloudfunctions/asr` 同样操作
+5. 编译小程序，到点提醒页即有真人语音播报，精灵🎤按钮可用语音添加提醒
 
-步骤：
-1. 注册小程序拿到自己的 AppID，替换 `project.config.json` 里的 `appid`
-2. 登录[小程序管理后台](https://mp.weixin.qq.com) → 「设置」→「第三方设置」→「插件管理」→ 添加「微信同声传译」
-3. 把上面的 `plugins` 段加回 `app.json`，重新编译
+音色可调：环境变量 `TTS_VOICE_TYPE`（0=智瑜·亲和女声，其他音色见腾讯云[音色列表](https://cloud.tencent.com/document/product/1073/92668)）。
 
 ## 发布流程
 

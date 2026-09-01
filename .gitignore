@@ -1,3 +1,9 @@
+# ÒÀÀµ
+node_modules/
+
+# ÔÆº¯ÊıÃÜÔ¿£¨¾ø²»Èë¿â£©
+cloudfunctions/*/config.json
+
 # ä¾èµ–
 node_modules/
 
@@ -13,8 +19,7 @@ ios/App/DerivedData/
 *.ipa
 *.zip
 
-# æµ‹è¯•è„šæœ¬ä¸ä¸´æ—¶æ–‡ä»¶
-cdp_*.js
+# æµ‹è¯•è„šæœ¬ä¸ä¸´æ—¶æ–‡ä»?cdp_*.js
 test_*.js
 e2e_test.js
 inspect_cdp.js

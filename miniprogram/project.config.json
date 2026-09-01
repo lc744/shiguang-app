@@ -28,6 +28,7 @@
     "condition": false
   },
   "compileType": "miniprogram",
+  "cloudfunctionRoot": "cloudfunctions/",
   "libVersion": "3.4.10",
   "appid": "wxe4ba355a95cb5e64",
   "projectname": "choumou-reminder",

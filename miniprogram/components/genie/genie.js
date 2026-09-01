@@ -3,9 +3,8 @@ const store = require('../../utils/store');
 const core = require('../../utils/core');
 const genieCore = require('../../utils/genie-core');
 
-// 微信同声传译插件（app.json 已声明；管理后台需添加该插件）
-let plugin = null;
-try{ plugin = require('WechatSI'); }catch(e){ plugin = null; }
+// 语音识别：云开发 + 腾讯云一句话识别（个人主体无法使用同声传译插件，见 utils/asr.js）
+const asr = require('../../utils/asr');
 
 let bubbleSeq = 0; // 气泡自增序号（滚动锚点 id 用）
 
@@ -171,54 +170,27 @@ Component({
       return (d.getMonth() + 1) + '月' + d.getDate() + '日';
     },
 
-    /* ---------------- 语音识别（微信同声传译插件） ---------------- */
+    /* ---------------- 语音识别（录音 → 云函数一句话识别） ---------------- */
     onVoiceTap(){
       if(this.data.recording){ this.stopVoice(); return; }
-      if(!this._manager){
-        if(!plugin || !plugin.getRecordRecognitionManager){
-          wx.showToast({ title: '语音识别插件不可用，请用文字输入', icon: 'none' });
-          return;
-        }
-        this.initManager();
+      if(!asr.available()){
+        wx.showToast({ title: '语音识别需开通云开发，请用文字输入', icon: 'none' });
+        return;
       }
       this.setData({ recording: true });
-      try{
-        this._manager.start({ lang: 'zh_CN', duration: 30000 });
-      }catch(e){
-        this.setData({ recording: false });
-        this.pushBubble('assistant', '语音识别启动失败，请用文字输入');
-      }
-    },
-
-    initManager(){
-      const manager = plugin.getRecordRecognitionManager();
-      // 中间识别结果：不展示，等最终结果
-      manager.onRecognize(res => {});
-      // 识别结束（手动 stop 或达到时长上限）：结果当作用户输入处理
-      manager.onStop(res => {
-        this.setData({ recording: false });
-        const text = String((res && res.result) || '').trim();
-        if(text) this.handleSubmit(text);
-      });
-      manager.onError(res => {
-        this.setData({ recording: false });
-        const msg = String((res && (res.msg || res.errMsg || res.message)) || '');
-        if(/deny|denied|auth|权限/i.test(msg)){
-          this.pushBubble('assistant', '麦克风权限未开启，请在设置中允许绸缪使用麦克风');
-        } else if(/no\s*speech|没听到|无声/i.test(msg)){
-          this.pushBubble('assistant', '没有听到声音，请再试一次');
-        } else {
-          this.pushBubble('assistant', '语音识别失败，试试文字输入吧');
+      asr.startRecording({
+        onStart(){},
+        onResult: text => { if(text) this.handleSubmit(text); },
+        onError: msg => {
+          this.setData({ recording: false });
+          this.pushBubble('assistant', String(msg || '语音识别失败，试试文字输入吧'));
         }
       });
-      this._manager = manager;
     },
 
     stopVoice(){
       if(this.data.recording) this.setData({ recording: false });
-      if(this._manager){
-        try{ this._manager.stop(); }catch(e){}
-      }
+      asr.stopRecording();
     }
   }
 });

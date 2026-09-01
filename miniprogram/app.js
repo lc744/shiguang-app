@@ -15,6 +15,8 @@ App({
   },
 
   onLaunch(){
+    // 云开发（语音播报/语音识别）：未开通环境时静默跳过，调用方自带降级
+    try{ if(wx.cloud) wx.cloud.init({ traceUser: true }); }catch(e){}
     store.loadAll();
     // 主题
     try{
