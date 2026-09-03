@@ -29,13 +29,14 @@ function beepWavB64(){
 
   console.log('— 小程序内 wx.cloud 链路测试 —');
 
-  // 1) TTS：文字 → 云函数 → 腾讯云语音合成
-  const ttsRes = await mp.evaluate(() => new Promise(resolve => {
+  // 1) TTS：文字 → 云函数 → 腾讯云语音合成（文本带时间戳绕开客户端缓存，确保测到当前密钥）
+  const stamp = new Date().toISOString().slice(11, 19);
+  const ttsRes = await mp.evaluate(txt => new Promise(resolve => {
     if(!wx.cloud){ resolve({ ok: false, error: 'wx.cloud 不存在' }); return; }
-    wx.cloud.callFunction({ name: 'tts', data: { text: '你好，我是绸缪精灵，语音链路测试' } })
+    wx.cloud.callFunction({ name: 'tts', data: { text: txt } })
       .then(r => resolve(r.result))
       .catch(e => resolve({ ok: false, error: String(e.errMsg || e.message || e) }));
-  }));
+  }), '密钥轮换验证' + stamp + '，链路正常');
   if(ttsRes && ttsRes.ok && ttsRes.audioBase64){
     console.log('✓ TTS 云函数：合成 mp3 ' + Math.round(ttsRes.audioBase64.length * 3 / 4 / 1024) + ' KB');
   } else {
