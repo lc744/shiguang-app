@@ -54,3 +54,4 @@ Thumbs.db
 android/app/src/main/jniLibs/
 android/app/src/main/assets/offline_tts/
 android/app/src/main/assets/public/
+miniprogram/cloudfunctions/*/secret.json

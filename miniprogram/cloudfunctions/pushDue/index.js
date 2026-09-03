@@ -10,8 +10,18 @@ let cfg = null;
 try{ cfg = require('./secret.json'); }catch(e){ cfg = null; }
 const TEMPLATE_ID = process.env.SUBSCRIBE_TEMPLATE_ID || (cfg && cfg.templateId) || '';
 const STATE = (cfg && cfg.miniprogramState) || 'trial';   // 上线后改 'formal'
-// 模板字段映射：模板字段 key → 数据来源（name=事件名 / when=时间串）。创建模板后按实际字段调整
-const FIELD_MAP = (cfg && cfg.fieldMap) || { thing1: 'name', time2: 'when' };
+// 模板字段映射：模板关键词 key → 数据来源
+//   name = 事件名（thing 类，≤20字）
+//   when = 中文日期时间（time 类，如"2026年9月5日 19:00"）
+//   date = 中文日期（date 类，如"2026年9月5日"）
+const FIELD_MAP = (cfg && cfg.fieldMap) || { thing2: 'name', time3: 'when', date4: 'date' };
+
+function cnDateParts(when){
+  const m = String(when || '').split(' ');
+  const dp = (m[0] || '').split('-');
+  if(dp.length < 3) return null;
+  return { y: parseInt(dp[0], 10), mo: parseInt(dp[1], 10), d: parseInt(dp[2], 10), t: m[1] || '' };
+}
 
 async function markFired(id){
   await db.collection(COL).doc(id).update({ data: { fired: true } });
@@ -19,10 +29,11 @@ async function markFired(id){
 
 exports.main = async () => {
   if(!TEMPLATE_ID) return { ok: false, skipped: 'template not configured' };
-  const now = new Date();
+  // 云函数服务器时区不保证是北京时间：统一用 UTC+8 墙钟，与客户端本地时间对齐
+  const now = new Date(Date.now() + 8 * 3600000);
   const p2 = n => String(n).padStart(2, '0');
-  const today = now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate());
-  const nowStamp = today + 'T' + p2(now.getHours()) + ':' + p2(now.getMinutes());
+  const today = now.getUTCFullYear() + '-' + p2(now.getUTCMonth() + 1) + '-' + p2(now.getUTCDate());
+  const nowStamp = today + 'T' + p2(now.getUTCHours()) + ':' + p2(now.getUTCMinutes());
   let sent = 0, skipped = 0, failed = 0, total = 0;
   try{
     const res = await db.collection(COL).where({ fired: false }).limit(200).get();
@@ -36,7 +47,16 @@ exports.main = async () => {
         const data = {};
         Object.keys(FIELD_MAP).forEach(k => {
           const src = FIELD_MAP[k];
-          data[k] = { value: src === 'name' ? String(doc.name || '') : (src === 'when' ? String(doc.when || '') : '') };
+          let v = '';
+          if(src === 'name'){ v = String(doc.name || ''); }
+          else {
+            const p = cnDateParts(doc.when);
+            if(p){
+              if(src === 'when'){ v = p.y + '年' + p.mo + '月' + p.d + '日 ' + p.t; }
+              else if(src === 'date'){ v = p.y + '年' + p.mo + '月' + p.d + '日'; }
+            }
+          }
+          data[k] = { value: v };
         });
         await cloud.openapi.subscribeMessage.send({
           touser: doc.openid,
