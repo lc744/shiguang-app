@@ -41,6 +41,26 @@ function playFile(path){
 }
 
 // 文本转语音并播放；云能力缺失或合成失败时 reject
+// 缓存文件数量上限：超出后按修改时间删最旧的，防止 USER_DATA_PATH 无限增长
+const CACHE_MAX = 30;
+function pruneCache(keepPath){
+  try{
+    const fsm = wx.getFileSystemManager();
+    const dir = wx.env.USER_DATA_PATH;
+    const files = fsm.readdirSync(dir)
+      .filter(n => /^tts_[a-z0-9]+\.mp3$/.test(n) && dir + '/' + n !== keepPath)
+      .map(n => {
+        let m = 0;
+        try{ m = fsm.statSync(dir + '/' + n).lastModifiedTime || 0; }catch(e){}
+        return { n, m };
+      })
+      .sort((a, b) => a.m - b.m);
+    for(let i = 0; i < files.length - (CACHE_MAX - 1); i++){
+      try{ fsm.unlinkSync(dir + '/' + files[i].n); }catch(e){}
+    }
+  }catch(e){ /* 清理失败不影响播放 */ }
+}
+
 function speak(text){
   return new Promise((resolve, reject) => {
     if(!hasCloud()){ reject(new Error('云开发未开通，语音播报不可用')); return; }
@@ -59,7 +79,7 @@ function speak(text){
       .then(r => {
         const res = (r && r.result) || {};
         if(res.ok && res.audioBase64){
-          try{ wx.getFileSystemManager().writeFileSync(cachePath, res.audioBase64, 'base64'); }catch(e){}
+          try{ wx.getFileSystemManager().writeFileSync(cachePath, res.audioBase64, 'base64'); pruneCache(cachePath); }catch(e){}
           playFile(cachePath).then(resolve, reject);
         } else {
           reject(new Error(res.error || 'TTS 合成失败'));
