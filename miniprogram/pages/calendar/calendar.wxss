@@ -7,7 +7,7 @@
 .month-title{display:flex;align-items:baseline;gap:4px}
 .mt-text{font-size:16px;font-weight:700}
 .mt-caret{font-size:11px;color:var(--sub)}
-.mn-btn{width:30px;height:30px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--main);font-size:15px;line-height:1}
+.mn-btn{width:30px !important;min-width:0 !important;height:30px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--main);font-size:15px;line-height:1}
 
 /* 星期表头与日期格子 */
 .wd{display:block;font-size:11px;color:var(--sub);text-align:center}
