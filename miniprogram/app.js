@@ -63,13 +63,25 @@ App({
 
   // 到点检查：有到期事件且当前不在提醒页 → 跳转全屏提醒
   checkReminders(){
-    const due = notify.findDue();
+    let due = null;
+    try{ due = notify.findDue(); }catch(e){ console.log('findDue 异常：', e && e.message); return; }
     if(!due) return;
     const pages = getCurrentPages();
     const cur = pages[pages.length - 1];
     if(cur && cur.route === 'pages/remind/remind') return;
-    notify.markFired(due);
-    // 必须用绝对路径（开头带 /）：相对路径会被解析成 当前页面目录/pages/remind/... 导致页面不存在
-    wx.navigateTo({ url: '/pages/remind/remind?id=' + due.id, fail: e => { console.log('提醒页跳转失败：', e && e.errMsg); } });
+    // 先跳转、成功才写 firedOn：跳转失败降级 reLaunch，绝不静默丢提醒
+    // （navigateTo 必须用绝对路径：相对路径会解析成 当前页面目录/pages/remind/... 导致页面不存在）
+    const url = '/pages/remind/remind?id=' + due.id;
+    wx.navigateTo({
+      url,
+      success: () => { try{ notify.markFired(due); }catch(e){} },
+      fail: () => {
+        wx.reLaunch({
+          url,
+          success: () => { try{ notify.markFired(due); }catch(e){} },
+          fail: e2 => console.log('提醒页跳转失败（navigate+reLaunch 均失败）：', e2 && e2.errMsg)
+        });
+      }
+    });
   }
 });

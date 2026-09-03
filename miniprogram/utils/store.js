@@ -25,9 +25,9 @@ function loadAll(){
       events = kept;
     }
   }catch(e){}
-  // 数据迁移：v2 → v3
+  // 数据迁移：v2 → v3（类型归一化：一个畸形字段曾导致轮询持续抛异常、提醒全灭）
   events.forEach(e => {
-    if(e.weekdays === undefined) e.weekdays = [];
+    if(!Array.isArray(e.weekdays)) e.weekdays = [];
     if(!Array.isArray(e.doneOn)){ e.doneOn = e.done ? [e.date] : []; delete e.done; }
     if(!Array.isArray(e.firedOn)){ e.firedOn = e.fired ? [e.date] : []; delete e.fired; }
   });

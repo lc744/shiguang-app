@@ -5,6 +5,7 @@ const genieCore = require('../../utils/genie-core');
 
 // 语音识别：云开发 + 腾讯云一句话识别（个人主体无法使用同声传译插件，见 utils/asr.js）
 const asr = require('../../utils/asr');
+const subscribe = require('../../utils/subscribe');
 
 let bubbleSeq = 0; // 气泡自增序号（滚动锚点 id 用）
 
@@ -128,6 +129,7 @@ Component({
           firedOn: []
         });
         store.setEvents(list);
+        subscribe.ensureSync(list[list.length - 1]);   // 云端同步（推送用）
         return true;
       }catch(e){ return false; }
     },
@@ -136,6 +138,7 @@ Component({
       const list = store.getEvents();
       list.forEach(e => store.deleteRecording(e.voiceData));
       store.setEvents([]);
+      subscribe.removeAllSync();   // 云端记录一并清空
     },
 
     apiDeleteEvent(name){
@@ -143,6 +146,7 @@ Component({
       const idx = list.findIndex(e => e.name === name);
       if(idx < 0) return false;
       store.deleteRecording(list[idx].voiceData);
+      subscribe.removeSync(list[idx].id);   // 云端记录一并移除
       list.splice(idx, 1);
       store.setEvents(list);
       return true;

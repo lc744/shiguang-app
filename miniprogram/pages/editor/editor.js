@@ -3,6 +3,7 @@
 const core = require('../../utils/core');
 const store = require('../../utils/store');
 const lunar = require('../../utils/lunar');
+const subscribe = require('../../utils/subscribe');
 
 const REC_MAX_SECONDS = 30;
 const REC_TIP_DEFAULT = '录一段自己的声音作为提示音（最长 30 秒）';
@@ -413,6 +414,8 @@ Page({
       });
     }
     store.setEvents(events);
+    // 订阅消息：保存成功后请求一次订阅授权（必须在本次点击调用链内）并同步云端推送记录
+    subscribe.askAndSync(ev);
     wx.navigateBack({ fail: () => { wx.switchTab({ url: '/pages/home/home', fail: () => {} }); } });
   }
 });

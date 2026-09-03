@@ -3,6 +3,7 @@ const core = require('../../utils/core');
 const store = require('../../utils/store');
 const notify = require('../../utils/notify');
 const format = require('../../utils/format');
+const subscribe = require('../../utils/subscribe');
 
 Page({
   data: {
@@ -77,6 +78,7 @@ Page({
         // 从事件列表移除，并同步清理录音大对象
         store.setEvents(store.getEvents().filter(x => x.id !== this._id));
         store.deleteRecording(e.voiceData);
+        subscribe.removeSync(this._id);   // 云端推送记录一并移除
         wx.showToast({ title: '已删除', icon: 'none' });
         this.goBack();
       }
@@ -95,6 +97,7 @@ Page({
     const e = store.findEvent(this._id);
     if(!e) return;
     notify.completeToday(e);
+    subscribe.ensureSync(e);   // 完成状态同步到云端，到期不再推送
     wx.showToast({ title: '已标记完成', icon: 'none' });
     this.goBack();
   }

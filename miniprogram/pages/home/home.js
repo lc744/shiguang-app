@@ -4,6 +4,7 @@ const store = require('../../utils/store');
 const notify = require('../../utils/notify');
 const hero = require('../../utils/hero');
 const format = require('../../utils/format');
+const subscribe = require('../../utils/subscribe');
 
 // 当日错过提醒忽略记录的存储键
 function missedHiddenKey(){ return 'shiguang_missed_hidden_' + core.todayStr(); }
@@ -120,6 +121,7 @@ Page({
     const i = doneOn.indexOf(t);
     if(i >= 0) doneOn.splice(i, 1); else doneOn.push(t);
     store.updateEvent(id, { doneOn: doneOn });
+    subscribe.ensureSync(store.findEvent(id));   // 完成状态同步云端，到期不再推送
     this.refresh();
     wx.showToast({ title: i >= 0 ? '已恢复为待办' : '已标记完成', icon: 'none' });
   }
