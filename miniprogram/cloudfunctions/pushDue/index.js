@@ -35,6 +35,7 @@ exports.main = async () => {
   const today = now.getUTCFullYear() + '-' + p2(now.getUTCMonth() + 1) + '-' + p2(now.getUTCDate());
   const nowStamp = today + 'T' + p2(now.getUTCHours()) + ':' + p2(now.getUTCMinutes());
   let sent = 0, skipped = 0, failed = 0, total = 0;
+  const errors = [];
   try{
     const res = await db.collection(COL).where({ fired: false }).limit(200).get();
     total = res.data.length;
@@ -70,10 +71,11 @@ exports.main = async () => {
       }catch(e){
         failed++;
         const msg = String((e && (e.errMsg || e.message)) || '');
-        if(/43101|refused|quota/i.test(msg)){ try{ await markFired(doc._id); }catch(e2){} }  // 无额度/拒收：标记防重试风暴
+        errors.push((doc.eventId || doc._id || '?') + ' → ' + msg.slice(0, 120));
+        if(/43101|refused|quota/i.test(msg)){ try{ await markFired(doc._id); }catch(e2){ errors.push('markFired also failed: ' + String(e2 && e2.message || e2).slice(0, 80)); } }
       }
     }
-    return { ok: true, total, sent, skipped, failed };
+    return { ok: true, total, sent, skipped, failed, errors, nowStamp };
   }catch(e){
     return { ok: false, error: String((e && e.message) || e) };
   }
