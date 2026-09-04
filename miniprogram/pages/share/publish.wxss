@@ -1,0 +1,36 @@
+/* 发布页 */
+.shell{min-height:100vh;background:var(--bg);padding:0 18px 60px}
+.subhead{padding:14px 0 4px}
+.subhead-title{font-size:21px;font-weight:800;color:var(--text)}
+.subhead-sub{display:block;font-size:12px;color:var(--sub);margin-top:3px}
+
+.p-block{padding:16px;margin-bottom:14px}
+.p-label{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px}
+.p-optional{font-size:11px;font-weight:400;color:var(--sub)}
+.mt{margin-top:16px}
+
+.id-row{display:flex;align-items:center;gap:12px}
+.avatar-btn{padding:0;background:none;line-height:1}
+.avatar-img{width:52px;height:52px;border-radius:50%;display:block}
+.avatar-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;background:var(--bg);color:var(--sub)}
+.avatar-ph text{font-size:10px;margin-top:2px}
+.nickname-input{flex:1;height:44px;background:var(--bg);border-radius:10px;padding:0 14px;font-size:14px;color:var(--text)}
+
+.photo-grid{display:flex;gap:8px}
+.photo-cell{position:relative;width:92px;height:92px}
+.photo-img{width:100%;height:100%;border-radius:10px;background:var(--bg)}
+.photo-del{position:absolute;right:-6px;top:-6px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
+.photo-add{width:92px;height:92px;border:1.5px dashed var(--sub);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--sub);font-size:20px}
+.photo-add text{font-size:10px;margin-top:2px}
+
+.type-row{display:flex;gap:10px}
+.type-chip{padding:7px 18px;border-radius:999px;font-size:13px;color:var(--sub);background:var(--bg)}
+.type-chip.on{background:var(--accent);color:#fff;font-weight:600}
+
+.p-input{height:46px;background:var(--bg);border-radius:10px;padding:0 14px;font-size:14px;color:var(--text)}
+.p-textarea{width:100%;box-sizing:border-box;min-height:110px;background:var(--bg);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--text)}
+.ph{color:var(--sub)}
+
+.publish-btn{margin-top:6px;height:48px;line-height:48px;border-radius:999px;font-size:15px}
+.publish-btn.disabled{opacity:.6}
+.publish-tip{text-align:center;font-size:11px;color:var(--sub);margin-top:10px}

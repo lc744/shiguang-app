@@ -3,6 +3,8 @@
     "pages/home/home",
     "pages/upcoming/upcoming",
     "pages/calendar/calendar",
+    "pages/share/share",
+    "pages/share/publish",
     "pages/settings/settings",
     "pages/editor/editor",
     "pages/detail/detail",
@@ -23,6 +25,7 @@
     "list": [
       { "pagePath": "pages/home/home", "text": "今天" },
       { "pagePath": "pages/upcoming/upcoming", "text": "预告" },
+      { "pagePath": "pages/share/share", "text": "分享" },
       { "pagePath": "pages/calendar/calendar", "text": "日历" },
       { "pagePath": "pages/settings/settings", "text": "设置" }
     ]

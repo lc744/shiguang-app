@@ -1,0 +1,54 @@
+<view class="shell {{themeClass}}">
+  <view class="subhead">
+    <text class="subhead-title">发布推荐</text>
+    <text class="subhead-sub">你的推荐会展示给所有使用绸缪的朋友</text>
+  </view>
+
+  <!-- 身份：头像昵称填写能力 -->
+  <view class="card p-block">
+    <view class="p-label">我的身份</view>
+    <view class="id-row">
+      <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="avatar-img avatar-ph">📷<text>头像</text></view>
+      </button>
+      <input
+        class="nickname-input"
+        type="nickname"
+        placeholder="填写昵称"
+        placeholder-class="ph"
+        value="{{nickname}}"
+        bindinput="onNickname"
+        bindblur="onNickname"
+        maxlength="20"
+      />
+    </view>
+  </view>
+
+  <!-- 照片 -->
+  <view class="card p-block">
+    <view class="p-label">照片<text class="p-optional">（最多 3 张，第一张为封面）</text></view>
+    <view class="photo-grid">
+      <view class="photo-cell" wx:for="{{photos}}" wx:key="*this">
+        <image class="photo-img" src="{{item}}" mode="aspectFill" data-i="{{index}}" bindtap="previewPhoto" />
+        <view class="photo-del" data-i="{{index}}" catchtap="removePhoto">✕</view>
+      </view>
+      <view wx:if="{{photos.length < 3}}" class="photo-add" bindtap="pickPhotos">＋<text>添加</text></view>
+    </view>
+  </view>
+
+  <!-- 内容 -->
+  <view class="card p-block">
+    <view class="p-label">类型</view>
+    <view class="type-row">
+      <view wx:for="{{types}}" wx:key="*this" class="type-chip {{type === item ? 'on' : ''}}" data-t="{{item}}" bindtap="setType">{{item}}</view>
+    </view>
+    <view class="p-label mt">名称</view>
+    <input class="p-input" placeholder="比如：巷口的抄手店" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="30" />
+    <view class="p-label mt">推荐理由<text class="p-optional">（选填）</text></view>
+    <textarea class="p-textarea" placeholder="说说好在哪：味道、位置、性价比……" placeholder-class="ph" value="{{desc}}" bindinput="onDesc" maxlength="500" />
+  </view>
+
+  <button class="primary publish-btn {{uploading ? 'disabled' : ''}}" bindtap="doPublish">{{uploading ? '发布中…' : '发布'}}</button>
+  <view class="publish-tip">发布前会自动进行内容安全检测；违规内容无法发布</view>
+</view>

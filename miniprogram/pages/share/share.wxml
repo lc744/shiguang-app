@@ -1,0 +1,60 @@
+<view class="shell {{themeClass}}">
+  <view class="subhead">
+    <text class="subhead-title">分享</text>
+    <text class="subhead-sub">把好店与好风景推荐给同好</text>
+  </view>
+
+  <view class="seg-row">
+    <view class="seg {{tab === 'feed' ? 'seg-on' : ''}}" data-tab="feed" bindtap="switchTab">大家的推荐</view>
+    <view class="seg {{tab === 'mine' ? 'seg-on' : ''}}" data-tab="mine" bindtap="switchTab">我的发布</view>
+  </view>
+
+  <view wx:if="{{empty}}" class="share-empty">
+    <text class="share-empty-emoji">{{tab === 'feed' ? '🌱' : '📭'}}</text>
+    <text class="share-empty-text">{{tab === 'feed' ? '还没有人分享，来当第一个' : '你还没有发布过'}}</text>
+    <button class="primary share-cta" bindtap="goPublish">＋ 发布推荐</button>
+  </view>
+
+  <view class="post-list">
+    <view class="post-card card" wx:for="{{list}}" wx:key="_id">
+      <view class="post-photos" wx:if="{{item.photos.length}}">
+        <image
+          wx:for="{{item.photos}}"
+          wx:for-item="ph"
+          wx:for-index="pi"
+          wx:key="*this"
+          class="post-photo {{item.photos.length === 1 ? 'single' : ''}}"
+          src="{{ph}}"
+          mode="aspectFill"
+          lazy-load
+          data-urls="{{item.photos}}"
+          data-current="{{ph}}"
+          bindtap="onImageTap"
+        />
+      </view>
+      <view class="post-body">
+        <view class="post-head">
+          <text class="post-type">{{item.type}}</text>
+          <text class="post-name">{{item.name}}</text>
+        </view>
+        <text class="post-desc">{{item.desc}}</text>
+        <view class="post-meta">
+          <image wx:if="{{item.avatarUrl}}" class="post-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="post-avatar post-avatar-ph">👤</view>
+          <text class="post-author">{{item.nickname}}</text>
+          <view class="post-tools">
+            <text class="post-tool" data-id="{{item._id}}" bindtap="onLike">{{item.selfLiked ? '❤️' : '🤍'}} {{item.likes}}</text>
+            <text wx:if="{{tab === 'feed'}}" class="post-tool" data-id="{{item._id}}" bindtap="onReport">举报</text>
+            <text wx:if="{{tab === 'mine'}}" class="post-tool danger" data-id="{{item._id}}" bindtap="onDel">删除</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="share-loading" wx:if="{{loading}}">加载中…</view>
+  <view class="share-loading" wx:if="{{!hasMore && list.length > 3}}">— 到底啦 —</view>
+
+  <!-- 悬浮发布按钮 -->
+  <view class="share-fab" bindtap="goPublish">＋</view>
+</view>
