@@ -98,7 +98,7 @@ page{
     .weekdays div{font-size:11px;color:var(--sub);text-align:center}
     .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
     .days .pad{visibility:hidden}
-    .day{position:relative;min-width:0;min-height:56px;overflow:hidden;aspect-ratio:1/1;border-radius:14px;border:1px solid transparent;background:#fff;text-align:center;padding:6px 4px;display:flex;flex-direction:column;justify-content:center;gap:3px;cursor:pointer}
+    .day{position:relative;min-width:0;height:50px;overflow:hidden;border-radius:14px;border:1px solid transparent;background:#fff;text-align:center;padding:4px;display:flex;flex-direction:column;justify-content:center;gap:2px;cursor:pointer}
     .day span{font-size:13px;font-weight:600;line-height:1}
     .day small{font-size:10px;color:var(--sub);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
     /* 小屏手机：缩小格子内边距与字号，保持正方形格子不溢出 */
