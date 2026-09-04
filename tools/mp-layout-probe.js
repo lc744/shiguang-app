@@ -41,5 +41,31 @@ const fmt = async el => {
   // 3) 关掉弹层
   const cancel = await page.$('.action-row .secondary');
   if(cancel){ await cancel.tap(); await sleep(400); }
+
+  // 4) 首页 icon-btn（头部图标钮）
+  await mp.switchTab('/pages/home/home'); await sleep(800);
+  page = await mp.currentPage();
+  const icon = await page.$('.icon-btn');
+  console.log('首页 .icon-btn → ' + await fmt(icon));
+
+  // 5) 设置页备份行
+  await mp.switchTab('/pages/settings/settings'); await sleep(800);
+  page = await mp.currentPage();
+  const items = await page.$$('.backup-item');
+  console.log('备份行数量: ' + items.length);
+  if(items.length){
+    const info = await items[0].$('.backup-info');
+    const acts = await items[0].$$('.backup-actions button');
+    console.log('  .backup-info → ' + await fmt(info));
+    for(let i = 0; i < acts.length; i++) console.log('  恢复/删除按钮[' + i + '] → ' + await fmt(acts[i]));
+    await mp.screenshot({ path: 'shot-backup.png' });
+  }
+
+  // 6) 编辑页 add-emoji
+  await mp.navigateTo('/pages/editor/editor'); await sleep(700);
+  page = await mp.currentPage();
+  const ae = await page.$('.add-emoji');
+  if(ae) console.log('编辑页 .add-emoji → ' + await fmt(ae));
+  try{ const bk = await page.$('.action-row .secondary'); if(bk){ await bk.tap(); await sleep(300); } }catch(e){}
   process.exit(0);
 })().catch(e => { console.log('ERR ' + e.message); process.exit(1); });

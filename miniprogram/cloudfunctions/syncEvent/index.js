@@ -51,6 +51,13 @@ exports.main = async (event) => {
       return { ok: true, op: 'delete' };
     }
 
+    if(action === 'get'){
+      const found = await db.collection(COL).where({ openid: OPENID, eventId: String(event.eventId || '') }).get();
+      if(!found.data.length) return { ok: true, found: false };
+      const d = found.data[0];
+      return { ok: true, found: true, fired: !!d.fired, name: d.name, when: d.when, dueStamp: d.dueStamp };
+    }
+
     if(action === 'deleteAll'){
       await db.collection(COL).where({ openid: OPENID }).remove();
       return { ok: true, op: 'deleteAll' };
