@@ -24,7 +24,10 @@ function cnDateParts(when){
 }
 
 async function markFired(id){
-  await db.collection(COL).doc(id).update({ data: { fired: true } });
+  // 用 where(_id) 更新而非 doc(id)：doc() 对不存在的 _id 可能静默空转，where 版本会返回匹配数便于诊断
+  const r = await db.collection(COL).where({ _id: id }).update({ data: { fired: true } });
+  if(!r.stats || !r.stats.updated){ throw new Error('markFired matched 0 docs for _id=' + id); }
+  return r.stats;
 }
 
 exports.main = async () => {
@@ -72,7 +75,7 @@ exports.main = async () => {
         failed++;
         const msg = String((e && (e.errMsg || e.message)) || '');
         errors.push((doc.eventId || doc._id || '?') + ' → ' + msg.slice(0, 120));
-        if(/43101|refused|quota/i.test(msg)){ try{ await markFired(doc._id); }catch(e2){ errors.push('markFired also failed: ' + String(e2 && e2.message || e2).slice(0, 80)); } }
+        if(/43101|refuse|quota/i.test(msg)){ try{ await markFired(doc._id); }catch(e2){ errors.push('markFired also failed: ' + String(e2 && e2.message || e2).slice(0, 80)); } }
       }
     }
     return { ok: true, total, sent, skipped, failed, errors, nowStamp };
