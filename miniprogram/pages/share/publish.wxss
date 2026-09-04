@@ -10,11 +10,12 @@
 .mt{margin-top:16px}
 
 .id-row{display:flex;align-items:center;gap:12px}
-.avatar-btn{padding:0;background:none;line-height:1}
-.avatar-img{width:52px;height:52px;border-radius:50%;display:block}
-.avatar-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;background:var(--bg);color:var(--sub)}
-.avatar-ph text{font-size:10px;margin-top:2px}
-.nickname-input{flex:1;height:44px;background:var(--bg);border-radius:10px;padding:0 14px;font-size:14px;color:var(--text)}
+.id-avatar{width:48px;height:48px;border-radius:50%;flex:none;background:var(--bg)}
+.id-avatar-ph{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--sub)}
+.id-info{flex:1;min-width:0}
+.id-nick{display:block;font-size:15px;font-weight:700;color:var(--text)}
+.id-sub{display:block;font-size:11px;color:var(--sub);margin-top:3px}
+.id-arrow{color:var(--sub);font-size:16px}
 
 .photo-grid{display:flex;gap:8px}
 .photo-cell{position:relative;width:92px;height:92px}

@@ -1,0 +1,78 @@
+<view class="shell {{themeClass}}">
+  <view class="subhead">
+    <text class="subhead-title">我的</text>
+    <text class="subhead-sub">账号、发布与提醒设置都在这里</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="me-empty"><text class="me-empty-text">…</text></view>
+
+  <!-- 未登录 -->
+  <view wx:elif="{{!loggedIn}}" class="me-hero card">
+    <view class="me-hero-emoji">👋</view>
+    <view class="me-hero-title">登录绸缪账号</view>
+    <view class="me-hero-sub">登录后可以发布分享，头像昵称一键使用微信资料</view>
+    <button class="primary me-login-btn" bindtap="doLogin">微信一键登录</button>
+    <view class="me-hero-note">个人小程序暂不支持手机号登录（需企业主体）</view>
+  </view>
+
+  <!-- 已登录 -->
+  <block wx:else>
+    <view class="card me-card">
+      <!-- 编辑态 -->
+      <block wx:if="{{editing}}">
+        <view class="me-edit-row">
+          <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+            <image wx:if="{{draftAvatar}}" class="me-avatar" src="{{draftAvatar}}" mode="aspectFill" />
+            <view wx:else class="me-avatar me-avatar-ph">📷<text>头像</text></view>
+          </button>
+          <input
+            class="me-nick-input"
+            type="nickname"
+            placeholder="填写昵称"
+            placeholder-class="ph"
+            value="{{draftNickname}}"
+            bindinput="onDraftNickname"
+            bindblur="onDraftNickname"
+            maxlength="20"
+          />
+        </view>
+        <view class="me-edit-tip">头像默认使用你的微信头像，也可以换</view>
+        <view class="me-btn-row">
+          <button class="ghost me-btn" bindtap="cancelEdit">取消</button>
+          <button class="primary me-btn {{saving ? 'disabled' : ''}}" bindtap="saveProfile">{{saving ? '保存中…' : '保存'}}</button>
+        </view>
+      </block>
+      <!-- 展示态 -->
+      <block wx:else>
+        <view class="me-view-row" bindtap="doLogin">
+          <image wx:if="{{avatarUrl}}" class="me-avatar me-avatar-lg" src="{{avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="me-avatar me-avatar-lg me-avatar-ph">👤</view>
+          <view class="me-view-info">
+            <text class="me-nick">{{nickname}}</text>
+            <text class="me-view-sub">点这里修改头像和昵称</text>
+          </view>
+          <text class="me-arrow">›</text>
+        </view>
+      </block>
+    </view>
+
+    <view class="card me-menu">
+      <view class="me-item" bindtap="goMyPosts">
+        <text class="me-item-emoji">📮</text>
+        <text class="me-item-label">我的发布</text>
+        <text class="me-arrow">›</text>
+      </view>
+      <view class="me-item" bindtap="goSettings">
+        <text class="me-item-emoji">⚙️</text>
+        <text class="me-item-label">设置</text>
+        <text class="me-arrow">›</text>
+      </view>
+      <view class="me-item" bindtap="logout">
+        <text class="me-item-emoji">🚪</text>
+        <text class="me-item-label danger">退出登录</text>
+        <text class="me-arrow">›</text>
+      </view>
+    </view>
+  </block>
+</view>

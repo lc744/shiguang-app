@@ -8,6 +8,7 @@ const db = cloud.database();
 const _ = db.command;
 const COL = 'posts';
 const REP = 'reports';
+const USR = 'users';
 const HIDE_THRESHOLD = 3;      // 举报数达到即自动隐藏
 const MAX_PHOTOS = 3;
 
@@ -50,6 +51,27 @@ exports.main = async (event) => {
   try{
     try{ await db.createCollection(COL); }catch(e){}
     try{ await db.createCollection(REP); }catch(e){}
+    try{ await db.createCollection(USR); }catch(e){}
+
+    // ---- 个人信息：保存 / 读取 ----
+    if(action === 'profile'){
+      if(event.mode === 'save'){
+        const nickname = String((event.profile && event.profile.nickname) || '').trim().slice(0, 20) || '路过的朋友';
+        const avatarUrl = String((event.profile && event.profile.avatarUrl) || '').slice(0, 300);
+        const found = await db.collection(USR).where({ openid: OPENID }).get();
+        if(found.data.length){
+          await db.collection(USR).where({ openid: OPENID }).update({ data: { nickname, avatarUrl, updatedAt: nowMs() } });
+        }else{
+          await db.collection(USR).add({ data: { openid: OPENID, nickname, avatarUrl, createdAt: nowMs(), updatedAt: nowMs() } });
+        }
+        return { ok: true, op: 'profileSave' };
+      }
+      // mode get
+      const g = await db.collection(USR).where({ openid: OPENID }).get();
+      if(!g.data.length) return { ok: true, profile: null };
+      const d = g.data[0]; delete d._id; delete d.openid;
+      return { ok: true, profile: d };
+    }
 
     // ---- 发布 ----
     if(action === 'publish'){

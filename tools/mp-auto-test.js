@@ -123,14 +123,19 @@ function t(name, ok, extra){
     t('月历网格 ≥ 28 格', days.length >= 28, '实际 ' + days.length);
     await shot('4-calendar');
 
-    /* 6. 设置页 */
-    await miniProgram.switchTab('/pages/settings/settings');
+    /* 6. 设置页（已并入「我的」，navigateTo 打开） */
+    await miniProgram.switchTab('/pages/me/me');
+    await sleep(600);
+    page = await miniProgram.currentPage();
+    t('我的页', page.path === 'pages/me/me');
+    await miniProgram.navigateTo('/pages/settings/settings');
     await sleep(600);
     page = await miniProgram.currentPage();
     t('设置页', page.path === 'pages/settings/settings');
     const backups = await page.data('backups');
     t('自动备份已生成', Array.isArray(backups) && backups.length >= 1, '备份数 ' + (backups || []).length);
     await shot('5-settings');
+    await miniProgram.navigateBack();
 
     /* 7. 到点提醒页（直接带 id 打开） */
     await miniProgram.switchTab('/pages/home/home');

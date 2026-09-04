@@ -18,8 +18,11 @@ Page({
 
   onLoad(){
     const id = getIdentity();
-    this.setData({ nickname: id.nickname || '', avatarUrl: id.avatarUrl || '' });
+    const hasProfile = !!(id && id.nickname);
+    this.setData({ nickname: id.nickname || '', avatarUrl: id.avatarUrl || '', hasProfile });
   },
+
+  goMe(){ wx.switchTab({ url: '/pages/me/me' }); },
 
   onNickname(e){ this.setData({ nickname: e.detail.value || '' }); },
 
@@ -75,6 +78,7 @@ Page({
 
   doPublish(){
     if(this.data.uploading) return;
+    if(!this.data.hasProfile){ wx.showToast({ title: '先到「我的」登录并完善资料', icon: 'none', duration: 2200 }); return; }
     const name = this.data.name.trim();
     const desc = this.data.desc.trim();
     const nickname = (this.data.nickname || '').trim() || '路过的朋友';

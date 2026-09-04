@@ -16,7 +16,17 @@ Page({
     empty: false
   },
 
-  onShow(){ this.refresh(); },
+  onShow(){
+    // 「我的」页跳转：指定打开哪个分段
+    const app = getApp();
+    let tab = this.data.tab;
+    if(app && app.globalData && app.globalData.shareTab){
+      tab = app.globalData.shareTab;
+      app.globalData.shareTab = null;
+    }
+    if(tab !== this.data.tab){ this.setData({ tab, list: [], page: 0, hasMore: true, empty: false }); }
+    this.refresh();
+  },
 
   switchTab(e){
     const tab = e.currentTarget.dataset.tab;

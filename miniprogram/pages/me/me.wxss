@@ -1,0 +1,42 @@
+/* 我的 */
+.shell{min-height:100vh;background:var(--bg);padding:0 18px 40px}
+.subhead{padding:14px 0 4px}
+.subhead-title{font-size:21px;font-weight:800;color:var(--text)}
+.subhead-sub{display:block;font-size:12px;color:var(--sub);margin-top:3px}
+
+.me-empty{display:flex;justify-content:center;padding:80px 0}
+.me-empty-text{font-size:16px;color:var(--sub)}
+
+.me-hero{display:flex;flex-direction:column;align-items:center;padding:44px 30px;margin-top:12px}
+.me-hero-emoji{font-size:44px}
+.me-hero-title{font-size:18px;font-weight:800;color:var(--text);margin-top:12px}
+.me-hero-sub{font-size:13px;color:var(--sub);margin-top:8px;text-align:center;line-height:1.6}
+.me-login-btn{margin-top:22px;padding:11px 40px;font-size:15px}
+.me-hero-note{font-size:11px;color:var(--sub);margin-top:12px}
+
+.me-card{margin-top:12px;padding:20px}
+.me-edit-row{display:flex;align-items:center;gap:14px}
+.avatar-btn{padding:0;background:none;line-height:1}
+.me-avatar{width:58px;height:58px;border-radius:50%;display:block}
+.me-avatar-lg{width:64px;height:64px}
+.me-avatar-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;background:var(--bg);color:var(--sub)}
+.me-avatar-ph text{font-size:10px;margin-top:2px}
+.me-nick-input{flex:1;height:46px;background:var(--bg);border-radius:10px;padding:0 14px;font-size:15px;color:var(--text)}
+.me-edit-tip{font-size:11px;color:var(--sub);margin-top:10px}
+.me-btn-row{display:flex;gap:10px;margin-top:16px}
+.me-btn{flex:1;margin:0;height:40px;line-height:40px;border-radius:999px;font-size:14px;padding:0}
+.me-btn.disabled{opacity:.6}
+
+.me-view-row{display:flex;align-items:center;gap:14px}
+.me-view-info{flex:1;min-width:0}
+.me-nick{display:block;font-size:17px;font-weight:700;color:var(--text)}
+.me-view-sub{display:block;font-size:12px;color:var(--sub);margin-top:4px}
+
+.me-menu{margin-top:14px;padding:4px 16px}
+.me-item{display:flex;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid var(--bg)}
+.me-item:last-child{border-bottom:none}
+.me-item-emoji{font-size:18px;width:22px;text-align:center}
+.me-item-label{flex:1;font-size:14px;color:var(--text)}
+.me-item-label.danger{color:#c65c52}
+.me-arrow{color:var(--sub);font-size:16px}
+.ph{color:var(--sub)}

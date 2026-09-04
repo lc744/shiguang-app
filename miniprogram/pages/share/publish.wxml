@@ -4,24 +4,17 @@
     <text class="subhead-sub">你的推荐会展示给所有使用绸缪的朋友</text>
   </view>
 
-  <!-- 身份：头像昵称填写能力 -->
+  <!-- 发布身份：来自「我的」账号资料 -->
   <view class="card p-block">
-    <view class="p-label">我的身份</view>
-    <view class="id-row">
-      <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
-        <view wx:else class="avatar-img avatar-ph">📷<text>头像</text></view>
-      </button>
-      <input
-        class="nickname-input"
-        type="nickname"
-        placeholder="填写昵称"
-        placeholder-class="ph"
-        value="{{nickname}}"
-        bindinput="onNickname"
-        bindblur="onNickname"
-        maxlength="20"
-      />
+    <view class="p-label">发布身份</view>
+    <view class="id-row" bindtap="goMe">
+      <image wx:if="{{avatarUrl}}" class="id-avatar" src="{{avatarUrl}}" mode="aspectFill" />
+      <view wx:else class="id-avatar id-avatar-ph">👤</view>
+      <view class="id-info">
+        <text class="id-nick">{{hasProfile ? nickname : '未设置身份'}}</text>
+        <text class="id-sub">{{hasProfile ? '以这个身份发布 · 点这里可修改' : '点击去「我的」登录并完善资料'}}</text>
+      </view>
+      <text class="id-arrow">›</text>
     </view>
   </view>
 
