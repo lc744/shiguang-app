@@ -165,66 +165,19 @@
         <div class="today-list" id="upcomingList"></div>
       </section>
 
-      <!-- 我的页：账号信息（登录/头像/昵称）+ 设置 -->
+      <!-- 我的页：用户卡片 + 个人信息 + 设置入口按钮 -->
       <section class="page" id="page-profile">
-        <div class="subhead"><h3>我的</h3><small>账号与本机数据</small></div>
+        <div class="subhead"><h3>我的</h3><small>个人信息与本机设置</small></div>
         <div class="detail-wrap">
           <!-- 用户卡片（profile.js 渲染） -->
           <div class="detail-card" id="userCard"><small class="mini">正在加载…</small></div>
 
-          <h4 style="margin:14px 2px 0">设置</h4>
-          <div class="detail-card" style="margin-top:8px">
-            <h4 style="margin:0 0 8px">外观</h4>
-            <div class="chips" id="themeChips">
-              <button type="button" class="chip" data-theme="system" onclick="setTheme('system',this)">跟随系统</button>
-              <button type="button" class="chip" data-theme="light" onclick="setTheme('light',this)">浅色</button>
-              <button type="button" class="chip" data-theme="dark" onclick="setTheme('dark',this)">深色</button>
-            </div>
-          </div>
-          <!-- 背景颜色选择器 -->
-          <div class="detail-card" style="margin-top:10px">
-            <h4 style="margin:0 0 8px">背景颜色</h4>
-            <p class="mini">选择喜欢的配色方案，让界面更舒适。</p>
-            <div class="chips" id="bgColorChips"></div>
-            <div class="action-row" style="margin-top:12px">
-              <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-                <span style="font-size:13px;color:var(--sub)">或自定义颜色：</span>
-                <input type="color" value="#eef4f1" onchange="saveBgColor(this.value)" 
-                       style="width:40px;height:32px;border:none;border-radius:8px;cursor:pointer" />
-                <small style="color:var(--sub)">点击取色</small>
-              </label>
-            </div>
-          </div>
-          <!-- 原生提醒权限卡片（仅 Android App 内显示） -->
-          <div class="detail-card" id="nativePermCard" style="margin-top:10px;display:none">
-            <h4 style="margin:0 0 8px">原生提醒权限</h4>
-            <p class="mini">保证后台闹钟可靠触发所需的系统权限。</p>
-            <div id="nativePermRows"><small class="mini">正在读取权限状态…</small></div>
-            <div class="action-row">
-              <button class="secondary" onclick="renderNativePerms()">刷新状态</button>
-            </div>
-          </div>
-          <div class="detail-card" style="margin-top:10px">
-            <h4 style="margin:0 0 8px">离线语音包</h4>
-            <p class="mini">内置校园少女组合可直接使用；高清自然音色可以按需下载，下载后断网也能播报。</p>
-            <div id="voicePackList"><small>正在读取语音包…</small></div>
-            <div class="action-row">
-              <button class="secondary" onclick="loadVoicePacks()">刷新语音包</button>
-            </div>
-          </div>
-          <div class="detail-card" style="margin-top:10px">
-            <h4 style="margin:0 0 8px">自动备份</h4>
-            <p class="mini">每次保存事件都会自动生成快照（最多保留 10 条），误删后可一键恢复。</p>
-            <div id="backupList"><small class="mini">暂无历史备份（保存事件后自动生成）</small></div>
-            <div class="action-row web-only">
-              <button class="secondary" onclick="exportData()">导出 JSON 文件</button>
-              <button class="secondary" onclick="document.getElementById('importFile').click()">导入 JSON 文件</button>
-            </div>
-            <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importData(event)" />
-          </div>
-          <div class="action-row">
-            <button class="danger-btn" onclick="clearAll()">清空全部事件</button>
-          </div>
+          <!-- 个人信息卡（profile.js 渲染：邮箱 / 性别 / 出生年月） -->
+          <h4 style="margin:14px 2px 0">个人信息</h4>
+          <div class="detail-card" id="infoCard" style="margin-top:8px"><small class="mini">正在加载…</small></div>
+
+          <!-- 设置入口按钮（点开为设置弹层） -->
+          <button class="settings-entry" onclick="openSettings()">⚙️ 设置<span class="settings-arrow">›</span></button>
         </div>
       </section>
     </main>
@@ -370,6 +323,94 @@
       <div class="action-row" style="margin-top:16px">
         <button class="secondary" onclick="closeNickEditor()">取消</button>
         <button class="primary" onclick="saveNick()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹层（从「我的」页设置按钮进入） -->
+  <div class="remind-fullscreen" id="settingsOverlay" style="display:none" onclick="if(event.target===this)closeSettings()">
+    <div class="remind-card card" style="max-width:360px;padding:20px 18px;max-height:84vh;overflow-y:auto">
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">设置</h2>
+      <div class="detail-card" style="margin-top:0">
+        <h4 style="margin:0 0 8px">外观</h4>
+        <div class="chips" id="themeChips">
+          <button type="button" class="chip" data-theme="system" onclick="setTheme('system',this)">跟随系统</button>
+          <button type="button" class="chip" data-theme="light" onclick="setTheme('light',this)">浅色</button>
+          <button type="button" class="chip" data-theme="dark" onclick="setTheme('dark',this)">深色</button>
+        </div>
+      </div>
+      <!-- 背景颜色选择器 -->
+      <div class="detail-card" style="margin-top:10px">
+        <h4 style="margin:0 0 8px">背景颜色</h4>
+        <p class="mini">选择喜欢的配色方案，让界面更舒适。</p>
+        <div class="chips" id="bgColorChips"></div>
+        <div class="action-row" style="margin-top:12px">
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+            <span style="font-size:13px;color:var(--sub)">或自定义颜色：</span>
+            <input type="color" value="#eef4f1" onchange="saveBgColor(this.value)" 
+                   style="width:40px;height:32px;border:none;border-radius:8px;cursor:pointer" />
+            <small style="color:var(--sub)">点击取色</small>
+          </label>
+        </div>
+      </div>
+      <!-- 原生提醒权限卡片（仅 Android App 内显示） -->
+      <div class="detail-card" id="nativePermCard" style="margin-top:10px;display:none">
+        <h4 style="margin:0 0 8px">原生提醒权限</h4>
+        <p class="mini">保证后台闹钟可靠触发所需的系统权限。</p>
+        <div id="nativePermRows"><small class="mini">正在读取权限状态…</small></div>
+        <div class="action-row">
+          <button class="secondary" onclick="renderNativePerms()">刷新状态</button>
+        </div>
+      </div>
+      <div class="detail-card" style="margin-top:10px">
+        <h4 style="margin:0 0 8px">离线语音包</h4>
+        <p class="mini">内置校园少女组合可直接使用；高清自然音色可以按需下载，下载后断网也能播报。</p>
+        <div id="voicePackList"><small>正在读取语音包…</small></div>
+        <div class="action-row">
+          <button class="secondary" onclick="loadVoicePacks()">刷新语音包</button>
+        </div>
+      </div>
+      <div class="detail-card" style="margin-top:10px">
+        <h4 style="margin:0 0 8px">自动备份</h4>
+        <p class="mini">每次保存事件都会自动生成快照（最多保留 10 条），误删后可一键恢复。</p>
+        <div id="backupList"><small class="mini">暂无历史备份（保存事件后自动生成）</small></div>
+        <div class="action-row web-only">
+          <button class="secondary" onclick="exportData()">导出 JSON 文件</button>
+          <button class="secondary" onclick="document.getElementById('importFile').click()">导入 JSON 文件</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importData(event)" />
+      </div>
+      <div class="action-row">
+        <button class="danger-btn" onclick="clearAll()">清空全部事件</button>
+      </div>
+      <div class="action-row" style="margin-top:10px">
+        <button class="secondary" style="width:100%" onclick="closeSettings()">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑资料弹层（性别 / 出生年月） -->
+  <div class="remind-fullscreen" id="infoOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
+    <div class="remind-card card" style="max-width:320px;padding:20px 18px">
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">编辑资料</h2>
+      <div class="field" style="text-align:left">
+        <label>性别</label>
+        <div class="chips" id="genderChips">
+          <button type="button" class="chip" data-gender="" onclick="pickGender('')">未设置</button>
+          <button type="button" class="chip" data-gender="male" onclick="pickGender('male')">男</button>
+          <button type="button" class="chip" data-gender="female" onclick="pickGender('female')">女</button>
+        </div>
+      </div>
+      <div class="field" style="text-align:left;margin-top:10px">
+        <label>出生年月</label>
+        <input id="birthInput" type="month" />
+        <div id="birthClearRow" style="margin-top:6px;display:none">
+          <small class="mini" style="cursor:pointer;color:var(--danger,#c65c52)" onclick="clearBirth()">清除出生年月</small>
+        </div>
+      </div>
+      <div class="action-row" style="margin-top:16px">
+        <button class="secondary" onclick="closeInfoEditor()">取消</button>
+        <button class="primary" onclick="saveInfo()">保存</button>
       </div>
     </div>
   </div>

@@ -27,6 +27,7 @@ function saveAccountToRegistry(){
   reg[currentUser.id] = {
     id: currentUser.id, type: currentUser.type, phone: currentUser.phone || '',
     email: currentUser.email || '', passHash: currentUser.passHash || '',
+    gender: currentUser.gender || '', birth: currentUser.birth || '',
     nickname: currentUser.nickname, avatar: currentUser.avatar || null, createdAt: currentUser.createdAt
   };
   saveRegistry(reg);
@@ -36,8 +37,9 @@ function setCurrentUser(account){
   persistUser();
   saveAccountToRegistry();
   renderUserCard();
+  renderInfoCard();
 }
-function initProfile(){ loadUser(); renderUserCard(); }
+function initProfile(){ loadUser(); renderUserCard(); renderInfoCard(); }
 
 /* ---------------- 用户卡片渲染 ---------------- */
 function isAvatarRef(v){ return typeof v === 'string' && /^avatar:[A-Za-z0-9_\-]+$/.test(v); }
@@ -62,6 +64,7 @@ function renderUserCard(){
         <div class="user-info"><b>未登录</b><small>点击登录，邮箱注册 / 登录</small></div>
         <span class="user-arrow">›</span>
       </div>`;
+    renderInfoCard();
     return;
   }
   let who;
@@ -91,7 +94,80 @@ function renderUserCard(){
       if(img && data) img.src = data;
     });
   }
+  renderInfoCard();
 }
+
+/* ---------------- 个人信息卡（邮箱 / 性别 / 出生年月） ---------------- */
+const GENDER_LABEL = { '': '未设置', male: '男', female: '女' };
+function formatBirth(v){
+  const m = String(v || '').match(/^(\d{4})-(\d{2})$/);
+  return m ? m[1] + '年' + m[2] + '月' : '';
+}
+function accountTitle(){
+  if(!currentUser) return '';
+  if(currentUser.type === 'email') return currentUser.email || '';
+  if(currentUser.type === 'phone') return maskPhone(currentUser.phone);
+  return '微信用户';
+}
+function renderInfoCard(){
+  const box = document.getElementById('infoCard');
+  if(!box) return;
+  if(!currentUser){
+    box.innerHTML = '<div class="info-empty">登录后可完善性别、出生年月等个人资料</div>';
+    return;
+  }
+  const birth = formatBirth(currentUser.birth);
+  box.innerHTML = `
+    <div class="info-row" title="${esc(accountTitle())}">
+      <span class="info-label">📧 邮箱</span>
+      <span class="info-value">${esc(currentUser.type === 'email' ? currentUser.email : accountTitle())}</span>
+    </div>
+    <div class="info-row" onclick="openInfoEditor()" role="button">
+      <span class="info-label">🚻 性别</span>
+      <span class="info-value ${currentUser.gender ? '' : 'info-unset'}">${esc(GENDER_LABEL[currentUser.gender] || '未设置')}</span>
+      <span class="info-arrow">›</span>
+    </div>
+    <div class="info-row" onclick="openInfoEditor()" role="button">
+      <span class="info-label">🎂 出生年月</span>
+      <span class="info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</span>
+      <span class="info-arrow">›</span>
+    </div>`;
+}
+let pickedGender = '';
+function openInfoEditor(){
+  if(!currentUser){ openLogin(); return; }
+  pickedGender = currentUser.gender || '';
+  document.querySelectorAll('#genderChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.gender === pickedGender));
+  const inp = document.getElementById('birthInput');
+  inp.value = currentUser.birth || '';
+  document.getElementById('birthClearRow').style.display = currentUser.birth ? 'block' : 'none';
+  document.getElementById('infoOverlay').style.display = 'flex';
+}
+function closeInfoEditor(){ document.getElementById('infoOverlay').style.display = 'none'; }
+function pickGender(g){
+  pickedGender = g;
+  document.querySelectorAll('#genderChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.gender === g));
+}
+function clearBirth(){
+  document.getElementById('birthInput').value = '';
+  document.getElementById('birthClearRow').style.display = 'none';
+}
+function saveInfo(){
+  if(!currentUser) return;
+  const birth = (document.getElementById('birthInput').value || '').trim();
+  if(birth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(birth)){ toast('出生年月格式不正确'); return; }
+  currentUser.gender = pickedGender;
+  currentUser.birth = birth;
+  persistUser();
+  saveAccountToRegistry();
+  renderInfoCard();
+  closeInfoEditor();
+  toast('资料已保存');
+}
+
+/* ---------------- 设置入口（按钮 → 弹层） ---------------- */
+function openSettings(){ document.getElementById('settingsOverlay').style.display = 'flex'; }
+function closeSettings(){ document.getElementById('settingsOverlay').style.display = 'none'; }
 function onAvatarClick(){
   if(!currentUser){ openLogin(); return; }
   const input = document.getElementById('avatarFile');

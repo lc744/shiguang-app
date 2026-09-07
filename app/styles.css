@@ -287,3 +287,16 @@
     /* 待备案功能的置灰入口 */
     .auth-disabled{opacity:.55;cursor:not-allowed}
     .auth-disabled-note{font-size:11px;font-weight:400;margin-left:6px;opacity:.95}
+    /* 个人信息卡 */
+    .info-row{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+    .info-row:last-child{border-bottom:none}
+    .info-row:first-child{cursor:default}
+    .info-label{color:var(--sub);font-size:13px;width:86px;flex:none;text-align:left}
+    .info-value{flex:1;font-size:14px;text-align:right;word-break:break-all;font-weight:600}
+    .info-value.info-unset{color:var(--sub);font-weight:400}
+    .info-arrow{color:var(--sub);font-size:18px;line-height:1}
+    .info-empty{color:var(--sub);font-size:13px;text-align:center;padding:8px 0}
+    /* 设置入口按钮 */
+    .settings-entry{width:100%;margin-top:14px;display:flex;justify-content:space-between;align-items:center;background:var(--card,#fff);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:15px;font-weight:700;color:var(--ink,#222);cursor:pointer}
+    .settings-entry:active{opacity:.75}
+    .settings-arrow{color:var(--sub);font-size:20px;font-weight:400}
