@@ -288,9 +288,9 @@
     .auth-disabled{opacity:.55;cursor:not-allowed}
     .auth-disabled-note{font-size:11px;font-weight:400;margin-left:6px;opacity:.95}
     /* 个人信息卡 */
-    .info-row{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+    .info-row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);cursor:pointer}
     .info-row:last-child{border-bottom:none}
-    .info-row:first-child{cursor:default}
+    .info-row:first-child{cursor:default;padding-top:2px}
     .info-label{color:var(--sub);font-size:13px;width:86px;flex:none;text-align:left}
     .info-value{flex:1;font-size:14px;text-align:right;word-break:break-all;font-weight:600}
     .info-value.info-unset{color:var(--sub);font-weight:400}
