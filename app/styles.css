@@ -281,3 +281,9 @@
     .code-btn{flex:none;min-width:108px;padding:0 10px;white-space:nowrap}
     .code-btn:disabled{opacity:.55;cursor:not-allowed}
     html[data-theme="dark"] .wechat-btn{filter:brightness(1.05)}
+    /* 邮箱登录 */
+    #errEmail{color:var(--danger,#c65c52);font-size:12px;margin-top:8px;text-align:center}
+    #emailModeChips{margin-bottom:12px}
+    /* 待备案功能的置灰入口 */
+    .auth-disabled{opacity:.55;cursor:not-allowed}
+    .auth-disabled-note{font-size:11px;font-weight:400;margin-left:6px;opacity:.95}

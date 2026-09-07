@@ -1,9 +1,11 @@
 // 绸缪 · 我的页（用户登录、头像上传、昵称修改）
-// 演示模式：账号数据保存在本机（localStorage + IndexedDB），真实短信验证码 /
-// 微信 OAuth 需要后端服务与开放平台资质，接入后只需替换 doPhoneLogin / doWechatLogin 两个入口。
+// 当前可用：邮箱注册/登录（邮箱+密码，无需备案资质）。
+// 保留未启用：手机号短信登录、微信授权登录 —— 短信签名与网页授权均需 ICP 备案/开放平台资质，
+// 代码完整保留，待资质具备后在 index.html 登录面板恢复入口即可。
+// 账号数据保存在本机（localStorage + IndexedDB），接入后端后只需替换 do*Login 入口为服务端请求。
 /* ---------------- 用户状态 ---------------- */
 const USER_KEY = 'shiguang_user';
-const REGISTRY_KEY = 'shiguang_user_registry';   // 模拟服务端账户表（手机号/微信 openId → 账号资料）
+const REGISTRY_KEY = 'shiguang_user_registry';   // 模拟服务端账户表（邮箱/手机号/openId → 账号资料）
 let currentUser = null;
 
 function loadUser(){
@@ -24,6 +26,7 @@ function saveAccountToRegistry(){
   const reg = loadRegistry();
   reg[currentUser.id] = {
     id: currentUser.id, type: currentUser.type, phone: currentUser.phone || '',
+    email: currentUser.email || '', passHash: currentUser.passHash || '',
     nickname: currentUser.nickname, avatar: currentUser.avatar || null, createdAt: currentUser.createdAt
   };
   saveRegistry(reg);
@@ -42,6 +45,13 @@ function maskPhone(phone){
   const p = String(phone || '');
   return p.length === 11 ? p.slice(0,3) + '****' + p.slice(7) : p;
 }
+function maskEmail(email){
+  const e = String(email || '');
+  const at = e.indexOf('@');
+  if(at <= 0) return e;
+  const name = e.slice(0, at), domain = e.slice(at);
+  return name.slice(0, 2) + '***' + domain;
+}
 function renderUserCard(){
   const box = document.getElementById('userCard');
   if(!box) return;
@@ -49,12 +59,15 @@ function renderUserCard(){
     box.innerHTML = `
       <div class="user-row" onclick="openLogin()" role="button" title="点击登录">
         <div class="user-avatar">👤</div>
-        <div class="user-info"><b>未登录</b><small>点击登录，微信 / 手机号都可以</small></div>
+        <div class="user-info"><b>未登录</b><small>点击登录，邮箱注册 / 登录</small></div>
         <span class="user-arrow">›</span>
       </div>`;
     return;
   }
-  const who = currentUser.type === 'phone' ? '📱 ' + esc(maskPhone(currentUser.phone)) : '💬 微信登录';
+  let who;
+  if(currentUser.type === 'email') who = '📧 ' + esc(maskEmail(currentUser.email));
+  else if(currentUser.type === 'phone') who = '📱 ' + esc(maskPhone(currentUser.phone));
+  else who = '💬 微信登录';
   const joined = currentUser.createdAt ? esc(String(currentUser.createdAt).slice(0,10)) + ' 加入' : '';
   const avatarInner = isAvatarRef(currentUser.avatar)
     ? '<img id="userAvatarImg" alt="头像" />'
@@ -147,8 +160,16 @@ function loginPanel(which){
   document.getElementById('loginHome').style.display = which === 'home' ? 'block' : 'none';
   document.getElementById('loginPhone').style.display = which === 'phone' ? 'block' : 'none';
   document.getElementById('loginWechat').style.display = which === 'wechat' ? 'block' : 'none';
+  document.getElementById('loginEmail').style.display = which === 'email' ? 'block' : 'none';
 }
 function showLoginHome(){ loginPanel('home'); }
+function showEmailLogin(){
+  loginPanel('email');
+  setEmailMode('login');
+  document.getElementById('loginEmailInput').value = '';
+  document.getElementById('loginPassInput').value = '';
+  document.getElementById('loginPass2Input').value = '';
+}
 function showPhoneLogin(){
   loginPanel('phone');
   document.getElementById('loginPhoneInput').value = (currentUser && currentUser.type === 'phone') ? currentUser.phone : '';
@@ -156,7 +177,7 @@ function showPhoneLogin(){
 }
 function showWechatLogin(){ loginPanel('wechat'); }
 
-/* ---- 手机号 + 验证码 ---- */
+/* ---- 手机号 + 验证码（需短信备案，暂未开放；代码保留待启用） ---- */
 function sendLoginCode(){
   const phone = (document.getElementById('loginPhoneInput').value || '').trim();
   if(!/^1\d{10}$/.test(phone)){ toast('请输入正确的 11 位手机号'); return; }
@@ -202,7 +223,7 @@ function doPhoneLogin(){
   closeLogin();
 }
 
-/* ---- 微信登录（模拟授权） ---- */
+/* ---- 微信登录（需开放平台备案，暂未开放；代码保留待启用） ---- */
 // 模拟微信 SDK 返回的 openId：同一台设备上保持稳定，保证退出后再次授权能找回同一账号
 function mockWechatOpenId(){
   try{
@@ -226,6 +247,59 @@ function doWechatLogin(){
   setCurrentUser(account);
   closeLogin();
 }
+
+/* ---- 邮箱注册 / 登录（当前可用，无需备案） ---- */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+let emailMode = 'login';   // 'login' | 'register'
+// 密码不在本机明文保存：SHA-256 加盐哈希（非安全上下文时降级标记，接入后端后由服务端接管）
+async function hashPassword(pw){
+  try{
+    if(window.crypto && crypto.subtle && window.TextEncoder){
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('shiguang::' + pw));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){}
+  return 'plain:' + pw;
+}
+function setEmailMode(mode){
+  emailMode = mode;
+  const chips = document.querySelectorAll('#emailModeChips .chip');
+  chips.forEach(c => c.classList.toggle('selected', c.dataset.mode === mode));
+  document.getElementById('loginPass2Field').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('emailSubmitBtn').textContent = mode === 'register' ? '注册并登录' : '登录';
+  document.getElementById('errEmail').style.display = 'none';
+}
+function showEmailError(msg){
+  const err = document.getElementById('errEmail');
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+async function doEmailLogin(){
+  const email = (document.getElementById('loginEmailInput').value || '').trim().toLowerCase();
+  const pass = document.getElementById('loginPassInput').value || '';
+  const pass2 = document.getElementById('loginPass2Input').value || '';
+  if(!EMAIL_RE.test(email)){ showEmailError('请输入有效的邮箱地址'); return; }
+  if(pass.length < 6){ showEmailError('密码至少 6 位'); return; }
+  if(emailMode === 'register' && pass !== pass2){ showEmailError('两次输入的密码不一致'); return; }
+  const passHash = await hashPassword(pass);
+  const reg = loadRegistry();
+  const existId = Object.keys(reg).find(id => reg[id].type === 'email' && (reg[id].email || '').toLowerCase() === email);
+  let account;
+  if(emailMode === 'register'){
+    if(existId){ showEmailError('该邮箱已注册，请切换到登录'); return; }
+    const nick = email.split('@')[0].slice(0, 12);
+    account = { id: 'u_' + uid(), type: 'email', email, passHash, nickname: nick, avatar: null, createdAt: new Date().toISOString() };
+    toast('注册成功，已自动登录');
+  }else{
+    if(!existId){ showEmailError('该邮箱尚未注册，请先注册'); return; }
+    if(reg[existId].passHash !== passHash){ showEmailError('密码不正确'); return; }
+    account = reg[existId];
+    toast(`欢迎回来，${account.nickname || '用户'}`);
+  }
+  setCurrentUser(account);
+  closeLogin();
+}
+function onEmailPassKeydown(ev){ if(ev && ev.key === 'Enter') doEmailLogin(); }
 
 /* ---------------- 昵称修改 ---------------- */
 function openNickEditor(){
