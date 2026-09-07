@@ -54,17 +54,24 @@
       if(!ok){
         // 已有真实会话（本地持久化登录）→ 不做哑凭试探，避免顶掉用户会话
         try{
-          const r = await __auth.getUser();
-          ok = !!(r && r.user && r.user.uid);
+          let u = null;
+          if(typeof __auth.getLoginState === 'function'){
+            const s = await __auth.getLoginState();
+            u = s && s.user ? s.user : ((s && (s.uid || s.email)) ? s : null);
+          } else if(typeof __auth.getUser === 'function'){
+            const r = await __auth.getUser();
+            u = (r && r.user) ? r.user : null;
+          }
+          ok = !!(u && (u.uid || u.email));
         }catch(e){ ok = false; }
       }
       if(!ok){
         try{
-          await __auth.signIn({ email: 'probe@shiguang.invalid', password: 'shiguang-probe-000' });
+          await signInEmail(__auth, 'probe@shiguang.invalid', 'shiguang-probe-000');
           ok = true;
         }catch(e){
           const sig = String((e && e.code) || '') + String((e && e.message) || '');
-          ok = /USER_NOT_FOUND|PASSWORD_MISMATCH|INVALID_PASSWORD|ACCOUNT_NOT_EXIST|EMAIL_NOT_VERIF|GetAccountUser/i.test(sig);
+          ok = /USER_NOT_FOUND|PASSWORD_MISMATCH|INVALID_PASSWORD|ACCOUNT_NOT_EXIST|EMAIL_NOT_VERIF|GetAccountUser|not exist|不存在|密码/i.test(sig);
         }
         try{ sessionStorage.setItem('shiguang_cloud_probe', ok ? '1' : '0'); }catch(e){}
       }
@@ -79,17 +86,33 @@
     }
   }
 
+  // SDK 形状适配：v1 位置参数 vs v2/v3 对象参数
+  function signUpEmail(auth, email, password){
+    if(typeof auth.signUpWithEmailAndPassword === 'function') return auth.signUpWithEmailAndPassword(email, password);
+    return auth.signUp({ email, password });
+  }
+  function signInEmail(auth, email, password){
+    if(typeof auth.signInWithEmailAndPassword === 'function') return auth.signInWithEmailAndPassword(email, password);
+    return auth.signIn({ email, password });
+  }
+
   async function currentUser(){
     if(!__active) return null;
     try{
-      const r = await __auth.getUser();
-      return (r && r.user) ? r.user : null;
+      if(typeof __auth.getUser === 'function'){
+        const r = await __auth.getUser();
+        return (r && r.user) ? r.user : null;
+      }
+      const s = await __auth.getLoginState();   // v1 形状
+      if(!s) return null;
+      if(s.user && (s.user.uid || s.user.email)) return s.user;
+      return (s.uid || s.email) ? s : null;
     }catch(e){ return null; }
   }
 
   async function register(email, password){
     if(!__active) throw new Error('云服务不可用');
-    try{ await __auth.signUp({ email, password }); }
+    try{ await signUpEmail(__auth, email, password); }
     catch(e){ throw new Error(friendly(e)); }
     // 注册成功后验证邮件由云端自动发出
     return { ok: true, needVerify: true };
@@ -98,14 +121,12 @@
   async function login(email, password){
     if(!__active) throw new Error('云服务不可用');
     try{
-      const loginState = await __auth.signIn({ email, password });
-      if(!loginState || !loginState.user) throw new Error('登录失败');
-      const uid = loginState.user.uid;
+      await signInEmail(__auth, email, password);
+      const u = await currentUser();
+      if(!u || !(u.uid || u.email)) throw new Error('登录失败');
+      const uid = u.uid || u.email;
       const profile = await loadProfile(uid);
-      return {
-        uid, email: loginState.user.email || email,
-        profile: profile || {},
-      };
+      return { uid, email: u.email || email, profile: profile || {} };
     }catch(e){
       if(e && e.__friendly) throw e;
       throw Object.assign(new Error(friendly(e)), { __friendly: true });
