@@ -55,3 +55,6 @@ android/app/src/main/jniLibs/
 android/app/src/main/assets/offline_tts/
 android/app/src/main/assets/public/
 miniprogram/cloudfunctions/*/secret.json
+e2e_profile_test.js
+shot-*.png
+tools/mingit/

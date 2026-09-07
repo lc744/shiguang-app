@@ -31,6 +31,8 @@ function tickClock(){
 load();
 loadCustomEmojis();
 initTheme();
+// 「我的」页：恢复本机登录态并渲染用户卡片
+initProfile();
 // 修复：切 App/WebView 重建后重新应用已保存的背景颜色（此前 loadBgColor 从未被调用）
 loadBgColor();
 // 关键修复：App 启动时全量重注册原生闹钟。
