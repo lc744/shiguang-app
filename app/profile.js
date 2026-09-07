@@ -39,7 +39,30 @@ function setCurrentUser(account){
   renderUserCard();
   renderInfoCard();
 }
-function initProfile(){ loadUser(); renderUserCard(); renderInfoCard(); }
+function initProfile(){
+  loadUser(); renderUserCard(); renderInfoCard();
+  if(window.CloudAuth){
+    CloudAuth.init().then(() => restoreCloudSession());
+  }
+}
+// 云端会话恢复：TCB 已登录用户 → 拉云端资料 → 渲染
+async function restoreCloudSession(){
+  if(!(window.CloudAuth && CloudAuth.active())) return;
+  try{
+    const u = await CloudAuth.currentUser();
+    if(!u || !u.uid){ return; }
+    const p = (await CloudAuth.loadProfile(u.uid)) || {};
+    if(!currentUser || currentUser.id !== u.uid){
+      setCurrentUser({
+        id: u.uid, type: 'email', email: u.email || p.email || '',
+        nickname: p.nickname || (u.email || '用户').split('@')[0].slice(0, 12),
+        gender: p.gender || '', birth: p.birth || '',
+        avatar: p.avatar || null, createdAt: p.createdAt || new Date().toISOString(),
+        cloud: true,
+      });
+    }
+  }catch(e){ console.warn('[cloud] 会话恢复失败:', e && e.message); }
+}
 
 /* ---------------- 用户卡片渲染 ---------------- */
 function isAvatarRef(v){ return typeof v === 'string' && /^avatar:[A-Za-z0-9_\-]+$/.test(v); }
@@ -160,6 +183,7 @@ function saveInfo(){
   currentUser.birth = birth;
   persistUser();
   saveAccountToRegistry();
+  syncCloudProfile({ gender: currentUser.gender, birth: currentUser.birth });
   renderInfoCard();
   closeInfoEditor();
   toast('资料已保存');
@@ -218,6 +242,7 @@ async function onAvatarPicked(ev){
     currentUser.avatar = ref;
     persistUser();
     saveAccountToRegistry();
+    syncCloudProfile({ avatar: dataUrl });   // 云模式：头像 dataURL 直接上云（压缩后 ≤60KB）
     renderUserCard();
     toast('头像已更新');
   }catch(e){ toast('头像上传失败，请换一张图片试试'); }
@@ -357,6 +382,33 @@ async function doEmailLogin(){
   if(!EMAIL_RE.test(email)){ showEmailError('请输入有效的邮箱地址'); return; }
   if(pass.length < 6){ showEmailError('密码至少 6 位'); return; }
   if(emailMode === 'register' && pass !== pass2){ showEmailError('两次输入的密码不一致'); return; }
+  // ---- 云端模式（真实注册/登录，验证邮件） ----
+  if(window.CloudAuth && CloudAuth.active()){
+    try{
+      if(emailMode === 'register'){
+        await CloudAuth.register(email, pass);
+        setEmailMode('login');
+        document.getElementById('loginEmailInput').value = email;
+        document.getElementById('loginPassInput').value = '';
+        document.getElementById('loginPass2Input').value = '';
+        showEmailError('验证邮件已发送到 ' + email + '：请到邮箱点击链接完成验证，再回来登录');
+        toast('验证邮件已发送，请查收');
+      }else{
+        const r = await CloudAuth.login(email, pass);
+        const p = r.profile || {};
+        setCurrentUser({
+          id: r.uid, type: 'email', email: r.email,
+          nickname: p.nickname || email.split('@')[0].slice(0, 12),
+          gender: p.gender || '', birth: p.birth || '',
+          avatar: p.avatar || null, createdAt: p.createdAt || new Date().toISOString(),
+          cloud: true,
+        });
+        closeLogin();
+      }
+    }catch(e){ showEmailError(e.message); }
+    return;
+  }
+  // ---- 本机演示模式（云服务不可用时自动降级） ----
   const passHash = await hashPassword(pass);
   const reg = loadRegistry();
   const existId = Object.keys(reg).find(id => reg[id].type === 'email' && (reg[id].email || '').toLowerCase() === email);
@@ -392,9 +444,18 @@ function saveNick(){
   currentUser.nickname = v.slice(0, 12);
   persistUser();
   saveAccountToRegistry();
+  syncCloudProfile({ nickname: currentUser.nickname });
   renderUserCard();
   closeNickEditor();
   toast('昵称已更新');
+}
+// 云端资料同步（云模式下把资料补写到 users 集合）
+function syncCloudProfile(patch){
+  try{
+    if(window.CloudAuth && currentUser && currentUser.cloud && currentUser.id){
+      CloudAuth.saveProfile(currentUser.id, patch).catch(err => { toast('云端同步失败：' + err.message); });
+    }
+  }catch(e){}
 }
 function onNickKeydown(ev){ if(ev && ev.key === 'Enter') saveNick(); }
 
@@ -402,6 +463,7 @@ function onNickKeydown(ev){ if(ev && ev.key === 'Enter') saveNick(); }
 function logoutUser(){
   if(!currentUser) return;
   if(!confirm('退出登录后，本机事件数据仍会保留。确定退出吗？')) return;
+  if(window.CloudAuth && currentUser.cloud) CloudAuth.logout();
   currentUser = null;
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
   renderUserCard();

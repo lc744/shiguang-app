@@ -17,7 +17,11 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "playwright": "^1.62.1"
+    "@cloudbase/manager-node": "^5.8.4",
+    "playwright": "^1.62.1",
+    "tencentcloud-sdk-nodejs-scf": "^4.1.168",
+    "tencentcloud-sdk-nodejs-ses": "^4.1.271",
+    "tencentcloud-sdk-nodejs-tcb": "^4.1.307"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
