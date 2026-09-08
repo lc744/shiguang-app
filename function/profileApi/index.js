@@ -1,7 +1,7 @@
-// 绸缪 · profileApi 云函数（SCF HTTP 函数，自带公网 URL）
-// 职责：服务端验证新认证网关的 Bearer token → 以 CAM 凭据读写 TCB users 集合（自动建集合）
+// 绸缪 · profileApi 云函数（SCF Web 函数形式：HTTP 服务器监听 9000）
+// 职责：服务端验证新认证网关 Bearer token → 以 CAM 凭据读写 TCB users 集合（自动建集合）
 const CloudBase = require('@cloudbase/node-sdk');
-const https = require('https');
+const http = require('https');
 
 const ENV = 'gerenceshi-d0gguq5u39b4b86b2';
 const app = CloudBase.init({
@@ -13,7 +13,7 @@ const db = app.database();
 
 function verifyToken(token){
   return new Promise((resolve) => {
-    const req = https.request({
+    const req = http.request({
       hostname: ENV + '.api.tcloudbasegateway.com',
       path: '/auth/v1/user/me?client_id=' + ENV,
       method: 'GET',
@@ -35,31 +35,34 @@ function verifyToken(token){
   });
 }
 
-function json(code, obj){
-  return {
-    statusCode: code,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    },
-    body: JSON.stringify(obj),
-  };
+function json(res, code, obj){
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  });
+  res.end(JSON.stringify(obj));
 }
 
-exports.main = async (event) => {
+async function handle(req, res){
   try{
-    const method = String(event.httpMethod || 'POST').toUpperCase();
-    const hdr = event.headers || {};
-    if(method === 'OPTIONS') return json(200, { ok: true });
+    if(req.method === 'OPTIONS') return json(res, 200, { ok: true });
     let body = {};
-    try{ body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {}); }catch(e){}
-    const authz = hdr.authorization || hdr.Authorization || body.token || '';
+    if(req.method === 'POST' || req.method === 'PUT'){
+      let raw = '';
+      await new Promise((resolve) => {
+        req.on('data', (c) => { raw += c; if(raw.length > 3e6) req.destroy(); });
+        req.on('end', resolve);
+        req.on('error', resolve);
+      });
+      try{ body = JSON.parse(raw || '{}'); }catch(e){}
+    }
+    const authz = req.headers.authorization || body.token || '';
     const token = String(authz).replace(/^Bearer\s+/i, '').trim();
-    if(!token) return json(401, { error: '缺少登录凭据' });
+    if(!token) return json(res, 401, { error: '缺少登录凭据' });
     const uid = await verifyToken(token);
-    if(!uid) return json(401, { error: '登录状态无效或已过期' });
+    if(!uid) return json(res, 401, { error: '登录状态无效或已过期' });
 
     // users 集合自愈创建（管理员权限）
     try{ await db.createCollection('users'); }catch(e){ /* 已存在即可 */ }
@@ -73,7 +76,7 @@ exports.main = async (event) => {
       if(doc && doc.data){
         profile = Array.isArray(doc.data) ? (doc.data[0] || null) : doc.data;
       }
-      return json(200, { uid, profile });
+      return json(res, 200, { uid, profile });
     }
     if(action === 'save'){
       const p = body.profile || {};
@@ -83,10 +86,14 @@ exports.main = async (event) => {
       }
       clean.updatedAt = new Date().toISOString();
       await col.doc(uid).set({ data: clean });
-      return json(200, { ok: true, uid });
+      return json(res, 200, { ok: true, uid });
     }
-    return json(400, { error: '未知操作: ' + String(action).slice(0, 40) });
+    return json(res, 400, { error: '未知操作: ' + String(action).slice(0, 40) });
   }catch(e){
-    return json(500, { error: String((e && e.message) || e).slice(0, 200) });
+    return json(res, 500, { error: String((e && e.message) || e).slice(0, 200) });
   }
-};
+}
+
+const PORT = process.env.SCF_RUNTIME_PORT ? Number(process.env.SCF_RUNTIME_PORT) : 9000;
+const server = require('http').createServer(handle);
+server.listen(PORT, () => { console.log('profileApi listening on ' + PORT); });
