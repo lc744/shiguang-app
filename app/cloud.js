@@ -22,6 +22,7 @@
 
   function friendly(e){
     const msg = String((e && e.error_description) || e && e.message || e || '');
+    if(/verification_token or verification_code|verification_code required/i.test(msg)) return '请输入邮件中的验证码';
     if(/INVALID_USERNAME_OR_PASSWORD|用户名或密码/.test(msg)) return '邮箱或密码不正确';
     if(/USER_ALREADY_EXIST|already exist|已存在/i.test(msg)) return '该邮箱已注册，请直接登录';
     if(/INVALID_VERIFICATION_CODE|invalid_verification_code|验证码/.test(msg)) return '验证码不正确或已过期';
@@ -145,7 +146,7 @@
   async function completeRegister(email, password, code){
     if(!__active) throw new Error('云服务不可用');
     try{
-      const j = await authFetch('/signup', { body: { email, password, code } });
+      const j = await authFetch('/signup', { body: { email, password, verification_code: code } });
       if(j && j.access_token){
         __session = {
           access: j.access_token, refresh: j.refresh_token,
