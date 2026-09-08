@@ -1,7 +1,7 @@
-// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关 + profileApi 云函数）
+// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关：认证+资料档案一体）
 // - 注册：邮箱+密码 → 发送验证码到邮箱 → 提交验证码完成注册（自动登录）
 // - 登录：邮箱+密码 → token 会话（本地持久化，自动续期）
-// - 资料：经 profileApi 云函数（服务端验 token，管理员读写 users 集合）
+// - 资料：认证系统自带用户档案（昵称/性别/生日真云同步；头像暂存本机）
 // - 未配置/网络不可达时自动降级本机演示模式
 (function(){
   'use strict';
@@ -9,7 +9,6 @@
   const CLOUD_ENV = 'gerenceshi-d0gguq5u39b4b86b2';
   const CLOUD_REGION = 'ap-shanghai';
   const AUTH_BASE = 'https://' + CLOUD_ENV + '.api.tcloudbasegateway.com/auth/v1';
-  const PROFILE_URL = 'https://' + CLOUD_ENV + '-1479056464.tcloudbaseapp.com/profileApi';
   const SESSION_KEY = 'shiguang_cloud_session';
   const MODE_KEY = 'shiguang_cloud_mode';
 
@@ -93,18 +92,46 @@
     return refreshSession();
   }
 
-  // ---------- 云函数（资料） ----------
-  async function profileApi(action, profile){
-    if(!__session) throw new Error('未登录');
-    await ensureFreshToken();
-    const resp = await fetch(PROFILE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + __session.access },
-      body: JSON.stringify(profile ? { action, profile } : { action }),
-    });
-    const j = await resp.json().catch(() => ({}));
-    if(!resp.ok || j.error) throw new Error(friendly({ message: j.error || ('HTTP ' + resp.status) }));
-    return j;
+  // ---------- 资料：认证系统自带用户档案（无需数据库/函数） ----------
+  // auth 字段: name(昵称) / gender(MALE|FEMALE) / birthdate(YYYY-MM-DD)
+  function profileFromMe(me){
+    if(!me) return null;
+    return {
+      nickname: me.name || '',
+      gender: me.gender ? String(me.gender).toLowerCase() : '',
+      birth: me.birthdate ? String(me.birthdate).slice(0, 7) : '',
+      avatar: null, // 头像暂存本机（auth 档案不持久化 avatar_url）
+      email: me.email || '',
+    };
+  }
+
+  async function loadProfile(uid){
+    try{
+      await ensureFreshToken();
+      const me = await authFetch('/user/me', { method: 'GET' });
+      return profileFromMe(me) || {};
+    }catch(e){
+      console.warn('[cloud] 资料读取失败:', e.message);
+      return {};
+    }
+  }
+
+  async function saveProfile(uid, patch){
+    try{
+      await ensureFreshToken();
+      const body = {};
+      const p = patch || {};
+      if(typeof p.nickname === 'string' && p.nickname) body.name = p.nickname.slice(0, 40);
+      if(p.gender === 'male') body.gender = 'MALE';
+      else if(p.gender === 'female') body.gender = 'FEMALE';
+      if(typeof p.birth === 'string' && /^\d{4}-\d{2}$/.test(p.birth)) body.birthdate = p.birth + '-01';
+      if(!Object.keys(body).length) return true;
+      await authFetch('/user/profile', { method: 'PATCH', body });
+      return true;
+    }catch(e){
+      console.warn('[cloud] 资料保存失败:', e.message);
+      return false;
+    }
   }
 
   // ---------- 对外接口 ----------
@@ -176,23 +203,6 @@
     }catch(e){
       if(e.__friendly) throw e;
       throw Object.assign(new Error(friendly(e)), { __friendly: true });
-    }
-  }
-
-  async function loadProfile(uid){
-    try{
-      const r = await profileApi('get');
-      return r.profile || {};
-    }catch(e){ return null; }
-  }
-
-  async function saveProfile(uid, patch){
-    try{
-      await profileApi('save', patch || {});
-      return true;
-    }catch(e){
-      console.warn('[cloud] 资料保存失败:', e.message);
-      return false;
     }
   }
 
