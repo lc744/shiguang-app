@@ -37,10 +37,9 @@ function setCurrentUser(account){
   persistUser();
   saveAccountToRegistry();
   renderUserCard();
-  renderInfoCard();
 }
 function initProfile(){
-  loadUser(); renderUserCard(); renderInfoCard();
+  loadUser(); renderUserCard();
   if(window.CloudAuth){
     CloudAuth.init().then(() => restoreCloudSession());
   }
@@ -50,7 +49,15 @@ async function restoreCloudSession(){
   if(!(window.CloudAuth && CloudAuth.active())) return;
   try{
     const u = await CloudAuth.currentUser();
-    if(!u || !u.uid){ return; }
+    if(!u || !u.uid){
+      // 云会话已失效但本机仍残留云账号记录 → 对齐为未登录，避免"假登录"状态
+      if(currentUser && currentUser.cloud){
+        currentUser = null;
+        try{ localStorage.removeItem(USER_KEY); }catch(e){}
+        renderUserCard();
+      }
+      return;
+    }
     const p = (await CloudAuth.loadProfile(u.uid)) || {};
     if(!currentUser || currentUser.id !== u.uid){
       setCurrentUser({
@@ -64,7 +71,7 @@ async function restoreCloudSession(){
   }catch(e){ console.warn('[cloud] 会话恢复失败:', e && e.message); }
 }
 
-/* ---------------- 用户卡片渲染 ---------------- */
+/* ---------------- 我的页渲染（与小程序 me 页一致：账号卡 + 无框资料行 + 菜单卡） ---------------- */
 function isAvatarRef(v){ return typeof v === 'string' && /^avatar:[A-Za-z0-9_\-]+$/.test(v); }
 function maskPhone(phone){
   const p = String(phone || '');
@@ -77,50 +84,6 @@ function maskEmail(email){
   const name = e.slice(0, at), domain = e.slice(at);
   return name.slice(0, 2) + '***' + domain;
 }
-function renderUserCard(){
-  const box = document.getElementById('userCard');
-  if(!box) return;
-  if(!currentUser){
-    box.innerHTML = `
-      <div class="user-row" onclick="openLogin()" role="button" title="点击登录">
-        <div class="user-avatar">👤</div>
-        <div class="user-info"><b>未登录</b><small>点击登录，邮箱注册 / 登录</small></div>
-        <span class="user-arrow">›</span>
-      </div>`;
-    renderInfoCard();
-    return;
-  }
-  let who;
-  if(currentUser.type === 'email') who = '📧 ' + esc(maskEmail(currentUser.email));
-  else if(currentUser.type === 'phone') who = '📱 ' + esc(maskPhone(currentUser.phone));
-  else who = '💬 微信登录';
-  const joined = currentUser.createdAt ? esc(String(currentUser.createdAt).slice(0,10)) + ' 加入' : '';
-  const avatarInner = isAvatarRef(currentUser.avatar)
-    ? '<img id="userAvatarImg" alt="头像" />'
-    : (isDataUrl(currentUser.avatar) ? `<img src="${esc(currentUser.avatar)}" alt="头像" />` : '👤');
-  box.innerHTML = `
-    <div class="user-row">
-      <div class="user-avatar" onclick="onAvatarClick()" title="点击更换头像">
-        ${avatarInner}<span class="avatar-edit-hint">换头像</span>
-      </div>
-      <div class="user-info">
-        <b class="user-nick" onclick="openNickEditor()" title="点击修改昵称">${esc(currentUser.nickname || '用户')} <small>✎</small></b>
-        <small>${who}${joined ? ' · ' + joined : ''}</small>
-      </div>
-      <button class="secondary" style="flex:none;padding:8px 14px" onclick="logoutUser()">退出</button>
-    </div>
-    <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="onAvatarPicked(event)" />`;
-  // IndexedDB 里的头像引用：异步取回后填充
-  if(isAvatarRef(currentUser.avatar)){
-    mediaGet(currentUser.avatar).then(data => {
-      const img = document.getElementById('userAvatarImg');
-      if(img && data) img.src = data;
-    });
-  }
-  renderInfoCard();
-}
-
-/* ---------------- 个人信息卡（邮箱 / 性别 / 出生年月） ---------------- */
 const GENDER_LABEL = { '': '未设置', male: '男', female: '女' };
 function formatBirth(v){
   const m = String(v || '').match(/^(\d{4})-(\d{2})$/);
@@ -132,30 +95,127 @@ function accountTitle(){
   if(currentUser.type === 'phone') return maskPhone(currentUser.phone);
   return '微信用户';
 }
-function renderInfoCard(){
-  const box = document.getElementById('infoCard');
+let meEditing = false;
+function renderUserCard(){ renderMeCard(); renderMeInfo(); renderMeMenu(); }
+
+function renderMeCard(){
+  const box = document.getElementById('meCard');
   if(!box) return;
   if(!currentUser){
-    box.innerHTML = '<div class="info-empty">登录后可完善性别、出生年月等个人资料</div>';
+    box.innerHTML = `
+      <div class="card me-hero">
+        <div class="me-hero-emoji">👋</div>
+        <div class="me-hero-title">登录绸缪账号</div>
+        <div class="me-hero-sub">登录后可以发布分享，资料与头像云端同步</div>
+        <button class="primary me-login-btn" onclick="openLogin()">邮箱注册 / 登录</button>
+        <div class="me-hero-note">微信 / 手机号登录待备案资质，暂未开放</div>
+      </div>`;
     return;
   }
-  const birth = formatBirth(currentUser.birth);
+  const avatarInner = isAvatarRef(currentUser.avatar)
+    ? '<img id="meAvatarImg" alt="头像" />'
+    : (isDataUrl(currentUser.avatar) ? `<img class="me-avatar-img" src="${esc(currentUser.avatar)}" alt="头像" />` : '');
+  if(meEditing){
+    box.innerHTML = `
+      <div class="card me-card">
+        <div class="me-edit-row">
+          <button class="avatar-btn" onclick="onAvatarClick()" title="点击更换头像">
+            ${avatarInner ? `<span class="me-avatar me-avatar-lg">${avatarInner}</span>` : '<span class="me-avatar me-avatar-lg me-avatar-ph">📷<text>头像</text></span>'}
+          </button>
+          <input class="me-nick-input" id="meNickInput" placeholder="填写昵称" maxlength="12" value="${esc(currentUser.nickname || '')}" />
+        </div>
+        <div class="me-edit-tip">头像默认云同步，也可以换一张</div>
+        <div class="me-btn-row">
+          <button class="secondary me-btn" onclick="cancelMeEdit()">取消</button>
+          <button class="primary me-btn" onclick="saveMeEdit()">保存</button>
+        </div>
+      </div>
+      <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="onAvatarPicked(event)" />`;
+    if(isAvatarRef(currentUser.avatar)){
+      mediaGet(currentUser.avatar).then(data => {
+        const img = document.getElementById('meAvatarImg');
+        if(img && data) img.src = data;
+      });
+    }
+    return;
+  }
   box.innerHTML = `
-    <div class="info-row" title="${esc(accountTitle())}">
-      <span class="info-label">📧 邮箱</span>
-      <span class="info-value">${esc(currentUser.type === 'email' ? currentUser.email : accountTitle())}</span>
+    <div class="card me-card">
+      <div class="me-view-row" onclick="startMeEdit()" role="button" title="点这里修改头像和昵称">
+        <span class="me-avatar me-avatar-lg">${avatarInner || '<span class="me-avatar-ph-lg">👤</span>'}</span>
+        <span class="me-view-info">
+          <text class="me-nick">${esc(currentUser.nickname || '用户')}</text>
+          <text class="me-view-sub">点这里修改头像和昵称</text>
+        </span>
+        <text class="me-arrow">›</text>
+      </div>
     </div>
-    <div class="info-row" onclick="openInfoEditor()" role="button">
-      <span class="info-label">🚻 性别</span>
-      <span class="info-value ${currentUser.gender ? '' : 'info-unset'}">${esc(GENDER_LABEL[currentUser.gender] || '未设置')}</span>
-      <span class="info-arrow">›</span>
-    </div>
-    <div class="info-row" onclick="openInfoEditor()" role="button">
-      <span class="info-label">🎂 出生年月</span>
-      <span class="info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</span>
-      <span class="info-arrow">›</span>
+    <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="onAvatarPicked(event)" />`;
+  if(isAvatarRef(currentUser.avatar)){
+    mediaGet(currentUser.avatar).then(data => {
+      const img = document.getElementById('meAvatarImg');
+      if(img && data) img.src = data;
+    });
+  }
+}
+function startMeEdit(){ if(!currentUser){ openLogin(); return; } meEditing = true; renderMeCard(); }
+function cancelMeEdit(){ meEditing = false; renderMeCard(); }
+async function saveMeEdit(){
+  if(!currentUser) return;
+  const v = (document.getElementById('meNickInput').value || '').trim();
+  if(!v){ toast('昵称不能为空'); return; }
+  currentUser.nickname = v.slice(0, 12);
+  persistUser();
+  saveAccountToRegistry();
+  syncCloudProfile({ nickname: currentUser.nickname });
+  meEditing = false;
+  renderUserCard();
+  toast('资料已保存');
+}
+
+function renderMeInfo(){
+  const box = document.getElementById('meInfo');
+  if(!box) return;
+  if(!currentUser){ box.innerHTML = ''; return; }
+  const birth = formatBirth(currentUser.birth);
+  const emailText = currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle());
+  box.innerHTML = `
+    <div class="me-info-rows">
+      <div class="me-info-row" title="${emailText}">
+        <text class="me-item-emoji">📧</text><text class="me-item-label">邮箱</text>
+        <text class="me-info-value">${emailText}</text>
+      </div>
+      <div class="me-info-row" onclick="openInfoEditor()" role="button">
+        <text class="me-item-emoji">🚻</text><text class="me-item-label">性别</text>
+        <text class="me-info-value ${currentUser.gender ? '' : 'info-unset'}">${esc(GENDER_LABEL[currentUser.gender] || '未设置')}</text>
+        <text class="me-arrow">›</text>
+      </div>
+      <div class="me-info-row" onclick="openInfoEditor()" role="button">
+        <text class="me-item-emoji">🎂</text><text class="me-item-label">出生年月</text>
+        <text class="me-info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</text>
+        <text class="me-arrow">›</text>
+      </div>
     </div>`;
 }
+
+function renderMeMenu(){
+  const box = document.getElementById('meMenu');
+  if(!box) return;
+  if(!currentUser){ box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="card me-menu">
+      <div class="me-item" onclick="goMyPosts()" role="button">
+        <text class="me-item-emoji">📮</text><text class="me-item-label">我的发布</text><text class="me-arrow">›</text>
+      </div>
+      <div class="me-item" onclick="openSettings()" role="button">
+        <text class="me-item-emoji">⚙️</text><text class="me-item-label">设置</text><text class="me-arrow">›</text>
+      </div>
+      <div class="me-item" onclick="logoutUser()" role="button">
+        <text class="me-item-emoji">🚪</text><text class="me-item-label danger">退出登录</text><text class="me-arrow">›</text>
+      </div>
+    </div>`;
+}
+function goMyPosts(){ try{ if(window.showShareTab) showShareTab('mine'); }catch(e){} try{ showPage('page-share', document.querySelector('.tab[data-target=page-share]')); }catch(e){} }
 let pickedGender = '';
 function openInfoEditor(){
   if(!currentUser){ openLogin(); return; }
@@ -184,7 +244,7 @@ function saveInfo(){
   persistUser();
   saveAccountToRegistry();
   syncCloudProfile({ gender: currentUser.gender, birth: currentUser.birth });
-  renderInfoCard();
+  renderMeInfo();
   closeInfoEditor();
   toast('资料已保存');
 }

@@ -22,7 +22,9 @@ function showPage(id, btn){
   if(target) target.classList.add('active');
   // 添加事件页/详情页隐藏右下角 FAB，其他页面显示
   const fab = document.getElementById('fabAdd');
-  if(fab) fab.classList.toggle('hidden', id === 'page-create' || id === 'page-detail');
+  if(fab) fab.classList.toggle('hidden', id === 'page-create' || id === 'page-detail' || id === 'page-share');
+  // 进入分享页时触发加载（首次或切回时刷新）
+  if(id === 'page-share' && typeof refreshShare === 'function') refreshShare();
   window.scrollTo(0,0);
 }
 function goBack(){ showPage(lastPage); }

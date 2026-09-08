@@ -96,13 +96,18 @@
   // ---------- 头像：经 profileApi 云函数（函数未部署时静默降级为本机头像） ----------
   function profileApiAvailable(){ return !!PROFILE_URL; }
 
-  async function profileApiCall(action, profile){
-    if(!__session) throw new Error('未登录');
-    await ensureFreshToken();
+  async function profileApiCall(action, data, allowAnonymous){
+    if(!allowAnonymous && !__session) throw new Error('未登录');
+    if(allowAnonymous){
+      // 匿名调用（如公共信息流）：有会话则带上，无会话直接发
+      await ensureFreshToken().catch(() => {});
+    }else{
+      await ensureFreshToken();
+    }
     const resp = await fetch(PROFILE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + __session.access },
-      body: JSON.stringify(profile ? { action, profile } : { action }),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, __session ? { 'Authorization': 'Bearer ' + __session.access } : {}),
+      body: JSON.stringify(data ? Object.assign({ action }, data) : { action }),
     });
     const j = await resp.json().catch(() => ({}));
     if(!resp.ok || j.error) throw new Error(j.error || ('HTTP ' + resp.status));
@@ -284,6 +289,8 @@
     currentUser,
     loadProfile,
     saveProfile,
+    _profileApiCall: profileApiCall,
+    _profileApiUrl: PROFILE_URL,
     // 兼容旧接口（注册改为两步式后由 profile.js 直接调用上面两个）
     register: sendRegisterCode,
   };

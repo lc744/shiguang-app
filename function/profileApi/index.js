@@ -107,14 +107,27 @@ exports.main = async (event) => {
     const hdr = event.headers || {};
     const authz = hdr.authorization || hdr.Authorization || body.token || '';
     const token = String(authz).replace(/^Bearer\s+/i, '').trim();
+    const action = body.action || 'get';
+
+    // 匿名可读动作（公共信息流 / 取全图）：无 token 也可用
+    const ANON_ACTIONS = ['feed', 'photo'];
+    let uid = null;
+    if(ANON_ACTIONS.indexOf(action) >= 0 && !token){
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
+      return await handlePostAction(action, body, null);
+    }
+
     if(!token) return json(401, { error: '缺少登录凭据' });
-    const uid = await verifyToken(token);
+    uid = await verifyToken(token);
     if(!uid) return json(401, { error: '登录状态无效或已过期' });
 
     // 自愈建表
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS profiles (uid TEXT PRIMARY KEY, avatar TEXT, updated_at TIMESTAMPTZ DEFAULT now())" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
 
-    const action = body.action || 'get';
+    // 分享相关动作（uid 已验证）
+    const POST_ACTIONS = ['publish', 'feed', 'mine', 'like', 'del', 'report', 'photo'];
+    if(POST_ACTIONS.indexOf(action) >= 0) return await handlePostAction(action, body, uid);
     if(action === 'get'){
       const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT avatar FROM profiles WHERE uid = '" + esc(uid) + "'" });
       let avatar = null;
@@ -135,3 +148,124 @@ exports.main = async (event) => {
     return json(500, { error: String((e && e.message) || e).slice(0, 200) });
   }
 };
+
+// ---------------- 分享（posts 表） ----------------
+const HIDE_THRESHOLD = 3;
+const MAX_PHOTOS = 3;
+
+function pgBool(v){ return v === true || v === 'true'; }
+
+function rowToPost(row, meUid){
+  // row = [id, uid, nickname, type, name, descr, photos, likes, liked_by, hidden, created_at, avatar]
+  let photos = [];
+  try{ photos = (JSON.parse(row[6]) || []).map(x => (x && typeof x === 'object') ? x.t : x).filter(Boolean); }catch(e){}
+  let likedBy = [];
+  try{ likedBy = JSON.parse(row[8]) || []; }catch(e){}
+  const created = row[10] ? String(row[10]).replace('T', ' ').slice(0, 16) : '';
+  return {
+    id: row[0], uid: row[1], nickname: row[2], type: row[3], name: row[4],
+    desc: row[5] || '', photos, likes: row[7] || 0,
+    selfLiked: meUid ? (likedBy.indexOf(meUid) >= 0) : false,
+    hidden: pgBool(row[9]), createdAt: created,
+    avatar: row[11] || null,
+  };
+}
+
+async function handlePostAction(action, body, uid){
+  // ---- 发布 ----
+  if(action === 'publish'){
+    const p = body.post || {};
+    const name = String(p.name || '').trim().slice(0, 30);
+    const desc = String(p.desc || '').trim().slice(0, 500);
+    const type = ['餐厅', '景点', '其他'].indexOf(p.type) >= 0 ? p.type : '其他';
+    const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
+    let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS) : [];
+    photos = photos.map(x => (typeof x === 'string') ? { t: x, f: x } : x).filter(x => x && typeof x.t === 'string');
+    if(!name) return json(400, { ok: false, error: '请填写名称' });
+    if(!photos.length) return json(400, { ok: false, error: '至少上传一张照片' });
+    for(const ph of photos){
+      if(typeof ph.f === 'string') ph.f = ph.f.slice(0, 400000);
+      if(typeof ph.t === 'string') ph.t = ph.t.slice(0, 60000);
+    }
+    const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql:
+      "INSERT INTO posts (id, uid, nickname, type, name, descr, photos, created_at) VALUES ('" +
+      esc(id) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(type) + "', '" + esc(name) + "', '" + esc(desc) + "', '" +
+      esc(JSON.stringify(photos)) + "', now())" });
+    return json(200, { ok: true, id });
+  }
+
+  // ---- 信息流（分页，仅未隐藏，联表取头像） ----
+  if(action === 'feed'){
+    const page = Math.max(0, Math.min(50, parseInt(body.page, 10) || 0));
+    const pageSize = 10;
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql:
+      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT " + pageSize + " OFFSET " + (page * pageSize) });
+    const list = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(line); }catch(e){ return null; } }).filter(Boolean).map(row => rowToPost(row, uid));
+    return json(200, { ok: true, list, page, hasMore: list.length === pageSize });
+  }
+
+  // ---- 我的发布 ----
+  if(action === 'mine'){
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql:
+      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.uid = '" + esc(uid) + "' AND p.hidden = false ORDER BY p.created_at DESC LIMIT 50" });
+    const list = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(line); }catch(e){ return null; } }).filter(Boolean).map(row => rowToPost(row, uid));
+    return json(200, { ok: true, list });
+  }
+
+  // ---- 点赞切换 ----
+  if(action === 'like'){
+    const id = String(body.id || '').slice(0, 40);
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT liked_by, hidden FROM posts WHERE id = '" + esc(id) + "'" });
+    if(!r || !r.Rows || !r.Rows.length) return json(404, { ok: false, error: '内容不存在' });
+    let likedBy = [];
+    let hidden = false;
+    try{ const row = JSON.parse(r.Rows[0]); likedBy = JSON.parse(row[0] || '[]') || []; hidden = pgBool(row[1]); }catch(e){}
+    if(hidden) return json(404, { ok: false, error: '内容不存在' });
+    const liked = likedBy.indexOf(uid) >= 0;
+    if(liked) likedBy = likedBy.filter(x => x !== uid); else likedBy.push(uid);
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE posts SET likes = GREATEST(0, likes + " + (liked ? -1 : 1) + "), liked_by = '" + esc(JSON.stringify(likedBy)) + "' WHERE id = '" + esc(id) + "'" });
+    return json(200, { ok: true, liked: !liked });
+  }
+
+  // ---- 删除（仅本人） ----
+  if(action === 'del'){
+    const id = String(body.id || '').slice(0, 40);
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM posts WHERE id = '" + esc(id) + "' AND uid = '" + esc(uid) + "'" });
+    const affected = r && r.AffectedRows ? Number(r.AffectedRows) : 0;
+    if(!affected) return json(403, { ok: false, error: '只能删除自己的发布' });
+    return json(200, { ok: true });
+  }
+
+  // ---- 举报（同一用户一次；阈值自动隐藏） ----
+  if(action === 'report'){
+    const id = String(body.id || '').slice(0, 40);
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT report_by, hidden FROM posts WHERE id = '" + esc(id) + "'" });
+    if(!r || !r.Rows || !r.Rows.length) return json(404, { ok: false, error: '内容不存在' });
+    let reportBy = [];
+    let hidden = false;
+    try{ const row = JSON.parse(r.Rows[0]); reportBy = JSON.parse(row[0] || '[]') || []; hidden = pgBool(row[1]); }catch(e){}
+    if(hidden) return json(404, { ok: false, error: '内容不存在' });
+    if(reportBy.indexOf(uid) >= 0) return json(200, { ok: true, already: true });
+    reportBy.push(uid);
+    const reports = reportBy.length;
+    const hideNow = reports >= HIDE_THRESHOLD;
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE posts SET reports = " + reports + ", report_by = '" + esc(JSON.stringify(reportBy)) + "'" + (hideNow ? ", hidden = true" : "") + " WHERE id = '" + esc(id) + "'" });
+    return json(200, { ok: true, hiddenNow: !!hideNow });
+  }
+
+  // ---- 取全图（匿名可读） ----
+  if(action === 'photo'){
+    const id = String(body.id || '').slice(0, 40);
+    const idx = Math.max(0, Math.min(MAX_PHOTOS - 1, parseInt(body.i, 10) || 0));
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT photos FROM posts WHERE id = '" + esc(id) + "' AND hidden = false" });
+    if(!r || !r.Rows || !r.Rows.length) return json(404, { ok: false, error: '内容不存在' });
+    let photos = [];
+    try{ photos = JSON.parse(JSON.parse(r.Rows[0])[0]) || []; }catch(e){}
+    const ph = photos[idx];
+    const url = ph && typeof ph === 'object' ? ph.f : ph;
+    return json(200, { ok: true, url: url || null });
+  }
+
+  return json(400, { ok: false, error: '未知操作' });
+}

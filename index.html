@@ -165,19 +165,36 @@
         <div class="today-list" id="upcomingList"></div>
       </section>
 
-      <!-- 我的页：用户卡片 + 个人信息 + 设置入口按钮 -->
+      <!-- 我的页：与小程序版 me 页一致的布局（账号卡 + 未框起的资料行 + 菜单卡） -->
       <section class="page" id="page-profile">
-        <div class="subhead"><h3>我的</h3><small>个人信息与本机设置</small></div>
+        <div class="subhead"><h3>我的</h3><small>账号、发布与提醒设置都在这里</small></div>
         <div class="detail-wrap">
-          <!-- 用户卡片（profile.js 渲染） -->
-          <div class="detail-card" id="userCard"><small class="mini">正在加载…</small></div>
+          <!-- 账号卡：未登录 hero / 已登录展示与编辑态（profile.js 渲染） -->
+          <div id="meCard"><small class="mini">正在加载…</small></div>
 
-          <!-- 个人信息卡（profile.js 渲染：邮箱 / 性别 / 出生年月） -->
-          <h4 style="margin:10px 2px 0">个人信息</h4>
-          <div class="detail-card" id="infoCard" style="margin-top:6px"><small class="mini">正在加载…</small></div>
+          <!-- 资料行：邮箱 / 性别 / 出生年月（不框成卡片，profile.js 渲染） -->
+          <div id="meInfo"></div>
 
-          <!-- 设置入口按钮（点开为设置弹层） -->
-          <button class="settings-entry" onclick="openSettings()">⚙️ 设置<span class="settings-arrow">›</span></button>
+          <!-- 菜单卡：我的发布 / 设置 / 退出（profile.js 渲染） -->
+          <div id="meMenu"></div>
+        </div>
+      </section>
+
+      <!-- 分享页：大家的推荐 / 我的发布 双分段 + 悬浮发布按钮 -->
+      <section class="page" id="page-share">
+        <div class="subhead"><h3>分享</h3><small>把好店与好风景推荐给同好</small></div>
+        <div class="detail-wrap">
+          <div class="seg-row" id="shareSegRow">
+            <button class="seg seg-on" id="segFeed" onclick="switchShareTab('feed')">大家的推荐</button>
+            <button class="seg" id="segMine" onclick="switchShareTab('mine')">我的发布</button>
+          </div>
+          <div id="shareEmpty" style="display:none">
+            <div class="share-empty"><span class="share-empty-emoji" id="shareEmptyEmoji">🌱</span><span class="share-empty-text" id="shareEmptyText">还没有人分享，来当第一个</span><button class="primary share-cta" onclick="openPublish()">＋ 发布推荐</button></div>
+          </div>
+          <div id="shareList" class="post-list"></div>
+          <div class="share-loading" id="shareLoading" style="display:none">加载中…</div>
+          <div class="share-loading" id="shareEnd" style="display:none">— 到底啦 —</div>
+          <button class="share-fab" onclick="openPublish()" title="发布推荐">＋</button>
         </div>
       </section>
     </main>
@@ -207,6 +224,7 @@
       <button class="tab active" data-target="page-home" onclick="showPage('page-home',this)"><i>⌂</i>今天</button>
       <button class="tab" data-target="page-upcoming" onclick="showPage('page-upcoming',this)"><i>⏳</i>预告</button>
       <button class="tab" data-target="page-calendar" onclick="showPage('page-calendar',this)"><i>◫</i>日历</button>
+      <button class="tab" data-target="page-share" onclick="showPage('page-share',this)"><i>✦</i>分享</button>
       <button class="tab" data-target="page-profile" onclick="showPage('page-profile',this)"><i>👤</i>我的</button>
     </nav>
   </div>
@@ -427,6 +445,45 @@
     </div>
   </div>
 
+  <!-- 发布推荐弹层（与小程序 publish 页一致） -->
+  <div class="remind-fullscreen" id="publishOverlay" style="display:none">
+    <div class="publish-shell">
+      <div class="subhead"><h3>发布推荐</h3><small>你的推荐会展示给所有使用绸缪的朋友</small><button class="pub-close" onclick="closePublish()">✕</button></div>
+
+      <div class="detail-card p-block">
+        <div class="p-label">发布身份</div>
+        <div class="id-row" id="pubIdRow"></div>
+      </div>
+
+      <div class="detail-card p-block">
+        <div class="p-label">照片<text class="p-optional">（最多 3 张，第一张为封面）</text></div>
+        <div class="photo-grid" id="photoGrid"></div>
+        <input type="file" id="postPhotoFile" accept="image/*" style="display:none" onchange="onPostPhotoPicked(event)" />
+      </div>
+
+      <div class="detail-card p-block">
+        <div class="p-label">类型</div>
+        <div class="type-row" id="typeRow">
+          <button type="button" class="type-chip on" data-t="餐厅" onclick="setPostType('餐厅')">餐厅</button>
+          <button type="button" class="type-chip" data-t="景点" onclick="setPostType('景点')">景点</button>
+          <button type="button" class="type-chip" data-t="其他" onclick="setPostType('其他')">其他</button>
+        </div>
+        <div class="p-label mt">名称</div>
+        <input class="p-input" id="postNameInput" placeholder="比如：巷口的抄手店" maxlength="30" />
+        <div class="p-label mt">推荐理由<text class="p-optional">（选填）</text></div>
+        <textarea class="p-textarea" id="postDescInput" placeholder="说说好在哪：味道、位置、性价比……" maxlength="500"></textarea>
+      </div>
+
+      <button class="primary publish-btn" id="publishBtn" onclick="doPublish()">发布</button>
+      <div class="publish-tip">请文明发布：分享真实体验，尊重他人</div>
+    </div>
+  </div>
+
+  <!-- 图片预览弹层 -->
+  <div class="img-preview" id="imgPreview" style="display:none" onclick="closeImgPreview()">
+    <img id="imgPreviewSrc" alt="预览" />
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <script src="app/storage.js"></script>
@@ -437,6 +494,7 @@
   <script src="app/editor.js"></script>
   <script src="app/reminder.js"></script>
   <script src="app/profile.js"></script>
+  <script src="app/share.js"></script>
   <script src="app/settings.js"></script>
   <script src="app/hero.js"></script>
   <script src="app/genie.js"></script>
