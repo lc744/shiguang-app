@@ -1,182 +1,258 @@
-// 绸缪 · 腾讯云开发(TCB)云接入层
-// 云可用 → 真实账号体系（邮箱+密码注册，验证邮件，资料/头像上云跨设备同步）
-// 云不可用/未配置 → 自动回退本机演示模式（profile.js 原有行为），不破坏任何现有功能
+// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关 + profileApi 云函数）
+// - 注册：邮箱+密码 → 发送验证码到邮箱 → 提交验证码完成注册（自动登录）
+// - 登录：邮箱+密码 → token 会话（本地持久化，自动续期）
+// - 资料：经 profileApi 云函数（服务端验 token，管理员读写 users 集合）
+// - 未配置/网络不可达时自动降级本机演示模式
 (function(){
   'use strict';
+
   const CLOUD_ENV = 'gerenceshi-d0gguq5u39b4b86b2';
   const CLOUD_REGION = 'ap-shanghai';
-  const CLOUD_SDK_URL = 'app/vendor/cloudbase.full.js';
-  const USERS_COL = 'users';
-  const MODE_KEY = 'shiguang_cloud_mode';   // 'off' = 强制本机模式（设置里可切回）
+  const AUTH_BASE = 'https://' + CLOUD_ENV + '.api.tcloudbasegateway.com/auth/v1';
+  const PROFILE_URL = 'https://' + CLOUD_ENV + '-1479056464.tcloudbaseapp.com/profileApi';
+  const SESSION_KEY = 'shiguang_cloud_session';
+  const MODE_KEY = 'shiguang_cloud_mode';
 
-  let __app = null, __auth = null, __db = null;
-  let __active = false;          // 云模式是否真正可用（SDK 加载 + init 成功）
-  let __readyResolve = null;
-  const __ready = new Promise(r => { __readyResolve = r; });
+  let __active = false;
+  let __session = null;      // { access, refresh, expiresAt, sub, email }
+  let __probeDone = false;
 
   function enabled(){ try{ return localStorage.getItem(MODE_KEY) !== 'off'; }catch(e){ return true; } }
   function setEnabled(v){ try{ localStorage.setItem(MODE_KEY, v ? 'on' : 'off'); }catch(e){} }
 
-  function loadScript(src){
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src; s.onload = () => resolve(); s.onerror = () => reject(new Error('SDK 加载失败'));
-      document.head.appendChild(s);
-    });
-  }
-
-  // 把 TCB 错误翻译成人话
   function friendly(e){
-    const code = String((e && e.code) || '');
-    const msg = String((e && e.message) || e || '');
-    if(/EMAIL_EXISTS|ALREADY_EXIST/i.test(code + msg)) return '该邮箱已注册，请直接登录';
-    if(/USER_NOT_FOUND|NOT_FOUND/i.test(code + msg)) return '该邮箱尚未注册';
-    if(/PASSWORD_MISMATCH|INVALID_PASSWORD|WRONG/i.test(code + msg)) return '密码不正确';
-    if(/UNAUTHORIZED|DOMAIN|FORBIDDEN/i.test(code + msg)) return '云服务未就绪（域名待配置）';
-    if(/PARAM_INVALID|INVALID_PARAM/i.test(code + msg)) return '输入格式不正确';
-    if(/网络|network|timeout|fetch/i.test(msg)) return '网络异常，请稍后再试';
-    return msg.slice(0, 60) || '操作失败，请稍后再试';
+    const msg = String((e && e.error_description) || e && e.message || e || '');
+    if(/INVALID_USERNAME_OR_PASSWORD|用户名或密码/.test(msg)) return '邮箱或密码不正确';
+    if(/USER_ALREADY_EXIST|already exist|已存在/i.test(msg)) return '该邮箱已注册，请直接登录';
+    if(/INVALID_VERIFICATION_CODE|invalid_verification_code|验证码/.test(msg)) return '验证码不正确或已过期';
+    if(/USER_NOT_FOUND|不存在/.test(msg)) return '该邮箱尚未注册，请先注册';
+    if(/EMAIL_NOT_VERIFIED|not verified/i.test(msg)) return '邮箱尚未验证';
+    if(/TOO_MANY|rate limit|EXHAUSTED/i.test(msg)) return '操作过于频繁，请稍后再试';
+    if(/WEAK_PASSWORD|密码/.test(msg)) return '密码需至少 8 位，含字母和数字';
+    if(/network|Failed to fetch|ERR_/i.test(msg)) return '网络不可达，云服务未就绪';
+    return msg.slice(0, 90) || '操作失败，请稍后再试';
   }
 
-  async function init(){
-    if(!enabled()) { __readyResolve(false); return false; }
+  function authHeaders(extra){
+    const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+    if(__session && __session.access) h['Authorization'] = 'Bearer ' + __session.access;
+    return h;
+  }
+
+  async function authFetch(path, opts){
+    opts = opts || {};
+    const url = AUTH_BASE + path + '?client_id=' + CLOUD_ENV;
+    const resp = await fetch(url, {
+      method: opts.method || 'POST',
+      headers: authHeaders(opts.headers),
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    });
+    let j = null;
+    try{ j = await resp.json(); }catch(e){ j = {}; }
+    if(!resp.ok){
+      const err = new Error(j.error_description || j.error || ('HTTP ' + resp.status));
+      err.payload = j;
+      throw err;
+    }
+    return j;
+  }
+
+  // ---------- 会话持久化 ----------
+  function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(__session)); }catch(e){} }
+  function clearSession(){
+    __session = null;
+    try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+  }
+  function loadStoredSession(){
     try{
-      if(!window.cloudbase) await loadScript(CLOUD_SDK_URL);
-      if(!window.cloudbase) throw new Error('SDK 加载失败');
-      __app = cloudbase.init({ env: CLOUD_ENV, region: CLOUD_REGION });
-      __auth = __app.auth({ persistence: 'local' });
-      __db = __app.database();
-      // 管道自愈探测：SDK 能加载 ≠ 云端接受本站请求（需套餐支持 + 安全域名已配置）。
-      // 用一次哑凭登录试探：域名/套餐问题会报 UNAUTHORIZED 类错误；管道已通则报"用户不存在/密码错误"。
-      // 结果缓存到 sessionStorage（同一浏览器会话只探一次）。
-      let ok = false;
-      try{ ok = sessionStorage.getItem('shiguang_cloud_probe') === '1'; }catch(e){}
-      if(!ok){
-        // 已有真实会话（本地持久化登录）→ 不做哑凭试探，避免顶掉用户会话
-        try{
-          let u = null;
-          if(typeof __auth.getLoginState === 'function'){
-            const s = await __auth.getLoginState();
-            u = s && s.user ? s.user : ((s && (s.uid || s.email)) ? s : null);
-          } else if(typeof __auth.getUser === 'function'){
-            const r = await __auth.getUser();
-            u = (r && r.user) ? r.user : null;
-          }
-          ok = !!(u && (u.uid || u.email));
-        }catch(e){ ok = false; }
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if(s && s.access && s.refresh) return s;
+    }catch(e){}
+    return null;
+  }
+
+  async function refreshSession(){
+    if(!__session || !__session.refresh) return false;
+    try{
+      const j = await authFetch('/token', { body: { grant_type: 'refresh_token', refresh_token: __session.refresh } });
+      if(j.access_token){
+        __session.access = j.access_token;
+        __session.refresh = j.refresh_token || __session.refresh;
+        __session.expiresAt = Date.now() + ((j.expires_in || 3600) * 1000) - 60000;
+        saveSession();
+        return true;
       }
-      if(!ok){
-        try{
-          await signInEmail(__auth, 'probe@shiguang.invalid', 'shiguang-probe-000');
-          ok = true;
-        }catch(e){
-          const sig = String((e && e.code) || '') + String((e && e.message) || '');
-          ok = /USER_NOT_FOUND|PASSWORD_MISMATCH|INVALID_PASSWORD|ACCOUNT_NOT_EXIST|EMAIL_NOT_VERIF|GetAccountUser|not exist|不存在|密码/i.test(sig);
-        }
-        try{ sessionStorage.setItem('shiguang_cloud_probe', ok ? '1' : '0'); }catch(e){}
-      }
-      __active = ok;
-      __readyResolve(ok);
-      return ok;
-    }catch(e){
-      console.warn('[cloud] 初始化失败，使用本机模式:', e && e.message);
-      __active = false;
-      __readyResolve(false);
       return false;
+    }catch(e){ return false; }
+  }
+
+  async function ensureFreshToken(){
+    if(!__session) return false;
+    if(__session.expiresAt && Date.now() < __session.expiresAt) return true;
+    return refreshSession();
+  }
+
+  // ---------- 云函数（资料） ----------
+  async function profileApi(action, profile){
+    if(!__session) throw new Error('未登录');
+    await ensureFreshToken();
+    const resp = await fetch(PROFILE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + __session.access },
+      body: JSON.stringify(profile ? { action, profile } : { action }),
+    });
+    const j = await resp.json().catch(() => ({}));
+    if(!resp.ok || j.error) throw new Error(friendly({ message: j.error || ('HTTP ' + resp.status) }));
+    return j;
+  }
+
+  // ---------- 对外接口 ----------
+  async function currentUser(){
+    if(!__active || !__session) return null;
+    try{
+      await ensureFreshToken();
+      const me = await authFetch('/user/me', { method: 'GET' });
+      if(me && me.sub){
+        __session.sub = me.sub;
+        __session.email = me.email || __session.email;
+        saveSession();
+        return { uid: me.sub, email: me.email || __session.email };
+      }
+      return null;
+    }catch(e){
+      // 尝试刷新一次
+      if(await refreshSession()){
+        try{
+          const me = await authFetch('/user/me', { method: 'GET' });
+          if(me && me.sub) return { uid: me.sub, email: me.email || __session.email };
+        }catch(e2){}
+      }
+      clearSession();
+      return null;
     }
   }
 
-  // SDK 形状适配：v1 位置参数 vs v2/v3 对象参数
-  function signUpEmail(auth, email, password){
-    if(typeof auth.signUpWithEmailAndPassword === 'function') return auth.signUpWithEmailAndPassword(email, password);
-    return auth.signUp({ email, password });
-  }
-  function signInEmail(auth, email, password){
-    if(typeof auth.signInWithEmailAndPassword === 'function') return auth.signInWithEmailAndPassword(email, password);
-    return auth.signIn({ email, password });
-  }
-
-  async function currentUser(){
-    if(!__active) return null;
-    try{
-      if(typeof __auth.getUser === 'function'){
-        const r = await __auth.getUser();
-        return (r && r.user) ? r.user : null;
-      }
-      const s = await __auth.getLoginState();   // v1 形状
-      if(!s) return null;
-      if(s.user && (s.user.uid || s.user.email)) return s.user;
-      return (s.uid || s.email) ? s : null;
-    }catch(e){ return null; }
-  }
-
-  async function register(email, password){
+  // 第一步：发送验证码（注册模式）
+  async function sendRegisterCode(email){
     if(!__active) throw new Error('云服务不可用');
-    try{ await signUpEmail(__auth, email, password); }
-    catch(e){ throw new Error(friendly(e)); }
-    // 注册成功后验证邮件由云端自动发出
-    return { ok: true, needVerify: true };
+    try{
+      await authFetch('/verification', { body: { email, usage: 'email', target: 'ANY' } });
+      return { ok: true };
+    }catch(e){ throw new Error(friendly(e)); }
+  }
+
+  // 第二步：凭验证码完成注册（成功即返回会话）
+  async function completeRegister(email, password, code){
+    if(!__active) throw new Error('云服务不可用');
+    try{
+      const j = await authFetch('/signup', { body: { email, password, code } });
+      if(j && j.access_token){
+        __session = {
+          access: j.access_token, refresh: j.refresh_token,
+          expiresAt: Date.now() + ((j.expires_in || 3600) * 1000) - 60000,
+          sub: j.sub || '', email,
+        };
+        saveSession();
+      }
+      return { ok: true, signedIn: !!(j && j.access_token) };
+    }catch(e){ throw new Error(friendly(e)); }
   }
 
   async function login(email, password){
     if(!__active) throw new Error('云服务不可用');
     try{
-      await signInEmail(__auth, email, password);
+      const j = await authFetch('/signin', { body: { username: email, password } });
+      __session = {
+        access: j.access_token, refresh: j.refresh_token,
+        expiresAt: Date.now() + ((j.expires_in || 3600) * 1000) - 60000,
+        sub: j.sub || '', email,
+      };
+      saveSession();
       const u = await currentUser();
-      if(!u || !(u.uid || u.email)) throw new Error('登录失败');
-      const uid = u.uid || u.email;
-      const profile = await loadProfile(uid);
-      return { uid, email: u.email || email, profile: profile || {} };
+      if(!u) throw new Error('登录失败');
+      const profile = await loadProfile(u.uid);
+      return { uid: u.uid, email: u.email, profile: profile || {} };
     }catch(e){
-      if(e && e.__friendly) throw e;
+      if(e.__friendly) throw e;
       throw Object.assign(new Error(friendly(e)), { __friendly: true });
     }
   }
 
-  async function logout(){
-    if(!__active) return;
-    try{ await __auth.signOut(); }catch(e){}
-  }
-
   async function loadProfile(uid){
-    if(!__active) return null;
     try{
-      const r = await __db.collection(USERS_COL).doc(uid).get();
-      const doc = r && r.data ? (Array.isArray(r.data) ? r.data[0] : r.data) : null;
-      return doc || null;
-    }catch(e){ return null; }   // 无资料/集合未建 → 当作空资料
+      const r = await profileApi('get');
+      return r.profile || {};
+    }catch(e){ return null; }
   }
 
   async function saveProfile(uid, patch){
-    if(!__active) return false;
     try{
-      const col = __db.collection(USERS_COL);
-      const cur = await col.doc(uid).get();
-      const exists = cur && cur.data && (Array.isArray(cur.data) ? cur.data.length > 0 : true);
-      const payload = Object.assign({}, patch, { uid, updatedAt: Date.now() });
-      if(exists) await col.doc(uid).update(payload);
-      else await col.doc(uid).set(Object.assign({ createdAt: Date.now() }, payload));
+      await profileApi('save', patch || {});
       return true;
     }catch(e){
-      console.warn('[cloud] 资料保存失败:', e && e.message);
-      throw new Error(friendly(e));
+      console.warn('[cloud] 资料保存失败:', e.message);
+      return false;
     }
   }
 
-  window.CloudAuth = {
-    ready: __ready,
-    active: () => __active && enabled(),
-    init, register, login, logout, currentUser, loadProfile, saveProfile,
-    setEnabled, enabled,
-    ENV: CLOUD_ENV,
-  };
-  // 设置面板的「云同步 / 仅本机」开关（切换后重载，保证状态干净）
-  window.setCloudMode = v => { setEnabled(v); location.reload(); };
-  function syncChipUI(){
-    const box = document.getElementById('cloudChips');
-    if(!box) return;
-    box.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', (c.dataset.cloud === 'on') === enabled()));
+  async function logout(){
+    try{ if(__session) await authFetch('/user/signout', { body: {} }); }catch(e){}
+    clearSession();
+    return true;
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncChipUI);
-  else setTimeout(syncChipUI, 0);
+
+  // ---------- 管道探测 ----------
+  async function probe(){
+    // 已有会话 → 直接视为可用
+    const stored = loadStoredSession();
+    if(stored){
+      __session = stored;
+      return true;
+    }
+    // 轻量探测：非法格式邮箱 → 必然业务错误(4xx)，绝不真正发信；网络/CORS 故障则抛 TypeError
+    try{
+      const resp = await fetch(AUTH_BASE + '/verification?client_id=' + CLOUD_ENV, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'probe', usage: 'email' }),
+      });
+      // 管道通：任意业务响应（4xx 业务码也算通）
+      return resp.status < 500 && resp.status !== 0;
+    }catch(e){
+      return false;
+    }
+  }
+
+  async function init(){
+    if(!enabled()){ __active = false; __probeDone = true; return false; }
+    try{
+      __active = await probe();
+    }catch(e){ __active = false; }
+    __probeDone = true;
+    return __active;
+  }
+
+  window.CloudAuth = {
+    ENV: CLOUD_ENV,
+    init, probe,
+    get ready(){ return __probeDone; },
+    active(){ return __active && enabled(); },
+    setEnabled,
+    enabled,
+    sendRegisterCode,
+    completeRegister,
+    login,
+    logout,
+    currentUser,
+    loadProfile,
+    saveProfile,
+    // 兼容旧接口（注册改为两步式后由 profile.js 直接调用上面两个）
+    register: sendRegisterCode,
+  };
+
+  // 云同步开关（设置弹层的 cloudChips 使用）
+  window.setCloudMode = function(v){
+    setEnabled(!!v);
+    location.reload();
+  };
 })();

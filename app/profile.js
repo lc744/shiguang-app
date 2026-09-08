@@ -254,6 +254,12 @@ let codeCountdown = 0, codeTimer = null;
 
 function openLogin(){
   showLoginHome();
+  const hint = document.getElementById('loginModeHint');
+  if(hint){
+    hint.textContent = (window.CloudAuth && CloudAuth.active())
+      ? '云端账号模式：真实邮箱注册，验证码确认，资料与头像云同步'
+      : '演示模式：账号保存在本机；云服务就绪后自动切换云端账号';
+  }
   document.getElementById('loginOverlay').style.display = 'flex';
 }
 function closeLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
@@ -362,13 +368,24 @@ async function hashPassword(pw){
   }catch(e){}
   return 'plain:' + pw;
 }
+let emailCodeStage = false;
+let emailRegEmail = '', emailRegPass = '';
 function setEmailMode(mode){
   emailMode = mode;
+  emailCodeStage = false;
   const chips = document.querySelectorAll('#emailModeChips .chip');
   chips.forEach(c => c.classList.toggle('selected', c.dataset.mode === mode));
   document.getElementById('loginPass2Field').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('loginCodeField').style.display = 'none';
   document.getElementById('emailSubmitBtn').textContent = mode === 'register' ? '注册并登录' : '登录';
   document.getElementById('errEmail').style.display = 'none';
+}
+function setEmailCodeStage(on){
+  emailCodeStage = on;
+  document.getElementById('loginPass2Field').style.display = (!on && emailMode === 'register') ? 'block' : 'none';
+  document.getElementById('loginPassField') && (document.getElementById('loginPassField').style.display = on ? 'none' : 'block');
+  document.getElementById('loginCodeField').style.display = on ? 'block' : 'none';
+  document.getElementById('emailSubmitBtn').textContent = on ? '完成注册' : (emailMode === 'register' ? '注册并登录' : '登录');
 }
 function showEmailError(msg){
   const err = document.getElementById('errEmail');
@@ -381,19 +398,42 @@ async function doEmailLogin(){
   const pass2 = document.getElementById('loginPass2Input').value || '';
   if(!EMAIL_RE.test(email)){ showEmailError('请输入有效的邮箱地址'); return; }
   if(pass.length < 6){ showEmailError('密码至少 6 位'); return; }
-  if(emailMode === 'register' && pass !== pass2){ showEmailError('两次输入的密码不一致'); return; }
-  // ---- 云端模式（真实注册/登录，验证邮件） ----
+  if(emailMode === 'register' && !emailCodeStage && pass !== pass2){ showEmailError('两次输入的密码不一致'); return; }
+  // ---- 云端模式（真实注册/登录：验证码两步式） ----
   if(window.CloudAuth && CloudAuth.active()){
+    const btn = document.getElementById('emailSubmitBtn');
     try{
       if(emailMode === 'register'){
-        await CloudAuth.register(email, pass);
-        setEmailMode('login');
-        document.getElementById('loginEmailInput').value = email;
-        document.getElementById('loginPassInput').value = '';
-        document.getElementById('loginPass2Input').value = '';
-        showEmailError('验证邮件已发送到 ' + email + '：请到邮箱点击链接完成验证，再回来登录');
-        toast('验证邮件已发送，请查收');
+        if(!emailCodeStage){
+          btn.disabled = true;
+          await CloudAuth.sendRegisterCode(email);
+          emailRegEmail = email; emailRegPass = pass;
+          setEmailCodeStage(true);
+          showEmailError('');
+          document.getElementById('errEmail').style.display = 'none';
+          toast('验证码已发送到邮箱，请查收（注意垃圾箱）');
+        }else{
+          const code = (document.getElementById('loginEmailCodeInput').value || '').trim();
+          if(!code){ showEmailError('请输入邮件中的验证码'); return; }
+          btn.disabled = true;
+          const r0 = await CloudAuth.completeRegister(email, pass, code);
+          if(!r0.signedIn){
+            await CloudAuth.login(email, pass);
+          }
+          const cur = await CloudAuth.currentUser();
+          const p = (cur && await CloudAuth.loadProfile(cur.uid)) || {};
+          setCurrentUser({
+            id: cur.uid, type: 'email', email: cur.email,
+            nickname: p.nickname || cur.email.split('@')[0].slice(0, 12),
+            gender: p.gender || '', birth: p.birth || '',
+            avatar: p.avatar || null, createdAt: p.createdAt || new Date().toISOString(),
+            cloud: true,
+          });
+          toast('注册成功，已登录');
+          closeLogin();
+        }
       }else{
+        btn.disabled = true;
         const r = await CloudAuth.login(email, pass);
         const p = r.profile || {};
         setCurrentUser({
@@ -406,6 +446,7 @@ async function doEmailLogin(){
         closeLogin();
       }
     }catch(e){ showEmailError(e.message); }
+    finally{ btn.disabled = false; }
     return;
   }
   // ---- 本机演示模式（云服务不可用时自动降级） ----

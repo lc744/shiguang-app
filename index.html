@@ -255,7 +255,7 @@
         <button class="primary" style="width:100%;padding:12px" onclick="showEmailLogin()">📧 邮箱注册 / 登录</button>
         <button class="secondary auth-disabled" style="width:100%;margin-top:10px" disabled title="短信签名需 ICP 备案，资质具备后开放">📱 手机号登录<small class="auth-disabled-note">需短信备案 · 暂未开放</small></button>
         <button class="wechat-btn auth-disabled" style="width:100%;margin-top:10px" disabled title="网页授权需微信开放平台备案，资质具备后开放">💬 微信登录<small class="auth-disabled-note">需开放平台备案 · 暂未开放</small></button>
-        <p class="mini" style="margin:12px 0 0;text-align:center">演示模式：账号保存在本机；接入后端后可升级为云端账号</p>
+        <p class="mini" id="loginModeHint" style="margin:12px 0 0;text-align:center">演示模式：账号保存在本机；接入后端后可升级为云端账号</p>
       </div>
       <div id="loginEmail" style="display:none">
         <h2 style="font-size:17px;margin:0 0 12px;text-align:center">邮箱注册 / 登录</h2>
@@ -267,13 +267,17 @@
           <label>邮箱</label>
           <input id="loginEmailInput" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" />
         </div>
-        <div class="field" style="text-align:left;margin-top:10px">
+        <div class="field" id="loginPassField" style="text-align:left;margin-top:10px">
           <label>密码</label>
           <input id="loginPassInput" type="password" maxlength="64" autocomplete="current-password" placeholder="至少 6 位" onkeydown="onEmailPassKeydown(event)" />
         </div>
         <div class="field" id="loginPass2Field" style="text-align:left;margin-top:10px;display:none">
           <label>确认密码</label>
           <input id="loginPass2Input" type="password" maxlength="64" autocomplete="new-password" placeholder="再输入一次密码" onkeydown="onEmailPassKeydown(event)" />
+        </div>
+        <div class="field" id="loginCodeField" style="text-align:left;margin-top:10px;display:none">
+          <label>邮箱验证码</label>
+          <input id="loginEmailCodeInput" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="请输入邮件中的验证码" onkeydown="onEmailPassKeydown(event)" />
         </div>
         <div class="err" id="errEmail" style="display:none;margin:10px 0 0"></div>
         <div class="action-row" style="margin-top:16px">

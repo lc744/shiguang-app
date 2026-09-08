@@ -1,0 +1,9 @@
+{
+  "name": "profileApi",
+  "version": "1.0.0",
+  "description": "绸缪-用户资料API(验证token+管理users集合)",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
