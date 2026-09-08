@@ -9,6 +9,7 @@
   const CLOUD_ENV = 'gerenceshi-d0gguq5u39b4b86b2';
   const CLOUD_REGION = 'ap-shanghai';
   const AUTH_BASE = 'https://' + CLOUD_ENV + '.api.tcloudbasegateway.com/auth/v1';
+  const PROFILE_URL = 'https://' + CLOUD_ENV + '-1479056464.tcloudbaseapp.com/profileApi';
   const SESSION_KEY = 'shiguang_cloud_session';
   const MODE_KEY = 'shiguang_cloud_mode';
 
@@ -92,15 +93,31 @@
     return refreshSession();
   }
 
+  // ---------- 头像：经 profileApi 云函数（函数未部署时静默降级为本机头像） ----------
+  function profileApiAvailable(){ return !!PROFILE_URL; }
+
+  async function profileApiCall(action, profile){
+    if(!__session) throw new Error('未登录');
+    await ensureFreshToken();
+    const resp = await fetch(PROFILE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + __session.access },
+      body: JSON.stringify(profile ? { action, profile } : { action }),
+    });
+    const j = await resp.json().catch(() => ({}));
+    if(!resp.ok || j.error) throw new Error(j.error || ('HTTP ' + resp.status));
+    return j;
+  }
+
   // ---------- 资料：认证系统自带用户档案（无需数据库/函数） ----------
-  // auth 字段: name(昵称) / gender(MALE|FEMALE) / birthdate(YYYY-MM-DD)
+  // auth 字段: name(昵称) / gender(MALE|FEMALE) / birthdate(YYYY-MM-DD)；头像走 profileApi
   function profileFromMe(me){
     if(!me) return null;
     return {
       nickname: me.name || '',
       gender: me.gender ? String(me.gender).toLowerCase() : '',
       birth: me.birthdate ? String(me.birthdate).slice(0, 7) : '',
-      avatar: null, // 头像暂存本机（auth 档案不持久化 avatar_url）
+      avatar: null, // 头像由 loadProfile 从 profileApi 合并（不可用时保持 null）
       email: me.email || '',
     };
   }
@@ -109,7 +126,13 @@
     try{
       await ensureFreshToken();
       const me = await authFetch('/user/me', { method: 'GET' });
-      return profileFromMe(me) || {};
+      const base = profileFromMe(me) || {};
+      // 头像云同步：profileApi 可用则合并；不可用静默跳过
+      try{
+        const r = await profileApiCall('get');
+        if(r && r.profile && typeof r.profile.avatar === 'string') base.avatar = r.profile.avatar;
+      }catch(e2){ /* 函数未部署/未开通数据库 → 本机头像 */ }
+      return base;
     }catch(e){
       console.warn('[cloud] 资料读取失败:', e.message);
       return {};
@@ -125,8 +148,12 @@
       if(p.gender === 'male') body.gender = 'MALE';
       else if(p.gender === 'female') body.gender = 'FEMALE';
       if(typeof p.birth === 'string' && /^\d{4}-\d{2}$/.test(p.birth)) body.birthdate = p.birth + '-01';
-      if(!Object.keys(body).length) return true;
-      await authFetch('/user/profile', { method: 'PATCH', body });
+      if(Object.keys(body).length) await authFetch('/user/profile', { method: 'PATCH', body });
+      // 头像云同步（失败不影响整体保存结果）
+      if(typeof p.avatar === 'string'){
+        try{ await profileApiCall('save', { avatar: p.avatar.slice(0, 400000) }); }
+        catch(e2){ console.warn('[cloud] 头像云同步暂不可用:', e2.message); }
+      }
       return true;
     }catch(e){
       console.warn('[cloud] 资料保存失败:', e.message);
