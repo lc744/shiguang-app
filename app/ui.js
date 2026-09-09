@@ -30,10 +30,37 @@ function showPage(id, btn){
   }
   // 分享页/我的页不显示顶部公共区（hero 卡 + 今日待办/已完成统计）
   document.body.classList.toggle('no-hero', id === 'page-share' || id === 'page-profile');
+  // 分享页分段行吸顶时须停在标题栏下方（否则被 sticky header 遮挡）
+  if(id === 'page-share') fixSegSticky();
   // 进入分享页时触发加载（首次或切回时刷新）
   if(id === 'page-share' && typeof refreshShare === 'function') refreshShare();
   window.scrollTo(0,0);
 }
+function fixSegSticky(){
+  const row = document.querySelector('.seg-row');
+  const hd = document.querySelector('.header');
+  if(!row || !hd) return;
+  const apply = () => { row.style.top = hd.offsetHeight + 'px'; };
+  apply();
+  setTimeout(apply, 400);
+  setTimeout(apply, 1500);
+  // 状态栏高度(--safe-top)等异步注入会导致 header 高度变化 → 跟踪修正
+  if(!fixSegSticky._ro){
+    try{
+      fixSegSticky._ro = new ResizeObserver(apply);
+      fixSegSticky._ro.observe(hd);
+    }catch(e){}
+  }
+}
+window.addEventListener('resize', fixSegSticky);
+// 滚动中随时校正（header 高度可能因 safe-top/字体加载变化）
+window.addEventListener('scroll', () => {
+  const row = document.querySelector('.seg-row');
+  const hd = document.querySelector('.header');
+  if(!row || !hd) return;
+  const h = hd.offsetHeight + 'px';
+  if(row.style.top !== h) row.style.top = h;
+}, { passive: true });
 function goBack(){ showPage(lastPage); }
 
 function periodOf(hhmm){
