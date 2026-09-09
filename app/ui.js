@@ -20,9 +20,9 @@ function showPage(id, btn){
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   const target = btn ? btn : document.querySelector(`.tab[data-target="${id}"]`);
   if(target) target.classList.add('active');
-  // 添加事件页/详情页隐藏右下角 FAB，其他页面显示
+  // 添加事件页/详情页/分享页/我的页隐藏右下角 FAB，其他页面显示
   const fab = document.getElementById('fabAdd');
-  if(fab) fab.classList.toggle('hidden', id === 'page-create' || id === 'page-detail' || id === 'page-share');
+  if(fab) fab.classList.toggle('hidden', id === 'page-create' || id === 'page-detail' || id === 'page-share' || id === 'page-profile');
   // 分享页/我的页不显示顶部公共区（hero 卡 + 今日待办/已完成统计）
   document.body.classList.toggle('no-hero', id === 'page-share' || id === 'page-profile');
   // 进入分享页时触发加载（首次或切回时刷新）
