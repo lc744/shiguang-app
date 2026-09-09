@@ -42,7 +42,7 @@ async function loadShare(reset){
     try{ if(window.CloudAuth) await CloudAuth.init(); }catch(e){}
     if(!(window.CloudAuth && CloudAuth.active())){ renderShareError('云服务不可用，稍后再试'); return; }
   }
-  if(shareTab === 'mine' && !(CloudAuth.currentUser && CloudAuth.currentUser())){ renderShareError('登录后即可查看自己的发布'); return; }
+  if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ renderShareError('登录后即可浏览与发布分享'); return; }
   shareLoading = true;
   const loadingEl = document.getElementById('shareLoading');
   if(loadingEl) loadingEl.style.display = 'block';

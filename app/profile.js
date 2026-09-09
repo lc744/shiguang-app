@@ -322,7 +322,17 @@ function openLogin(){
   }
   document.getElementById('loginOverlay').style.display = 'flex';
 }
-function closeLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+function closeLogin(){
+  document.getElementById('loginOverlay').style.display = 'none';
+  // 登录弹层关闭时若正处在分享页 → 立即加载列表（登录后无缝可见）
+  try{
+    const active = document.querySelector('.page.active');
+    if(active && active.id === 'page-share' && currentUser && typeof loadShare === 'function'){
+      shareLoadedOnce = true;
+      loadShare(true);
+    }
+  }catch(e){}
+}
 function loginPanel(which){
   document.getElementById('loginHome').style.display = which === 'home' ? 'block' : 'none';
   document.getElementById('loginPhone').style.display = which === 'phone' ? 'block' : 'none';
