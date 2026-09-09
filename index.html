@@ -453,7 +453,7 @@
       </div>
 
       <div class="detail-card p-block">
-        <div class="p-label">照片<text class="p-optional">（最多 3 张，第一张为封面）</text></div>
+        <div class="p-label">照片<text class="p-optional">（选填，最多 3 张；不传则按类型配官方美图）</text></div>
         <div class="photo-grid" id="photoGrid"></div>
         <input type="file" id="postPhotoFile" accept="image/*" style="display:none" onchange="onPostPhotoPicked(event)" />
       </div>
@@ -463,10 +463,16 @@
         <div class="type-row" id="typeRow">
           <button type="button" class="type-chip on" data-t="餐厅" onclick="setPostType('餐厅')">餐厅</button>
           <button type="button" class="type-chip" data-t="景点" onclick="setPostType('景点')">景点</button>
-          <button type="button" class="type-chip" data-t="其他" onclick="setPostType('其他')">其他</button>
+          <button type="button" class="type-chip" data-t="娱乐" onclick="setPostType('娱乐')">娱乐</button>
         </div>
-        <div class="p-label mt">名称</div>
+        <div class="p-label mt">名称<text class="p-optional">（选填）</text></div>
         <input class="p-input" id="postNameInput" placeholder="比如：巷口的抄手店" maxlength="30" />
+        <div class="p-label mt">地址<text class="p-req">（必填）</text></div>
+        <div class="addr-row">
+          <text class="addr-icon">📍</text>
+          <input class="p-input addr-input" id="postAddrInput" placeholder="店铺/景点地址，或点右侧定位" maxlength="80" />
+          <button type="button" class="loc-btn" id="locBtn" onclick="usePostLocation()">定位</button>
+        </div>
         <div class="p-label mt">推荐理由<text class="p-optional">（选填）</text></div>
         <textarea class="p-textarea" id="postDescInput" placeholder="说说好在哪：味道、位置、性价比……" maxlength="500"></textarea>
       </div>

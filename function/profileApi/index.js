@@ -114,6 +114,7 @@ exports.main = async (event) => {
     let uid = null;
     if(ANON_ACTIONS.indexOf(action) >= 0 && !token){
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
       return await handlePostAction(action, body, null);
     }
 
@@ -124,6 +125,7 @@ exports.main = async (event) => {
     // 自愈建表
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS profiles (uid TEXT PRIMARY KEY, avatar TEXT, updated_at TIMESTAMPTZ DEFAULT now())" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
 
     // 分享相关动作（uid 已验证）
     const POST_ACTIONS = ['publish', 'feed', 'mine', 'like', 'del', 'report', 'photo'];
@@ -156,18 +158,18 @@ const MAX_PHOTOS = 3;
 function pgBool(v){ return v === true || v === 'true'; }
 
 function rowToPost(row, meUid){
-  // row = [id, uid, nickname, type, name, descr, photos, likes, liked_by, hidden, created_at, avatar]
+  // row = [id, uid, nickname, type, name, addr, descr, photos, likes, liked_by, hidden, created_at, avatar]
   let photos = [];
-  try{ photos = (JSON.parse(row[6]) || []).map(x => (x && typeof x === 'object') ? x.t : x).filter(Boolean); }catch(e){}
+  try{ photos = (JSON.parse(row[7]) || []).map(x => (x && typeof x === 'object') ? x.t : x).filter(Boolean); }catch(e){}
   let likedBy = [];
-  try{ likedBy = JSON.parse(row[8]) || []; }catch(e){}
-  const created = row[10] ? String(row[10]).replace('T', ' ').slice(0, 16) : '';
+  try{ likedBy = JSON.parse(row[9]) || []; }catch(e){}
+  const created = row[11] ? String(row[11]).replace('T', ' ').slice(0, 16) : '';
   return {
-    id: row[0], uid: row[1], nickname: row[2], type: row[3], name: row[4],
-    desc: row[5] || '', photos, likes: row[7] || 0,
+    id: row[0], uid: row[1], nickname: row[2], type: row[3], name: row[4] || '',
+    addr: row[5] || '', desc: row[6] || '', photos, likes: Number(row[8]) || 0,
     selfLiked: meUid ? (likedBy.indexOf(meUid) >= 0) : false,
-    hidden: pgBool(row[9]), createdAt: created,
-    avatar: row[11] || null,
+    hidden: pgBool(row[10]), createdAt: created,
+    avatar: row[12] || null,
   };
 }
 
@@ -176,21 +178,21 @@ async function handlePostAction(action, body, uid){
   if(action === 'publish'){
     const p = body.post || {};
     const name = String(p.name || '').trim().slice(0, 30);
+    const addr = String(p.addr || '').trim().slice(0, 80);
     const desc = String(p.desc || '').trim().slice(0, 500);
-    const type = ['餐厅', '景点', '其他'].indexOf(p.type) >= 0 ? p.type : '其他';
+    const type = ['餐厅', '景点', '娱乐'].indexOf(p.type) >= 0 ? p.type : '娱乐';
     const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
     let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS) : [];
     photos = photos.map(x => (typeof x === 'string') ? { t: x, f: x } : x).filter(x => x && typeof x.t === 'string');
-    if(!name) return json(400, { ok: false, error: '请填写名称' });
-    if(!photos.length) return json(400, { ok: false, error: '至少上传一张照片' });
+    if(!addr) return json(400, { ok: false, error: '请填写地址' });
     for(const ph of photos){
       if(typeof ph.f === 'string') ph.f = ph.f.slice(0, 400000);
       if(typeof ph.t === 'string') ph.t = ph.t.slice(0, 60000);
     }
     const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     await callApi('ExecutePGSql', { EnvId: ENV, Sql:
-      "INSERT INTO posts (id, uid, nickname, type, name, descr, photos, created_at) VALUES ('" +
-      esc(id) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(type) + "', '" + esc(name) + "', '" + esc(desc) + "', '" +
+      "INSERT INTO posts (id, uid, nickname, type, name, addr, descr, photos, created_at) VALUES ('" +
+      esc(id) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(type) + "', '" + esc(name) + "', '" + esc(addr) + "', '" + esc(desc) + "', '" +
       esc(JSON.stringify(photos)) + "', now())" });
     return json(200, { ok: true, id });
   }
@@ -200,7 +202,7 @@ async function handlePostAction(action, body, uid){
     const page = Math.max(0, Math.min(50, parseInt(body.page, 10) || 0));
     const pageSize = 10;
     const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql:
-      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT " + pageSize + " OFFSET " + (page * pageSize) });
+      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.addr, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT " + pageSize + " OFFSET " + (page * pageSize) });
     const list = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(line); }catch(e){ return null; } }).filter(Boolean).map(row => rowToPost(row, uid));
     return json(200, { ok: true, list, page, hasMore: list.length === pageSize });
   }
@@ -208,7 +210,7 @@ async function handlePostAction(action, body, uid){
   // ---- 我的发布 ----
   if(action === 'mine'){
     const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql:
-      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.uid = '" + esc(uid) + "' AND p.hidden = false ORDER BY p.created_at DESC LIMIT 50" });
+      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.addr, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.uid = '" + esc(uid) + "' AND p.hidden = false ORDER BY p.created_at DESC LIMIT 50" });
     const list = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(line); }catch(e){ return null; } }).filter(Boolean).map(row => rowToPost(row, uid));
     return json(200, { ok: true, list });
   }

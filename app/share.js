@@ -1,7 +1,7 @@
 // 绸缪 · 分享页（与小程序 share/publish 页一致）
 // 大家的推荐 / 我的发布 双分段；发布（照片≤3、类型、名称、推荐理由）；点赞、删除、举报
 // 云端：profileApi 云函数（PG 存储）；未登录时引导登录，云不可用时提示
-const SHARE_TYPES = ['餐厅', '景点', '其他'];
+const SHARE_TYPES = ['餐厅', '景点', '娱乐'];
 let shareTab = 'feed';
 let shareList = [];
 let sharePage = 0;
@@ -10,6 +10,7 @@ let shareLoading = false;
 let shareLoadedOnce = false;
 let pubPhotos = [];      // [{t: 缩略图, f: 全图}]
 let pubType = '餐厅';
+let defaultPhotoCache = {}; // 类型 → 官方默认配图 {t, f}
 
 /* ---------------- 数据接口 ---------------- */
 function shareApi(action, data){
@@ -98,7 +99,8 @@ function renderShareList(errMsg){
       <div class="post-card card">
         ${photoHtml}
         <div class="post-body">
-          <div class="post-head"><text class="post-type">${esc(p.type || '其他')}</text><text class="post-name">${esc(p.name || '')}</text></div>
+          <div class="post-head"><text class="post-type">${esc(p.type || '娱乐')}</text>${p.name ? `<text class="post-name">${esc(p.name)}</text>` : ''}</div>
+          ${p.addr ? `<text class="post-addr">📍 ${esc(p.addr)}</text>` : ''}
           ${p.desc ? `<text class="post-desc">${esc(p.desc)}</text>` : ''}
           <div class="post-meta">
             ${p.avatar ? `<img class="post-avatar" src="${esc(p.avatar)}" />` : '<text class="post-avatar post-avatar-ph">👤</text>'}
@@ -183,6 +185,8 @@ function openPublish(){
   pubPhotos = []; pubType = '餐厅';
   document.querySelectorAll('#typeRow .type-chip').forEach(c => c.classList.toggle('on', c.dataset.t === '餐厅'));
   document.getElementById('postNameInput').value = '';
+  const addrInput = document.getElementById('postAddrInput');
+  if(addrInput) addrInput.value = '';
   document.getElementById('postDescInput').value = '';
   renderPubIdentity();
   renderPhotoGrid();
@@ -261,19 +265,118 @@ async function onPostPhotoPicked(ev){
     renderPhotoGrid();
   }catch(e){ toast('图片处理失败，请换一张试试'); }
 }
+/* ---------------- 官方默认配图（不选照片时按类型自动配一张） ---------------- */
+function drawDefaultPhoto(kind, size){
+  // 4:3 场景插画；kind ∈ 景点/美食/娱乐
+  const w = size, h = Math.round(size * 0.75);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  const R = w / 1080;
+  let g;
+  if(kind === '景点'){
+    g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#8ed8f8'); g.addColorStop(.6, '#cdeffd'); g.addColorStop(1, '#e8f8e0');
+  }else if(kind === '美食'){
+    g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#ffe29a'); g.addColorStop(1, '#ff9a62');
+  }else{
+    g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#f6a2ff'); g.addColorStop(1, '#7c5cff');
+  }
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.textAlign = 'center';
+  if(kind === '景点'){
+    x.fillStyle = 'rgba(255,214,102,.95)';
+    x.beginPath(); x.arc(w * .78, h * .22, 70 * R, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#7fb8a4';
+    x.beginPath(); x.moveTo(0, h); x.lineTo(w * .28, h * .42); x.lineTo(w * .55, h); x.closePath(); x.fill();
+    x.fillStyle = '#5f9e8c';
+    x.beginPath(); x.moveTo(w * .38, h); x.lineTo(w * .68, h * .3); x.lineTo(w, h); x.closePath(); x.fill();
+    x.font = Math.round(120 * R) + 'px serif'; x.fillText('🏞️', w * .5, h * .5);
+  }else if(kind === '美食'){
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath(); x.ellipse(w * .5, h * .56, 320 * R, 200 * R, 0, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = 'rgba(255,138,76,.5)'; x.lineWidth = 10 * R;
+    x.beginPath(); x.ellipse(w * .5, h * .56, 320 * R, 200 * R, 0, 0, Math.PI * 2); x.stroke();
+    x.font = Math.round(140 * R) + 'px serif'; x.fillText('🍜', w * .5, h * .62);
+  }else{
+    const colors = ['#ffd166', '#ef476f', '#06d6a0', '#118ab2', '#ffffff'];
+    for(let i = 0; i < 26; i++){
+      x.fillStyle = colors[i % colors.length];
+      x.globalAlpha = .75;
+      x.beginPath(); x.arc(Math.random() * w, Math.random() * h, (8 + Math.random() * 22) * R, 0, Math.PI * 2); x.fill();
+    }
+    x.globalAlpha = 1;
+    x.font = Math.round(140 * R) + 'px serif'; x.fillText('🎤', w * .5, h * .56);
+  }
+  x.font = 'bold ' + Math.round(56 * R) + 'px sans-serif';
+  x.fillStyle = 'rgba(0,0,0,.5)';
+  x.fillText(kind === '景点' ? '风景这边独好' : kind === '美食' ? '尝一口就知道' : '一起玩得开心', w * .5, h * .9);
+  return c;
+}
+async function ensureDefaultPhoto(type){
+  const kind = type === '景点' ? '景点' : type === '餐厅' ? '美食' : '娱乐';
+  if(defaultPhotoCache[kind]) return defaultPhotoCache[kind];
+  const full = drawDefaultPhoto(kind, 1080).toDataURL('image/jpeg', 0.72);
+  const thumb = drawDefaultPhoto(kind, 300).toDataURL('image/jpeg', 0.6);
+  defaultPhotoCache[kind] = { t: thumb, f: full };
+  return defaultPhotoCache[kind];
+}
+
+/* ---------------- 实时定位（Capacitor 插件优先，浏览器回退） ---------------- */
+async function usePostLocation(){
+  const btn = document.getElementById('locBtn');
+  const input = document.getElementById('postAddrInput');
+  if(!input) return;
+  if(btn){ btn.disabled = true; btn.textContent = '定位中…'; }
+  let coords = null;
+  try{
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation){
+      const pos = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+      coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    }else if(navigator.geolocation){
+      coords = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
+        p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
+        rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }));
+    }
+  }catch(e){ coords = null; }
+  if(!coords){
+    if(btn){ btn.disabled = false; btn.textContent = '定位'; }
+    toast('定位失败，请手动输入地址');
+    return;
+  }
+  let addr = coords.lat.toFixed(5) + ', ' + coords.lon.toFixed(5);
+  try{
+    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + coords.lat + '&lon=' + coords.lon + '&accept-language=zh-CN&zoom=18', { headers: { 'Accept': 'application/json' } });
+    if(r.ok){
+      const j = await r.json();
+      const a = j.address || {};
+      const parts = [a.road, a.neighbourhood || a.suburb, a.city || a.town || a.county, a.state].filter(Boolean);
+      if(parts.length) addr = parts.join(' ');
+      else if(j.display_name) addr = String(j.display_name).split(',').slice(0, 4).join(' ').trim();
+    }
+  }catch(e){}
+  input.value = addr;
+  toast('已填入定位地址');
+  if(btn){ btn.disabled = false; btn.textContent = '定位'; }
+}
+
 async function doPublish(){
   if(!(window.CloudAuth && CloudAuth.active())){ toast('云服务不可用'); return; }
   if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ openLogin(); return; }
   const name = (document.getElementById('postNameInput').value || '').trim();
+  const addr = (document.getElementById('postAddrInput').value || '').trim();
   const desc = (document.getElementById('postDescInput').value || '').trim();
-  if(!name){ toast('请填写名称'); return; }
-  if(!pubPhotos.length){ toast('至少上传一张照片'); return; }
+  if(!addr){ toast('请填写地址（可点右侧"定位"自动填入）'); return; }
   const btn = document.getElementById('publishBtn');
   btn.disabled = true; btn.textContent = '发布中…';
   try{
+    let photos = pubPhotos;
+    if(!photos.length){
+      // 未选照片：按类型自动配一张官方图
+      const def = await ensureDefaultPhoto(pubType);
+      photos = [def];
+    }
     const r = await shareApi('publish', { post: {
-      type: pubType, name, desc,
-      photos: pubPhotos.map(x => ({ t: x.t, f: x.f })),
+      type: pubType, name, addr, desc,
+      photos: photos.map(x => ({ t: x.t, f: x.f })),
       nickname: (currentUser && currentUser.nickname) || '路过的朋友',
     }});
     if(!r || r.ok === false) throw new Error(r && r.error || '发布失败');

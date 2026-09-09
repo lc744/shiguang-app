@@ -371,6 +371,7 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .post-head{display:flex;align-items:center;gap:8px}
 .post-type{font-size:10px;color:var(--primary,#246353);background:var(--bg);border-radius:4px;padding:2px 6px}
 .post-name{font-size:15px;font-weight:700;color:var(--text)}
+.post-addr{display:block;font-size:12px;color:var(--main);background:rgba(46,125,100,.08);border-radius:8px;padding:4px 8px;margin:6px 0 2px;width:fit-content;max-width:100%}
 .post-desc{display:block;font-size:13px;color:var(--text);opacity:.85;margin-top:6px;line-height:1.55;white-space:pre-wrap}
 .post-meta{display:flex;align-items:center;gap:8px;margin-top:10px}
 .post-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover}
@@ -389,6 +390,12 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .p-label{font-size:12px;color:var(--sub);font-weight:700}
 .p-label.mt{margin-top:14px}
 .p-optional{font-weight:400;opacity:.8}
+.p-req{font-weight:400;color:#c65c52}
+.addr-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.addr-icon{font-size:16px;flex:none}
+.addr-input{flex:1;min-width:0}
+.loc-btn{flex:none;height:40px;padding:0 14px;border:none;border-radius:10px;background:linear-gradient(135deg,#2e7d64,#246353);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.loc-btn:disabled{opacity:.6}
 .id-row{display:flex;align-items:center;gap:12px;margin-top:10px;cursor:pointer}
 .id-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover}
 .id-avatar-ph{display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:18px}
