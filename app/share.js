@@ -320,51 +320,180 @@ async function ensureDefaultPhoto(type){
   return defaultPhotoCache[kind];
 }
 
-/* ---------------- 实时定位（Capacitor 插件优先，浏览器回退） ---------------- */
-async function usePostLocation(){
-  const btn = document.getElementById('locBtn');
-  const input = document.getElementById('postAddrInput');
-  if(!input) return;
-  if(btn){ btn.disabled = true; btn.textContent = '定位中…'; }
-  let coords = null;
-  try{
-    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation){
-      const pos = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
-      coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-    }else if(navigator.geolocation){
-      coords = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
-        p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
-        rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }));
+/* ---------------- 地址选择弹层（省市区级联 + 镇/村详细 + 地图选点） ---------------- */
+let divisions = null;       // [{code,name,children:[{code,name,children}]}]
+let addrMap = null;         // Leaflet 实例
+let addrMarker = null;
+let mapLoading = false;
+
+function loadDivisions(){
+  if(divisions) return Promise.resolve(divisions);
+  return fetch('app/assets/divisions.json').then(r => r.json()).then(d => { divisions = d; return d; });
+}
+function openAddrPicker(){
+  document.getElementById('addrPicker').style.display = 'flex';
+  loadDivisions().then(d => {
+    const sel = document.getElementById('selProv');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">请选择省份</option>' + d.map(p => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('');
+    if(cur) sel.value = cur;
+    if(!cur) onProvChange();
+  }).catch(() => toast('地址数据加载失败'));
+}
+function closeAddrPicker(){ document.getElementById('addrPicker').style.display = 'none'; }
+function onProvChange(){
+  const p = (divisions || []).find(x => x.code === document.getElementById('selProv').value);
+  const cs = p ? (p.children || []) : [];
+  document.getElementById('selCity').innerHTML = '<option value="">请选择城市</option>' + cs.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join('');
+  onCityChange();
+}
+function onCityChange(){
+  const p = (divisions || []).find(x => x.code === document.getElementById('selProv').value);
+  const c = p ? (p.children || []).find(x => x.code === document.getElementById('selCity').value) : null;
+  const as = c ? (c.children || []) : [];
+  document.getElementById('selArea').innerHTML = '<option value="">请选择区县</option>' + as.map(a => `<option value="${esc(a.code)}">${esc(a.name)}</option>`).join('');
+  onAreaChange();
+}
+function onAreaChange(){ updateAddrPreview(); }
+function addrTownVal(){ return (document.getElementById('addrTown').value || '').trim(); }
+function addrDetailVal(){ return (document.getElementById('addrDetail').value || '').trim(); }
+function addrName(code, list){
+  const it = (list || []).find(x => x.code === code);
+  return it ? it.name : '';
+}
+function updateAddrPreview(){
+  const pv = document.getElementById('addrPreview');
+  if(!pv) return;
+  const t = composeAddr();
+  pv.textContent = '地址预览：' + (t || '—');
+}
+function composeAddr(){
+  const prov = addrName(document.getElementById('selProv').value, divisions);
+  const provObj = (divisions || []).find(x => x.code === document.getElementById('selProv').value);
+  const city = addrName(document.getElementById('selCity').value, provObj ? provObj.children : []);
+  const cityRaw = (provObj ? (provObj.children || []).find(x => x.code === document.getElementById('selCity').value) : null);
+  const area = cityRaw ? addrName(document.getElementById('selArea').value, cityRaw.children || []) : '';
+  const town = addrTownVal();
+  const detail = addrDetailVal();
+  if(!prov || !detail) return '';
+  return [prov, cityRaw && (cityRaw.name === '市辖区' || cityRaw.name === '县') ? '' : city, area, town, detail].filter(Boolean).join('');
+}
+async function confirmAddrPick(){
+  const addr = composeAddr();
+  if(!addr){ toast('请选择省市区并填写详细地址'); return; }
+  document.getElementById('postAddrInput').value = addr;
+  document.getElementById('postAddrInput').dataset.valid = '1';
+  closeAddrPicker();
+  toast('地址已填入');
+}
+/* ---- 地图选点 ---- */
+function loadAddrMap(){
+  if(mapLoading || addrMap) return;
+  mapLoading = true;
+  const box = document.getElementById('addrMap');
+  box.innerHTML = '<div class="map-loading">地图加载中…</div>';
+  setTimeout(() => {
+    try{
+      addrMap = L.map('addrMap', { zoomControl: false }).setView([34.0, 108.0], 4);
+      // 高德瓦片（国内可达）为主，OSM 兜底
+      const amap = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { subdomains: ['1', '2', '3', '4'], maxZoom: 18 });
+      let osmAdded = false;
+      amap.on('tileerror', () => {
+        if(!osmAdded){ osmAdded = true; try{ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(addrMap); }catch(e){} }
+      });
+      amap.addTo(addrMap);
+      // 瓦片迟迟未到则提示（选点与手动填写仍可用）
+      setTimeout(() => {
+        try{
+          if(addrMap && !document.querySelector('#addrMap img.leaflet-tile-loaded')){
+            const tip = document.createElement('div');
+            tip.className = 'addr-marker-tip';
+            tip.style.maxWidth = '86%';
+            tip.textContent = '地图加载缓慢，仍可点按选点或直接手动填写';
+            document.getElementById('addrMap').appendChild(tip);
+          }
+        }catch(e){}
+      }, 6000);
+      addrMarker = L.marker([34.0, 108.0], { draggable: true }).addTo(addrMap);
+      addrMarker.on('dragend', () => reversePick(addrMarker.getLatLng()));
+      addrMap.on('click', e => { addrMarker.setLatLng(e.latlng); reversePick(e.latlng); });
+      box.innerHTML = '';
+      addrMap.invalidateSize();
+      locateForAddrMap();
+    }catch(e){
+      box.innerHTML = '<div class="map-loading">地图初始化失败，可手动填写上方地址</div>';
     }
-  }catch(e){ coords = null; }
-  if(!coords){
-    if(btn){ btn.disabled = false; btn.textContent = '定位'; }
-    toast('定位失败，请手动输入地址');
-    return;
+    mapLoading = false;
+  }, 50);
+}
+function getCoords(){
+  if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation){
+    return window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 })
+      .then(pos => ({ lat: pos.coords.latitude, lon: pos.coords.longitude }));
   }
-  let addr = coords.lat.toFixed(5) + ', ' + coords.lon.toFixed(5);
+  if(navigator.geolocation){
+    return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
+      p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }));
+  }
+  return Promise.reject(new Error('no geo'));
+}
+async function locateForAddrMap(){
+  let c = null;
+  try{ c = await getCoords(); }catch(e){ c = null; }
+  if(!c){ toast('定位失败，请在地图上手动选点'); return; }
+  const ll = [c.lat, c.lon];
+  if(addrMap){ addrMap.setView(ll, 16); addrMarker.setLatLng(ll); }
+  reversePick({ lat: c.lat, lng: c.lon });
+}
+async function reversePick(ll){
   try{
-    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + coords.lat + '&lon=' + coords.lon + '&accept-language=zh-CN&zoom=18', { headers: { 'Accept': 'application/json' } });
-    if(r.ok){
-      const j = await r.json();
-      const a = j.address || {};
-      const parts = [a.road, a.neighbourhood || a.suburb, a.city || a.town || a.county, a.state].filter(Boolean);
-      if(parts.length) addr = parts.join(' ');
-      else if(j.display_name) addr = String(j.display_name).split(',').slice(0, 4).join(' ').trim();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + ll.lat + '&lon=' + ll.lng + '&accept-language=zh-CN&zoom=18', { headers: { 'Accept': 'application/json' }, signal: ctrl.signal });
+    clearTimeout(timer);
+    if(!r.ok) throw new Error('bad');
+    const j = await r.json();
+    const a = j.address || {};
+    await loadDivisions();
+    // 匹配省
+    const provName = a.state || a.province || '';
+    const prov = (divisions || []).find(p => provName && (p.name === provName || p.name.indexOf(provName) >= 0 || provName.indexOf(p.name.replace(/[省市自治区]$/, '')) >= 0));
+    if(prov){
+      document.getElementById('selProv').value = prov.code;
+      onProvChange();
+      // 匹配市
+      const cityName = a.city || a.town || '';
+      let city = (prov.children || []).find(x => cityName && (x.name === cityName || x.name.indexOf(cityName) >= 0 || cityName.indexOf(x.name.replace(/市$/, '')) >= 0));
+      if(city){
+        document.getElementById('selCity').value = city.code;
+        onCityChange();
+        // 匹配区县
+        const areaName = a.county || a.district || a.suburb || '';
+        const area = (city.children || []).find(x => areaName && (x.name === areaName || areaName.indexOf(x.name.replace(/区|县|市$/, '')) >= 0));
+        if(area) document.getElementById('selArea').value = area.code;
+      }
     }
-  }catch(e){}
-  input.value = addr;
-  toast('已填入定位地址');
-  if(btn){ btn.disabled = false; btn.textContent = '定位'; }
+    // 镇/街道 + 详细
+    const town = a.county && (a.county.indexOf('镇') >= 0 || a.county.indexOf('街道') >= 0 || a.county.indexOf('乡') >= 0) ? a.county : (a.suburb || a.village || '');
+    if(town) document.getElementById('addrTown').value = String(town).slice(0, 20);
+    const detail = [a.road, a.neighbourhood, a.house_number].filter(Boolean).join('');
+    if(detail) document.getElementById('addrDetail').value = String(detail).slice(0, 60);
+    updateAddrPreview();
+    toast('已根据选点填入地址');
+  }catch(e){
+    toast('选点解析失败，请手动填写详细地址');
+  }
 }
 
 async function doPublish(){
   if(!(window.CloudAuth && CloudAuth.active())){ toast('云服务不可用'); return; }
   if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ openLogin(); return; }
   const name = (document.getElementById('postNameInput').value || '').trim();
-  const addr = (document.getElementById('postAddrInput').value || '').trim();
+  const addrInput = document.getElementById('postAddrInput');
+  const addr = (addrInput.value || '').trim();
   const desc = (document.getElementById('postDescInput').value || '').trim();
-  if(!addr){ toast('请填写地址（可点右侧"定位"自动填入）'); return; }
+  if(!addr || addrInput.dataset.valid !== '1'){ toast('请点击"填写"选择规范地址'); return; }
   const btn = document.getElementById('publishBtn');
   btn.disabled = true; btn.textContent = '发布中…';
   try{

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>绸缪</title>
   <link rel="stylesheet" href="app/styles.css" />
+  <link rel="stylesheet" href="app/vendor/leaflet/leaflet.css" />
 </head>
 <body>
   <div class="shell">
@@ -467,11 +468,11 @@
         </div>
         <div class="p-label mt">名称<text class="p-optional">（选填）</text></div>
         <input class="p-input" id="postNameInput" placeholder="比如：巷口的抄手店" maxlength="30" />
-        <div class="p-label mt">地址<text class="p-req">（必填）</text></div>
+        <div class="p-label mt">地址<text class="p-req">（必填，点右侧"填写"规范选择）</text></div>
         <div class="addr-row">
           <text class="addr-icon">📍</text>
-          <input class="p-input addr-input" id="postAddrInput" placeholder="店铺/景点地址，或点右侧定位" maxlength="80" />
-          <button type="button" class="loc-btn" id="locBtn" onclick="usePostLocation()">定位</button>
+          <input class="p-input addr-input" id="postAddrInput" placeholder="点击"填写"选择规范地址" maxlength="120" readonly onclick="openAddrPicker()" />
+          <button type="button" class="loc-btn" id="addrBtn" onclick="openAddrPicker()">填写</button>
         </div>
         <div class="p-label mt">推荐理由<text class="p-optional">（选填）</text></div>
         <textarea class="p-textarea" id="postDescInput" placeholder="说说好在哪：味道、位置、性价比……" maxlength="500"></textarea>
@@ -485,6 +486,34 @@
   <!-- 图片预览弹层 -->
   <div class="img-preview" id="imgPreview" style="display:none" onclick="closeImgPreview()">
     <img id="imgPreviewSrc" alt="预览" />
+  </div>
+
+  <!-- 地址选择弹层：省市区级联 + 镇/村详细 + 地图选点 -->
+  <div class="remind-fullscreen" id="addrPicker" style="display:none">
+    <div class="publish-shell">
+      <div class="subhead"><h3>选择地址</h3><small>省市区规范选择，也可在地图上选点修正</small><button class="pub-close" onclick="closeAddrPicker()">✕</button></div>
+
+      <div class="detail-card p-block">
+        <div class="p-label">省 / 市 / 区县</div>
+        <div class="addr-casc">
+          <select class="p-input addr-sel" id="selProv" onchange="onProvChange()"><option value="">请选择省份</option></select>
+          <select class="p-input addr-sel" id="selCity" onchange="onCityChange()"><option value="">请选择城市</option></select>
+          <select class="p-input addr-sel" id="selArea" onchange="onAreaChange()"><option value="">请选择区县</option></select>
+        </div>
+        <div class="p-label mt">镇 / 街道<text class="p-optional">（选填）</text></div>
+        <input class="p-input" id="addrTown" placeholder="例如：虞山镇" maxlength="20" />
+        <div class="p-label mt">详细地址<text class="p-req">（必填：村/小区/楼栋/门牌号）</text></div>
+        <input class="p-input" id="addrDetail" placeholder="例如：甸桥村幸福家园 3 栋 502" maxlength="60" />
+        <div class="addr-preview" id="addrPreview">地址预览：—</div>
+      </div>
+
+      <div class="detail-card p-block">
+        <div class="p-label">地图选点<text class="p-optional">（定位到当前位置，点击地图修正）</text></div>
+        <div id="addrMap" class="addr-map"><button type="button" class="primary loc-load" onclick="loadAddrMap()">🗺️ 加载地图并定位</button></div>
+      </div>
+
+      <button class="primary publish-btn" onclick="confirmAddrPick()">确定使用该地址</button>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -501,6 +530,7 @@
   <script src="app/settings.js"></script>
   <script src="app/hero.js"></script>
   <script src="app/genie.js"></script>
+  <script src="app/vendor/leaflet/leaflet.js"></script>
   <script src="app/main.js"></script>
   
   <!-- 幻灯片功能 -->
