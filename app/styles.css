@@ -349,7 +349,7 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .me-item-label.danger{color:#c65c52}
 
 /* ================= 分享页（对齐小程序 share 页） ================= */
-.seg-row{display:flex;gap:10px;margin:8px 0 12px;align-items:center}
+.seg-row{position:sticky;top:0;z-index:20;display:flex;gap:10px;margin:0 0 12px;padding:10px 0 12px;background:var(--bg,#f6f6f2)}
 .seg-group{flex:1;display:flex;gap:8px;min-width:0}
 .seg{flex:1;height:36px;border:none;border-radius:999px;background:var(--bg);color:var(--sub);font-size:13px;cursor:pointer}
 .pub-pill{flex:none;height:36px;padding:0 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#2e7d64,#246353);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(36,99,83,.25);display:inline-flex;align-items:center;gap:4px;transition:transform .12s ease}
