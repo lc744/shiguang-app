@@ -182,9 +182,12 @@
       <!-- 分享页：大家的推荐 / 我的发布 双分段 + 悬浮发布按钮 -->
       <section class="page" id="page-share">
         <div class="detail-wrap">
-          <div class="seg-row" id="shareSegRow">
-            <button class="seg seg-on" id="segFeed" onclick="switchShareTab('feed')">大家的推荐</button>
-            <button class="seg" id="segMine" onclick="switchShareTab('mine')">我的发布</button>
+          <div class="seg-row">
+            <div class="seg-group">
+              <button class="seg seg-on" id="segFeed" onclick="switchShareTab('feed')">大家的推荐</button>
+              <button class="seg" id="segMine" onclick="switchShareTab('mine')">我的发布</button>
+            </div>
+            <button class="pub-pill" onclick="openPublish()">＋ 发布</button>
           </div>
           <div id="shareEmpty" style="display:none">
             <div class="share-empty"><span class="share-empty-emoji" id="shareEmptyEmoji">🌱</span><span class="share-empty-text" id="shareEmptyText">还没有人分享，来当第一个</span><button class="primary share-cta" onclick="openPublish()">＋ 发布推荐</button></div>
@@ -192,7 +195,6 @@
           <div id="shareList" class="post-list"></div>
           <div class="share-loading" id="shareLoading" style="display:none">加载中…</div>
           <div class="share-loading" id="shareEnd" style="display:none">— 到底啦 —</div>
-          <button class="share-fab" onclick="openPublish()" title="发布推荐">＋</button>
         </div>
       </section>
     </main>
