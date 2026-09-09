@@ -23,6 +23,8 @@ function showPage(id, btn){
   // 添加事件页/详情页隐藏右下角 FAB，其他页面显示
   const fab = document.getElementById('fabAdd');
   if(fab) fab.classList.toggle('hidden', id === 'page-create' || id === 'page-detail' || id === 'page-share');
+  // 分享页/我的页不显示顶部公共区（hero 卡 + 今日待办/已完成统计）
+  document.body.classList.toggle('no-hero', id === 'page-share' || id === 'page-profile');
   // 进入分享页时触发加载（首次或切回时刷新）
   if(id === 'page-share' && typeof refreshShare === 'function') refreshShare();
   window.scrollTo(0,0);

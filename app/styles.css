@@ -301,6 +301,9 @@
     .settings-entry:active{opacity:.75}
     .settings-arrow{color:var(--sub);font-size:20px;font-weight:400}
 
+/* 分享页/我的页隐藏顶部公共区（hero + 统计） */
+body.no-hero .hero, body.no-hero .stats { display: none; }
+
 /* ================= 我的页（对齐小程序 me 页布局） ================= */
 .me-hero{display:flex;flex-direction:column;align-items:center;padding:44px 30px;margin-top:12px}
 .me-hero-emoji{font-size:44px}
