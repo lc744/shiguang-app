@@ -508,11 +508,24 @@
       </div>
 
       <div class="detail-card p-block">
-        <div class="p-label">地图选点<text class="p-optional">（定位到当前位置，点击地图修正）</text></div>
-        <div id="addrMap" class="addr-map"><button type="button" class="primary loc-load" onclick="loadAddrMap()">🗺️ 加载地图并定位</button></div>
+        <div class="p-label">定位<text class="p-optional">（不知道地址？点下方按钮，地图上选点自动填入）</text></div>
+        <button type="button" class="primary loc-open" onclick="openMapPicker()">🗺️ 定位 · 地图选点</button>
       </div>
 
       <button class="primary publish-btn" onclick="confirmAddrPick()">确定使用该地址</button>
+    </div>
+  </div>
+
+  <!-- 地图选点弹层（全屏地图，实时定位 + 点选修正） -->
+  <div class="remind-fullscreen" id="mapPicker" style="display:none">
+    <div class="subhead"><h3>地图选点</h3><small>已定位到当前位置 · 点击地图或拖动标记修正</small><button class="pub-close" onclick="closeMapPicker()">✕</button></div>
+    <div class="map-shell">
+      <div id="pickMap" class="pick-map"></div>
+      <div class="addr-marker-tip" id="pickTip">定位中…</div>
+    </div>
+    <div class="map-actions">
+      <button type="button" class="ghost-btn" onclick="closeMapPicker()">取消</button>
+      <button type="button" class="primary" onclick="useMapPick()">使用该位置</button>
     </div>
   </div>
 

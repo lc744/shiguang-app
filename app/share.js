@@ -386,45 +386,45 @@ async function confirmAddrPick(){
   closeAddrPicker();
   toast('地址已填入');
 }
-/* ---- 地图选点 ---- */
-function loadAddrMap(){
-  if(mapLoading || addrMap) return;
-  mapLoading = true;
-  const box = document.getElementById('addrMap');
-  box.innerHTML = '<div class="map-loading">地图加载中…</div>';
-  setTimeout(() => {
-    try{
-      addrMap = L.map('addrMap', { zoomControl: false }).setView([34.0, 108.0], 4);
-      // 高德瓦片（国内可达）为主，OSM 兜底
-      const amap = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { subdomains: ['1', '2', '3', '4'], maxZoom: 18 });
-      let osmAdded = false;
-      amap.on('tileerror', () => {
-        if(!osmAdded){ osmAdded = true; try{ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(addrMap); }catch(e){} }
-      });
-      amap.addTo(addrMap);
-      // 瓦片迟迟未到则提示（选点与手动填写仍可用）
-      setTimeout(() => {
-        try{
-          if(addrMap && !document.querySelector('#addrMap img.leaflet-tile-loaded')){
-            const tip = document.createElement('div');
-            tip.className = 'addr-marker-tip';
-            tip.style.maxWidth = '86%';
-            tip.textContent = '地图加载缓慢，仍可点按选点或直接手动填写';
-            document.getElementById('addrMap').appendChild(tip);
-          }
-        }catch(e){}
-      }, 6000);
-      addrMarker = L.marker([34.0, 108.0], { draggable: true }).addTo(addrMap);
-      addrMarker.on('dragend', () => reversePick(addrMarker.getLatLng()));
-      addrMap.on('click', e => { addrMarker.setLatLng(e.latlng); reversePick(e.latlng); });
-      box.innerHTML = '';
-      addrMap.invalidateSize();
-      locateForAddrMap();
-    }catch(e){
-      box.innerHTML = '<div class="map-loading">地图初始化失败，可手动填写上方地址</div>';
-    }
-    mapLoading = false;
-  }, 50);
+/* ---- 地图选点（独立弹层：实时定位 + 点选修正） ---- */
+let pickMapInited = false;
+function openMapPicker(){
+  document.getElementById('mapPicker').style.display = 'flex';
+  setTimeout(initPickMap, 60);
+}
+function closeMapPicker(){ document.getElementById('mapPicker').style.display = 'none'; }
+function initPickMap(){
+  const tip = document.getElementById('pickTip');
+  if(pickMapInited){
+    try{ addrMap.invalidateSize(); }catch(e){}
+    locateForAddrMap();
+    return;
+  }
+  try{
+    addrMap = L.map('pickMap', { zoomControl: false }).setView([34.0, 108.0], 4);
+    // 高德瓦片（国内可达）为主，OSM 兜底
+    const amap = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { subdomains: ['1', '2', '3', '4'], maxZoom: 18 });
+    let osmAdded = false;
+    amap.on('tileerror', () => {
+      if(!osmAdded){ osmAdded = true; try{ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(addrMap); }catch(e){} }
+    });
+    amap.addTo(addrMap);
+    addrMarker = L.marker([34.0, 108.0], { draggable: true }).addTo(addrMap);
+    addrMarker.on('dragend', () => reversePick(addrMarker.getLatLng()));
+    addrMap.on('click', e => { addrMarker.setLatLng(e.latlng); reversePick(e.latlng); });
+    pickMapInited = true;
+    if(tip) tip.style.display = 'none';
+    addrMap.invalidateSize();
+    locateForAddrMap();
+  }catch(e){
+    if(tip) tip.textContent = '地图初始化失败，请手动填写地址';
+  }
+}
+function setPickTip(t){
+  const tip = document.getElementById('pickTip');
+  if(!tip) return;
+  tip.textContent = t;
+  tip.style.display = t ? 'block' : 'none';
 }
 function getCoords(){
   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation){
@@ -439,14 +439,20 @@ function getCoords(){
   return Promise.reject(new Error('no geo'));
 }
 async function locateForAddrMap(){
+  setPickTip('定位中…');
   let c = null;
   try{ c = await getCoords(); }catch(e){ c = null; }
-  if(!c){ toast('定位失败，请在地图上手动选点'); return; }
+  if(!c){
+    setPickTip('定位失败：请点击地图选点，或返回手动填写');
+    return;
+  }
   const ll = [c.lat, c.lon];
   if(addrMap){ addrMap.setView(ll, 16); addrMarker.setLatLng(ll); }
+  setPickTip('');
   reversePick({ lat: c.lat, lng: c.lon });
 }
 async function reversePick(ll){
+  setPickTip('解析选点地址…');
   try{
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 10000);
@@ -480,10 +486,14 @@ async function reversePick(ll){
     const detail = [a.road, a.neighbourhood, a.house_number].filter(Boolean).join('');
     if(detail) document.getElementById('addrDetail').value = String(detail).slice(0, 60);
     updateAddrPreview();
-    toast('已根据选点填入地址');
+    setPickTip('已按选点填入，可返回调整或点"使用该位置"');
   }catch(e){
-    toast('选点解析失败，请手动填写详细地址');
+    setPickTip('选点解析失败，请手动填写详细地址');
   }
+}
+function useMapPick(){
+  closeMapPicker();
+  toast('选点已填入地址，确认无误后点"确定使用该地址"');
 }
 
 async function doPublish(){
