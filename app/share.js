@@ -368,19 +368,30 @@ function updateAddrPreview(){
   pv.textContent = '地址预览：' + (t || '—');
 }
 function composeAddr(){
-  const prov = addrName(document.getElementById('selProv').value, divisions);
-  const provObj = (divisions || []).find(x => x.code === document.getElementById('selProv').value);
-  const city = addrName(document.getElementById('selCity').value, provObj ? provObj.children : []);
-  const cityRaw = (provObj ? (provObj.children || []).find(x => x.code === document.getElementById('selCity').value) : null);
-  const area = cityRaw ? addrName(document.getElementById('selArea').value, cityRaw.children || []) : '';
+  const provCode = document.getElementById('selProv').value;
+  const cityCode = document.getElementById('selCity').value;
+  const areaCode = document.getElementById('selArea').value;
+  if(!provCode || !cityCode || !areaCode) return '';
+  const prov = addrName(provCode, divisions);
+  const provObj = (divisions || []).find(x => x.code === provCode);
+  const cityRaw = (provObj ? (provObj.children || []).find(x => x.code === cityCode) : null);
+  const city = cityRaw ? addrName(cityCode, provObj.children) : '';
+  const area = cityRaw ? addrName(areaCode, cityRaw.children || []) : '';
   const town = addrTownVal();
   const detail = addrDetailVal();
-  if(!prov || !detail) return '';
+  if(!prov || !area || !detail) return '';
   return [prov, cityRaw && (cityRaw.name === '市辖区' || cityRaw.name === '县') ? '' : city, area, town, detail].filter(Boolean).join('');
 }
 async function confirmAddrPick(){
+  const provCode = document.getElementById('selProv').value;
+  const cityCode = document.getElementById('selCity').value;
+  const areaCode = document.getElementById('selArea').value;
+  if(!provCode){ toast('请选择省份'); return; }
+  if(!cityCode){ toast('请选择城市'); return; }
+  if(!areaCode){ toast('请选择区县'); return; }
+  if(!addrDetailVal()){ toast('请填写详细地址（村/小区/楼栋/门牌号）'); return; }
   const addr = composeAddr();
-  if(!addr){ toast('请选择省市区并填写详细地址'); return; }
+  if(!addr){ toast('地址不完整，请检查选择'); return; }
   document.getElementById('postAddrInput').value = addr;
   document.getElementById('postAddrInput').dataset.valid = '1';
   closeAddrPicker();
