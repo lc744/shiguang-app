@@ -96,7 +96,7 @@ function accountTitle(){
   return '微信用户';
 }
 let meEditing = false;
-function renderUserCard(){ renderMeCard(); renderMeInfo(); renderMeMenu(); }
+function renderUserCard(){ renderMeCard(); renderMeBody(); }
 
 function renderMeCard(){
   const box = document.getElementById('meCard');
@@ -173,8 +173,8 @@ async function saveMeEdit(){
   toast('资料已保存');
 }
 
-function renderMeInfo(){
-  const box = document.getElementById('meInfo');
+function renderMeBody(){
+  const box = document.getElementById('meBody');
   if(!box) return;
   if(!currentUser){ box.innerHTML = ''; return; }
   const birth = formatBirth(currentUser.birth);
@@ -195,15 +195,6 @@ function renderMeInfo(){
         <text class="me-info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</text>
         <text class="me-arrow">›</text>
       </div>
-    </div>`;
-}
-
-function renderMeMenu(){
-  const box = document.getElementById('meMenu');
-  if(!box) return;
-  if(!currentUser){ box.innerHTML = ''; return; }
-  box.innerHTML = `
-    <div class="card me-menu">
       <div class="me-item" onclick="goMyPosts()" role="button">
         <text class="me-item-emoji">📮</text><text class="me-item-label">我的发布</text><text class="me-arrow">›</text>
       </div>
@@ -244,7 +235,7 @@ function saveInfo(){
   persistUser();
   saveAccountToRegistry();
   syncCloudProfile({ gender: currentUser.gender, birth: currentUser.birth });
-  renderMeInfo();
+  renderMeBody();
   closeInfoEditor();
   toast('资料已保存');
 }
