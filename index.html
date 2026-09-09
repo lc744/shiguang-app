@@ -496,19 +496,16 @@
       <div class="detail-card p-block">
         <div class="p-label">省 / 市 / 区县</div>
         <div class="addr-casc">
-          <select class="p-input addr-sel" id="selProv" onchange="onProvChange()"><option value="">请选择省份</option></select>
-          <select class="p-input addr-sel" id="selCity" onchange="onCityChange()"><option value="">请选择城市</option></select>
-          <select class="p-input addr-sel" id="selArea" onchange="onAreaChange()"><option value="">请选择区县</option></select>
+          <select class="p-input addr-sel" id="selProv" onchange="onProvChange()"><option value="">省份</option></select>
+          <select class="p-input addr-sel" id="selCity" onchange="onCityChange()"><option value="">城市</option></select>
+          <select class="p-input addr-sel" id="selArea" onchange="onAreaChange()"><option value="">区县</option></select>
         </div>
         <div class="p-label mt">镇 / 街道<text class="p-optional">（选填）</text></div>
         <input class="p-input" id="addrTown" placeholder="例如：虞山镇" maxlength="20" />
         <div class="p-label mt">详细地址<text class="p-req">（必填：村/小区/楼栋/门牌号）</text></div>
         <input class="p-input" id="addrDetail" placeholder="例如：甸桥村幸福家园 3 栋 502" maxlength="60" />
         <div class="addr-preview" id="addrPreview">地址预览：—</div>
-      </div>
-
-      <div class="detail-card p-block">
-        <div class="p-label">定位<text class="p-optional">（不知道地址？点下方按钮，地图上选点自动填入）</text></div>
+        <div class="p-label mt">定位<text class="p-optional">（不知道地址？地图上选点自动填入）</text></div>
         <button type="button" class="primary loc-open" onclick="openMapPicker()">🗺️ 定位 · 地图选点</button>
       </div>
 

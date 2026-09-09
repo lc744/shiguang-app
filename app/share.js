@@ -335,7 +335,7 @@ function openAddrPicker(){
   loadDivisions().then(d => {
     const sel = document.getElementById('selProv');
     const cur = sel.value;
-    sel.innerHTML = '<option value="">请选择省份</option>' + d.map(p => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('');
+    sel.innerHTML = '<option value="">省份</option>' + d.map(p => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('');
     if(cur) sel.value = cur;
     if(!cur) onProvChange();
   }).catch(() => toast('地址数据加载失败'));
@@ -344,14 +344,14 @@ function closeAddrPicker(){ document.getElementById('addrPicker').style.display 
 function onProvChange(){
   const p = (divisions || []).find(x => x.code === document.getElementById('selProv').value);
   const cs = p ? (p.children || []) : [];
-  document.getElementById('selCity').innerHTML = '<option value="">请选择城市</option>' + cs.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join('');
+  document.getElementById('selCity').innerHTML = '<option value="">城市</option>' + cs.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join('');
   onCityChange();
 }
 function onCityChange(){
   const p = (divisions || []).find(x => x.code === document.getElementById('selProv').value);
   const c = p ? (p.children || []).find(x => x.code === document.getElementById('selCity').value) : null;
   const as = c ? (c.children || []) : [];
-  document.getElementById('selArea').innerHTML = '<option value="">请选择区县</option>' + as.map(a => `<option value="${esc(a.code)}">${esc(a.name)}</option>`).join('');
+  document.getElementById('selArea').innerHTML = '<option value="">区县</option>' + as.map(a => `<option value="${esc(a.code)}">${esc(a.name)}</option>`).join('');
   onAreaChange();
 }
 function onAreaChange(){ updateAddrPreview(); }
