@@ -180,17 +180,17 @@ function renderMeInfo(){
   const birth = formatBirth(currentUser.birth);
   const emailText = currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle());
   box.innerHTML = `
-    <div class="me-info-rows">
-      <div class="me-info-row" title="${emailText}">
+    <div class="card me-menu">
+      <div class="me-item" title="${emailText}">
         <text class="me-item-emoji">📧</text><text class="me-item-label">邮箱</text>
         <text class="me-info-value">${emailText}</text>
       </div>
-      <div class="me-info-row" onclick="openInfoEditor()" role="button">
+      <div class="me-item" onclick="openInfoEditor()" role="button">
         <text class="me-item-emoji">🚻</text><text class="me-item-label">性别</text>
         <text class="me-info-value ${currentUser.gender ? '' : 'info-unset'}">${esc(GENDER_LABEL[currentUser.gender] || '未设置')}</text>
         <text class="me-arrow">›</text>
       </div>
-      <div class="me-info-row" onclick="openInfoEditor()" role="button">
+      <div class="me-item" onclick="openInfoEditor()" role="button">
         <text class="me-item-emoji">🎂</text><text class="me-item-label">出生年月</text>
         <text class="me-info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</text>
         <text class="me-arrow">›</text>
