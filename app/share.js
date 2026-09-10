@@ -420,7 +420,7 @@ function initPickMap(){
       if(!osmAdded){ osmAdded = true; try{ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(addrMap); }catch(e){} }
     });
     amap.addTo(addrMap);
-    addrMarker = L.marker([34.0, 108.0], { draggable: true }).addTo(addrMap);
+    addrMarker = L.marker([34.0, 108.0], { draggable: true, icon: L.divIcon({ className: 'pin-wrap', html: '<div class="pin-marker"></div>', iconSize: [36, 36], iconAnchor: [18, 34] }) }).addTo(addrMap);
     addrMarker.on('dragend', () => reversePick(addrMarker.getLatLng()));
     addrMap.on('click', e => { addrMarker.setLatLng(e.latlng); reversePick(e.latlng); });
     pickMapInited = true;
@@ -478,42 +478,83 @@ async function locateForAddrMap(){
   setPickTip('');
   reversePick({ lat: c.lat, lng: c.lon });
 }
+async function bdcReverse(ll){
+  // BigDataCloud 免费逆地理（国内可达，返回中文）
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 9000);
+  const r = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + ll.lat + '&longitude=' + ll.lng + '&localityLanguage=zh', { signal: ctrl.signal });
+  clearTimeout(timer);
+  if(!r.ok) throw new Error('bad');
+  const j = await r.json();
+  const adm = (j.localityInfo && j.localityInfo.administrative) || [];
+  const allNames = adm.map(x => String(x.name || '')).filter(Boolean);
+  const lvl = (lo, hi) => { const x = adm.find(v => v.adminLevel >= lo && v.adminLevel <= hi); return x ? String(x.name || '') : ''; };
+  const prov = j.principalSubdivision || lvl(4, 5) || '';
+  const city = lvl(4, 7) !== prov ? (lvl(5, 7) || j.city || '') : (j.city || '');
+  const area = j.locality && j.locality !== city ? j.locality : (allNames.length >= 3 ? allNames[allNames.length - 2] : '');
+  const deepest = allNames.length ? allNames[allNames.length - 1] : '';
+  const town = deepest && deepest !== prov && deepest !== city && deepest !== area ? deepest : '';
+  const detail = String(j.street || '');
+  return { prov, city, area, town, detail, allNames };
+}
+async function nominatimReverse(ll){
+  // 海外网络兜底
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + ll.lat + '&lon=' + ll.lng + '&accept-language=zh-CN&zoom=18', { signal: ctrl.signal });
+  clearTimeout(timer);
+  if(!r.ok) throw new Error('bad');
+  const j = await r.json();
+  const a = j.address || {};
+  const town = a.county && (a.county.indexOf('镇') >= 0 || a.county.indexOf('街道') >= 0 || a.county.indexOf('乡') >= 0) ? a.county : (a.suburb || a.village || '');
+  return { prov: a.state || a.province || '', city: a.city || a.town || '', area: a.county || a.district || a.suburb || '', town: String(town), detail: [a.road, a.neighbourhood, a.house_number].filter(Boolean).join('') };
+}
 async function reversePick(ll){
   setPickTip('解析选点地址…');
+  let n = null;
+  try{ n = await bdcReverse(ll); }catch(e){ n = null; }
+  if(!n || !n.prov){
+    try{ n = await nominatimReverse(ll); }catch(e){ n = null; }
+  }
+  if(!n || !n.prov){ setPickTip('选点解析失败，请手动填写详细地址'); return; }
   try{
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 10000);
-    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + ll.lat + '&lon=' + ll.lng + '&accept-language=zh-CN&zoom=18', { headers: { 'Accept': 'application/json' }, signal: ctrl.signal });
-    clearTimeout(timer);
-    if(!r.ok) throw new Error('bad');
-    const j = await r.json();
-    const a = j.address || {};
     await loadDivisions();
-    // 匹配省
-    const provName = a.state || a.province || '';
+    const provName = n.prov;
     const prov = (divisions || []).find(p => provName && (p.name === provName || p.name.indexOf(provName) >= 0 || provName.indexOf(p.name.replace(/[省市自治区]$/, '')) >= 0));
     if(prov){
       document.getElementById('selProv').value = prov.code;
       onProvChange();
-      // 匹配市
-      const cityName = a.city || a.town || '';
-      let city = (prov.children || []).find(x => cityName && (x.name === cityName || x.name.indexOf(cityName) >= 0 || cityName.indexOf(x.name.replace(/市$/, '')) >= 0));
+      // 层级名逐级对号：先精确，再词干等值（常熟市↔常熟），避免"苏州工业园区"误吸"苏州市"
+      const nameList = (n.allNames || []).concat([n.city, n.area, n.town]).filter(Boolean);
+      const hit2 = (list) => {
+        let r = null;
+        for(const nm of nameList){ r = (list || []).find(x => x.name === nm); if(r) return r; }
+        for(const nm of nameList){
+          const stem = nm.replace(/区|县|市$/, '');
+          if(!stem) continue;
+          r = (list || []).find(x => x.name === stem || x.name.replace(/区|县|市$/, '') === stem);
+          if(r) return r;
+        }
+        return null;
+      };
+      let city = hit2(prov.children);
+      // 直辖市：pca 结构为 北京→市辖区→区县
+      if(!city && prov.children && prov.children.length === 1 && prov.children[0].name.indexOf('市辖区') >= 0){
+        city = prov.children[0];
+      }
       if(city){
         document.getElementById('selCity').value = city.code;
         onCityChange();
-        // 匹配区县
-        const areaName = a.county || a.district || a.suburb || '';
-        const area = (city.children || []).find(x => areaName && (x.name === areaName || areaName.indexOf(x.name.replace(/区|县|市$/, '')) >= 0));
+        const area = hit2(city.children);
         if(area) document.getElementById('selArea').value = area.code;
       }
+      if(n.town) document.getElementById('addrTown').value = String(n.town).slice(0, 20);
+      if(n.detail) document.getElementById('addrDetail').value = String(n.detail).slice(0, 60);
+      updateAddrPreview();
+      setPickTip('已按选点填入，可返回调整或点"使用该位置"');
+    } else {
+      setPickTip('该位置不在国内行政区划内，请手动选择省市后填写');
     }
-    // 镇/街道 + 详细
-    const town = a.county && (a.county.indexOf('镇') >= 0 || a.county.indexOf('街道') >= 0 || a.county.indexOf('乡') >= 0) ? a.county : (a.suburb || a.village || '');
-    if(town) document.getElementById('addrTown').value = String(town).slice(0, 20);
-    const detail = [a.road, a.neighbourhood, a.house_number].filter(Boolean).join('');
-    if(detail) document.getElementById('addrDetail').value = String(detail).slice(0, 60);
-    updateAddrPreview();
-    setPickTip('已按选点填入，可返回调整或点"使用该位置"');
   }catch(e){
     setPickTip('选点解析失败，请手动填写详细地址');
   }
