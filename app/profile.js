@@ -350,12 +350,17 @@ function openLogin(){
 }
 function closeLogin(){
   document.getElementById('loginOverlay').style.display = 'none';
-  // 登录弹层关闭时若正处在分享页 → 立即加载列表（登录后无缝可见）
+  // 登录弹层关闭时若正处在分享页：已登录 → 立即加载列表（无缝可见）；未登录 → 回到"我的"页
   try{
     const active = document.querySelector('.page.active');
-    if(active && active.id === 'page-share' && currentUser && typeof loadShare === 'function'){
-      shareLoadedOnce = true;
-      loadShare(true);
+    if(active && active.id === 'page-share'){
+      if(currentUser && typeof loadShare === 'function'){
+        shareLoadedOnce = true;
+        loadShare(true);
+      } else {
+        const tab = document.querySelector('.tab[data-target=page-profile]');
+        if(tab && typeof showPage === 'function') showPage('page-profile', tab);
+      }
     }
   }catch(e){}
 }
