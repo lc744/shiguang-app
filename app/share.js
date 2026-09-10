@@ -426,6 +426,7 @@ function initPickMap(){
     pickMapInited = true;
     if(tip) tip.style.display = 'none';
     addrMap.invalidateSize();
+    setTimeout(() => { try{ addrMap.invalidateSize(); }catch(e){} }, 350);
     locateForAddrMap();
   }catch(e){
     if(tip) tip.textContent = '地图初始化失败，请手动填写地址';
