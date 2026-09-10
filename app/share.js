@@ -311,13 +311,28 @@ function drawDefaultPhoto(kind, size){
   x.fillText(kind === '景点' ? '风景这边独好' : kind === '美食' ? '尝一口就知道' : '一起玩得开心', w * .5, h * .9);
   return c;
 }
+/* ---------------- 官方默认配图：打包高清实拍图（缺失时退回 canvas 插画） ---------------- */
+const DEFAULT_ASSET = { '美食': 'food', '景点': 'scene', '娱乐': 'fun' };
+async function assetDataUrl(name, size){
+  const r = await fetch('app/assets/defaults/' + name + '@' + size + '.jpg');
+  if(!r.ok) throw new Error('asset missing');
+  const blob = await r.blob();
+  return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+}
 async function ensureDefaultPhoto(type){
   const kind = type === '景点' ? '景点' : type === '餐厅' ? '美食' : '娱乐';
   if(defaultPhotoCache[kind]) return defaultPhotoCache[kind];
-  const full = drawDefaultPhoto(kind, 1080).toDataURL('image/jpeg', 0.72);
-  const thumb = drawDefaultPhoto(kind, 300).toDataURL('image/jpeg', 0.6);
-  defaultPhotoCache[kind] = { t: thumb, f: full };
-  return defaultPhotoCache[kind];
+  const asset = DEFAULT_ASSET[kind];
+  try{
+    const pair = await Promise.all([assetDataUrl(asset, 1080), assetDataUrl(asset, 300)]);
+    defaultPhotoCache[kind] = { t: pair[1], f: pair[0] };
+    return defaultPhotoCache[kind];
+  }catch(e){
+    const full = drawDefaultPhoto(kind, 1080).toDataURL('image/jpeg', 0.72);
+    const thumb = drawDefaultPhoto(kind, 300).toDataURL('image/jpeg', 0.6);
+    defaultPhotoCache[kind] = { t: thumb, f: full };
+    return defaultPhotoCache[kind];
+  }
 }
 
 /* ---------------- 地址选择弹层（省市区级联 + 镇/村详细 + 地图选点） ---------------- */
