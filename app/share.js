@@ -438,9 +438,24 @@ function setPickTip(t){
   tip.style.display = t ? 'block' : 'none';
 }
 function getCoords(){
-  if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation){
-    return window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 })
-      .then(pos => ({ lat: pos.coords.latitude, lon: pos.coords.longitude }));
+  const G = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+  if(G){
+    // 原生插件路径：先检查/请求权限（Capacitor 8 不会自动弹授权框）
+    return (async () => {
+      try{
+        let st = null;
+        if(G.checkPermissions){ st = await G.checkPermissions(); }
+        const state = st ? (st.location || st.coarseLocation) : null;
+        if(state === 'denied') throw new Error('PERM_DENIED');
+        if(state === 'prompt' || state === 'prompt-with-rationale' || !state){
+          if(G.requestPermissions){ await G.requestPermissions(); }
+        }
+        const pos = await G.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+        return { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      }catch(e){
+        throw (e && e.message === 'PERM_DENIED') ? e : e;
+      }
+    })();
   }
   if(navigator.geolocation){
     return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
@@ -454,7 +469,7 @@ async function locateForAddrMap(){
   let c = null;
   try{ c = await getCoords(); }catch(e){ c = null; }
   if(!c){
-    setPickTip('定位失败：请点击地图选点，或返回手动填写');
+    setPickTip('定位失败：请在系统设置中允许绸缪使用位置权限，或直接点击地图选点');
     return;
   }
   const ll = [c.lat, c.lon];
