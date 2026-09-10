@@ -1,7 +1,7 @@
 // 绸缪 · 分享页（与小程序 share/publish 页一致）
 // 大家的推荐 / 我的发布 双分段；发布（照片≤3、类型、名称、推荐理由）；点赞、删除、举报
 // 云端：profileApi 云函数（PG 存储）；未登录时引导登录，云不可用时提示
-const SHARE_TYPES = ['餐厅', '景点', '娱乐'];
+const SHARE_TYPES = ['美食', '景点', '娱乐'];
 let shareTab = 'feed';
 let shareList = [];
 let sharePage = 0;
@@ -9,7 +9,7 @@ let shareHasMore = true;
 let shareLoading = false;
 let shareLoadedOnce = false;
 let pubPhotos = [];      // [{t: 缩略图, f: 全图}]
-let pubType = '餐厅';
+let pubType = '美食';
 let defaultPhotoCache = {}; // 类型 → 官方默认配图 {t, f}
 
 /* ---------------- 数据接口 ---------------- */
@@ -182,8 +182,8 @@ function closeImgPreview(){
 function openPublish(){
   if(!(window.CloudAuth && CloudAuth.active())){ toast('云服务不可用'); return; }
   if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ openLogin(); return; }
-  pubPhotos = []; pubType = '餐厅';
-  document.querySelectorAll('#typeRow .type-chip').forEach(c => c.classList.toggle('on', c.dataset.t === '餐厅'));
+  pubPhotos = []; pubType = '美食';
+  document.querySelectorAll('#typeRow .type-chip').forEach(c => c.classList.toggle('on', c.dataset.t === '美食'));
   document.getElementById('postNameInput').value = '';
   const addrInput = document.getElementById('postAddrInput');
   if(addrInput) addrInput.value = '';
@@ -320,7 +320,7 @@ async function assetDataUrl(name, size){
   return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
 }
 async function ensureDefaultPhoto(type){
-  const kind = type === '景点' ? '景点' : type === '餐厅' ? '美食' : '娱乐';
+  const kind = type === '景点' ? '景点' : type === '美食' ? '美食' : '娱乐';
   if(defaultPhotoCache[kind]) return defaultPhotoCache[kind];
   const asset = DEFAULT_ASSET[kind];
   try{

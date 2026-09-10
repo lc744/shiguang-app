@@ -180,7 +180,7 @@ async function handlePostAction(action, body, uid){
     const name = String(p.name || '').trim().slice(0, 30);
     const addr = String(p.addr || '').trim().slice(0, 80);
     const desc = String(p.desc || '').trim().slice(0, 500);
-    const type = ['餐厅', '景点', '娱乐'].indexOf(p.type) >= 0 ? p.type : '娱乐';
+    const type = ['美食', '景点', '娱乐'].indexOf(p.type) >= 0 ? p.type : '娱乐';
     const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
     let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS) : [];
     photos = photos.map(x => (typeof x === 'string') ? { t: x, f: x } : x).filter(x => x && typeof x.t === 'string');
