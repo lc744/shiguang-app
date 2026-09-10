@@ -67,6 +67,14 @@ async function restoreCloudSession(){
         avatar: p.avatar || null, createdAt: p.createdAt || new Date().toISOString(),
         cloud: true,
       });
+    } else {
+      // 同 id 本机资料已存在 → 云端资料合并补齐（头像/昵称/性别/生日）
+      let changed = false;
+      if(p.avatar && currentUser.avatar !== p.avatar){ currentUser.avatar = p.avatar; changed = true; }
+      if(p.nickname && !currentUser.nickname){ currentUser.nickname = p.nickname; changed = true; }
+      if(p.gender && !currentUser.gender){ currentUser.gender = p.gender; changed = true; }
+      if(p.birth && !currentUser.birth){ currentUser.birth = p.birth; changed = true; }
+      if(changed){ persistUser(); saveAccountToRegistry(); renderUserCard(); }
     }
   }catch(e){ console.warn('[cloud] 会话恢复失败:', e && e.message); }
 }
@@ -131,12 +139,7 @@ function renderMeCard(){
         </div>
       </div>
       <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="onAvatarPicked(event)" />`;
-    if(isAvatarRef(currentUser.avatar)){
-      mediaGet(currentUser.avatar).then(data => {
-        const img = document.getElementById('meAvatarImg');
-        if(img && data) img.src = data;
-      });
-    }
+    resolveAvatarImg();
     return;
   }
   box.innerHTML = `
@@ -151,12 +154,28 @@ function renderMeCard(){
       </div>
     </div>
     <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="onAvatarPicked(event)" />`;
-  if(isAvatarRef(currentUser.avatar)){
-    mediaGet(currentUser.avatar).then(data => {
-      const img = document.getElementById('meAvatarImg');
-      if(img && data) img.src = data;
-    });
-  }
+  resolveAvatarImg();
+}
+// 本机头像引用失效（IndexedDB 被清理等）→ 自动从云端拉回头像
+function ensureCloudAvatar(){
+  if(!(window.CloudAuth && currentUser && currentUser.cloud)) return;
+  CloudAuth.loadProfile(currentUser.id).then(p => {
+    if(p && typeof p.avatar === 'string' && p.avatar && currentUser){
+      currentUser.avatar = p.avatar;
+      persistUser();
+      saveAccountToRegistry();
+      renderUserCard();
+      toast('已从云端同步头像');
+    }
+  }).catch(() => {});
+}
+function resolveAvatarImg(){
+  if(!currentUser || !isAvatarRef(currentUser.avatar)) return;
+  mediaGet(currentUser.avatar).then(data => {
+    const img = document.getElementById('meAvatarImg');
+    if(img && data){ img.src = data; }
+    else { ensureCloudAvatar(); }
+  }).catch(() => ensureCloudAvatar());
 }
 function startMeEdit(){ if(!currentUser){ openLogin(); return; } meEditing = true; renderMeCard(); }
 function cancelMeEdit(){ meEditing = false; renderMeCard(); }
@@ -512,7 +531,9 @@ async function doEmailLogin(){
       }else{
         btn.disabled = true;
         const r = await CloudAuth.login(email, pass);
-        const p = r.profile || {};
+        let p = r.profile || {};
+        // 头像偶发取不到（网络抖动）→ 立即重试一次
+        if(!p.avatar){ try{ p = (await CloudAuth.loadProfile(r.uid)) || p; }catch(e2){} }
         setCurrentUser({
           id: r.uid, type: 'email', email: r.email,
           nickname: p.nickname || email.split('@')[0].slice(0, 12),
