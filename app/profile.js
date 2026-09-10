@@ -185,12 +185,12 @@ function renderMeBody(){
         <text class="me-item-emoji">📧</text><text class="me-item-label">邮箱</text>
         <text class="me-info-value">${emailText}</text>
       </div>
-      <div class="me-item" onclick="openInfoEditor()" role="button">
+      <div class="me-item" onclick="openGenderEditor()" role="button">
         <text class="me-item-emoji">🚻</text><text class="me-item-label">性别</text>
         <text class="me-info-value ${currentUser.gender ? '' : 'info-unset'}">${esc(GENDER_LABEL[currentUser.gender] || '未设置')}</text>
         <text class="me-arrow">›</text>
       </div>
-      <div class="me-item" onclick="openInfoEditor()" role="button">
+      <div class="me-item" onclick="openBirthEditor()" role="button">
         <text class="me-item-emoji">🎂</text><text class="me-item-label">出生年月</text>
         <text class="me-info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</text>
         <text class="me-arrow">›</text>
@@ -208,16 +208,23 @@ function renderMeBody(){
 }
 function goMyPosts(){ try{ if(window.showShareTab) showShareTab('mine'); }catch(e){} try{ showPage('page-share', document.querySelector('.tab[data-target=page-share]')); }catch(e){} }
 let pickedGender = '';
-function openInfoEditor(){
+function openGenderEditor(){
   if(!currentUser){ openLogin(); return; }
   pickedGender = currentUser.gender || '';
   document.querySelectorAll('#genderChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.gender === pickedGender));
+  document.getElementById('genderOverlay').style.display = 'flex';
+}
+function openBirthEditor(){
+  if(!currentUser){ openLogin(); return; }
   const inp = document.getElementById('birthInput');
   inp.value = currentUser.birth || '';
   document.getElementById('birthClearRow').style.display = currentUser.birth ? 'block' : 'none';
-  document.getElementById('infoOverlay').style.display = 'flex';
+  document.getElementById('birthOverlay').style.display = 'flex';
 }
-function closeInfoEditor(){ document.getElementById('infoOverlay').style.display = 'none'; }
+function closeInfoEditor(){
+  const g = document.getElementById('genderOverlay'); if(g) g.style.display = 'none';
+  const b = document.getElementById('birthOverlay'); if(b) b.style.display = 'none';
+}
 function pickGender(g){
   pickedGender = g;
   document.querySelectorAll('#genderChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.gender === g));
@@ -226,18 +233,27 @@ function clearBirth(){
   document.getElementById('birthInput').value = '';
   document.getElementById('birthClearRow').style.display = 'none';
 }
-function saveInfo(){
+function saveGender(){
+  if(!currentUser) return;
+  currentUser.gender = pickedGender;
+  persistUser();
+  saveAccountToRegistry();
+  syncCloudProfile({ gender: currentUser.gender });
+  renderMeBody();
+  closeInfoEditor();
+  toast('性别已保存');
+}
+function saveBirth(){
   if(!currentUser) return;
   const birth = (document.getElementById('birthInput').value || '').trim();
   if(birth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(birth)){ toast('出生年月格式不正确'); return; }
-  currentUser.gender = pickedGender;
   currentUser.birth = birth;
   persistUser();
   saveAccountToRegistry();
-  syncCloudProfile({ gender: currentUser.gender, birth: currentUser.birth });
+  syncCloudProfile({ birth: currentUser.birth });
   renderMeBody();
   closeInfoEditor();
-  toast('资料已保存');
+  toast('出生年月已保存');
 }
 
 /* ---------------- 设置入口（按钮 → 弹层） ---------------- */

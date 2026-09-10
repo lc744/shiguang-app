@@ -419,19 +419,29 @@
     </div>
   </div>
 
-  <!-- 编辑资料弹层（性别 / 出生年月） -->
-  <div class="remind-fullscreen" id="infoOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
+  <!-- 修改性别弹层 -->
+  <div class="remind-fullscreen" id="genderOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
     <div class="remind-card card" style="max-width:320px;padding:20px 18px">
-      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">编辑资料</h2>
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">修改性别</h2>
       <div class="field" style="text-align:left">
-        <label>性别</label>
         <div class="chips" id="genderChips">
           <button type="button" class="chip" data-gender="" onclick="pickGender('')">未设置</button>
           <button type="button" class="chip" data-gender="male" onclick="pickGender('male')">男</button>
           <button type="button" class="chip" data-gender="female" onclick="pickGender('female')">女</button>
         </div>
       </div>
-      <div class="field" style="text-align:left;margin-top:10px">
+      <div class="action-row" style="margin-top:16px">
+        <button class="secondary" onclick="closeInfoEditor()">取消</button>
+        <button class="primary" onclick="saveGender()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改出生年月弹层 -->
+  <div class="remind-fullscreen" id="birthOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
+    <div class="remind-card card" style="max-width:320px;padding:20px 18px">
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">修改出生年月</h2>
+      <div class="field" style="text-align:left">
         <label>出生年月</label>
         <input id="birthInput" type="month" />
         <div id="birthClearRow" style="margin-top:6px;display:none">
@@ -440,7 +450,7 @@
       </div>
       <div class="action-row" style="margin-top:16px">
         <button class="secondary" onclick="closeInfoEditor()">取消</button>
-        <button class="primary" onclick="saveInfo()">保存</button>
+        <button class="primary" onclick="saveBirth()">保存</button>
       </div>
     </div>
   </div>
