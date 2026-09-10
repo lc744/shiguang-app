@@ -478,6 +478,20 @@ async function locateForAddrMap(){
   setPickTip('');
   reversePick({ lat: c.lat, lng: c.lon });
 }
+async function photonDetail(ll){
+  // Photon(OpenStreetMap) 补充路名/POI 作为详细地址
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  const r = await fetch('https://photon.komoot.io/reverse?lat=' + ll.lat + '&lon=' + ll.lng + '&lang=default', { signal: ctrl.signal });
+  clearTimeout(timer);
+  if(!r.ok) throw new Error('bad');
+  const j = await r.json();
+  const f = (j.features && j.features[0] && j.features[0].properties) || {};
+  let detail = '';
+  if(f.street){ detail = String(f.street) + (f.housenumber ? String(f.housenumber) : ''); }
+  else if(f.name && f.osm_key !== 'place'){ detail = String(f.name); }
+  return detail;
+}
 async function bdcReverse(ll){
   // BigDataCloud 免费逆地理（国内可达，返回中文）
   const ctrl = new AbortController();
@@ -517,6 +531,11 @@ async function reversePick(ll){
     try{ n = await nominatimReverse(ll); }catch(e){ n = null; }
   }
   if(!n || !n.prov){ setPickTip('选点解析失败，请手动填写详细地址'); return; }
+  // 详细地址：Photon 路名/POI 优先，避免与已用的镇街/区县重名
+  try{
+    const ph = await photonDetail(ll);
+    if(ph && ph !== n.town && ph !== n.area && ph !== n.city) n.detail = ph;
+  }catch(e){}
   try{
     await loadDivisions();
     const provName = n.prov;

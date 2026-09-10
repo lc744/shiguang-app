@@ -493,9 +493,9 @@
   </div>
 
   <!-- 地址选择弹层：省市区级联 + 镇/村详细 + 地图选点 -->
-  <div class="remind-fullscreen" id="addrPicker" style="display:none">
+  <div class="remind-fullscreen" id="addrPicker" style="display:none" onclick="if(event.target===this)closeAddrPicker()">
     <div class="publish-shell">
-      <div class="subhead"><h3>选择地址</h3><small>省市区规范选择，也可在地图上选点修正</small><button class="pub-close" onclick="closeAddrPicker()">✕</button></div>
+      <div class="subhead"><h3>选择地址</h3><small>省市区规范选择，也可在地图上选点修正 · 点击空白处返回</small></div>
 
       <div class="detail-card p-block">
         <div class="p-label">省 / 市 / 区县</div>

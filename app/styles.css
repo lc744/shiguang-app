@@ -402,6 +402,8 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .loc-btn:disabled{opacity:.6}
 .loc-open{width:100%;padding:12px 0;font-size:14px}
 #mapPicker{align-items:stretch;justify-content:flex-start;padding:0;background:var(--bg,#f6f6f2)}
+#mapPicker .subhead{margin-top:var(--safe-top,0px)}
+#addrPicker{padding-top:calc(24px + var(--safe-top,0px))}
 #mapPicker .subhead,#mapPicker .map-actions,#mapPicker .map-shell{width:100%}
 .map-shell{position:relative;flex:1;min-height:0;margin-top:8px}
 .pick-map{position:absolute;inset:0;background:#dfe8e4;z-index:0}
