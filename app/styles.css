@@ -349,7 +349,11 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .me-item-label.danger{color:#c65c52}
 
 /* ================= 分享页（对齐小程序 share 页） ================= */
-.seg-row{position:sticky;top:0;z-index:20;display:flex;gap:10px;margin:0 0 12px;padding:10px 0 12px;background:transparent}
+.seg-row{display:flex;gap:10px;margin:0 0 10px}
+/* 分享页锁定在标题栏下方，列表内部滚动：内容从分段行底部开始被裁剪消失 */
+#page-share.active{position:fixed;top:var(--header-h,117px);left:0;right:0;bottom:0;overflow:hidden;z-index:1}
+.share-page{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.share-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .seg-group{flex:1;display:flex;gap:8px;min-width:0}
 .seg{flex:1;height:36px;border:none;border-radius:999px;background:var(--bg);color:var(--sub);font-size:13px;cursor:pointer}
 .pub-pill{flex:none;height:36px;padding:0 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#2e7d64,#246353);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(36,99,83,.25);display:inline-flex;align-items:center;gap:4px;transition:transform .12s ease}

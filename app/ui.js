@@ -37,13 +37,10 @@ function showPage(id, btn){
   window.scrollTo(0,0);
 }
 function fixSegSticky(){
-  const row = document.querySelector('.seg-row');
   const hd = document.querySelector('.header');
-  if(!row || !hd) return;
-  const apply = () => { row.style.top = hd.offsetHeight + 'px'; };
+  if(!hd) return;
+  const apply = () => document.documentElement.style.setProperty('--header-h', hd.offsetHeight + 'px');
   apply();
-  setTimeout(apply, 400);
-  setTimeout(apply, 1500);
   // 状态栏高度(--safe-top)等异步注入会导致 header 高度变化 → 跟踪修正
   if(!fixSegSticky._ro){
     try{
@@ -51,16 +48,11 @@ function fixSegSticky(){
       fixSegSticky._ro.observe(hd);
     }catch(e){}
   }
+  if(!fixSegSticky._iv){
+    fixSegSticky._iv = setInterval(apply, 2000);
+  }
 }
 window.addEventListener('resize', fixSegSticky);
-// 滚动中随时校正（header 高度可能因 safe-top/字体加载变化）
-window.addEventListener('scroll', () => {
-  const row = document.querySelector('.seg-row');
-  const hd = document.querySelector('.header');
-  if(!row || !hd) return;
-  const h = hd.offsetHeight + 'px';
-  if(row.style.top !== h) row.style.top = h;
-}, { passive: true });
 function goBack(){ showPage(lastPage); }
 
 function periodOf(hhmm){
