@@ -40,7 +40,8 @@ function __handleBackGesture(){
   return false;
 }
 
-function showPage(id, btn){  if(id !== 'page-create' && id !== 'page-detail') lastPage = id;
+function showPage(id, btn){
+  if(id !== 'page-create' && id !== 'page-detail') lastPage = id;
   // 离开表单页时停止进行中的录音并丢弃未保存状态
   if(id !== 'page-create' && typeof stopRecording === 'function'){
     stopRecording(true);
@@ -49,6 +50,7 @@ function showPage(id, btn){  if(id !== 'page-create' && id !== 'page-detail') la
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.header-actions .icon-btn').forEach(b => b.classList.remove('active'));
   const target = btn ? btn : document.querySelector(`.tab[data-target="${id}"]`);
   if(target) target.classList.add('active');
   // 添加事件页/详情页/分享页/我的页隐藏右下角 FAB，其他页面显示
