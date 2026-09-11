@@ -60,20 +60,66 @@ public final class VoicePackManager {
     }
 
     public static File download(Context context, String id, String url, String expectedSha256) throws Exception {
+        return download(context, id, url, expectedSha256, null);
+    }
+
+    public interface ProgressCb { void onProgress(String phase, long received, long total); }
+
+    // 主源失败自动换镜像（gh-proxy / 直连 github / ghfast / ghproxy.net）
+    public static java.util.List<String> mirrorCandidates(String url) {
+        java.util.List<String> list = new java.util.ArrayList<>();
+        if (url == null || url.isEmpty()) return list;
+        list.add(url);
+        String gh = url;
+        String[] proxies = {"https://gh-proxy.com/", "https://ghfast.top/", "https://ghproxy.net/", "https://mirror.ghproxy.com/"};
+        for (String p : proxies) { if (url.startsWith(p)) { gh = url.substring(p.length()); break; } }
+        if (!gh.equals(url)) {
+            list.add(gh);
+            list.add("https://ghfast.top/" + gh);
+            list.add("https://ghproxy.net/" + gh);
+        } else {
+            list.add("https://gh-proxy.com/" + gh);
+            list.add("https://ghfast.top/" + gh);
+            list.add("https://ghproxy.net/" + gh);
+        }
+        return list;
+    }
+
+    public static File download(Context context, String id, String url, String expectedSha256, ProgressCb cb) throws Exception {
+        Exception last = null;
+        for (String u : mirrorCandidates(url)) {
+            try {
+                if (cb != null) cb.onProgress("try", 0, 0);
+                return downloadOne(context, id, u, expectedSha256, cb);
+            } catch (Exception ex) { last = ex; }
+        }
+        throw (last != null) ? last : new IllegalStateException("download failed: no mirror");
+    }
+
+    private static File downloadOne(Context context, String id, String url, String expectedSha256, ProgressCb cb) throws Exception {
         File dir = packDir(context, id);
         if (!dir.exists() && !dir.mkdirs()) throw new IllegalStateException("Cannot create pack directory");
         File temp = new File(dir, "download.tmp");
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setConnectTimeout(30000);
-        conn.setReadTimeout(120000);
+        conn.setReadTimeout(300000);
         conn.setInstanceFollowRedirects(true);
         conn.setRequestProperty("User-Agent", "Shiguang-Android/1.0");
         int code = conn.getResponseCode();
-        if (code < 200 || code >= 300) throw new IllegalStateException("HTTP " + code);
+        if (code < 200 || code >= 300) { conn.disconnect(); throw new IllegalStateException("HTTP " + code); }
+        long total = conn.getContentLength();
         try (InputStream in = new BufferedInputStream(conn.getInputStream()); FileOutputStream out = new FileOutputStream(temp)) {
             byte[] buf = new byte[1024 * 1024];
             int n;
-            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            long received = 0; int lastPct = -1;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+                received += n;
+                if (cb != null && total > 0) {
+                    int pct = (int) Math.min(99, received * 100 / total);
+                    if (pct != lastPct && (pct - lastPct >= 2 || pct >= 99)) { lastPct = pct; cb.onProgress("download", received, total); }
+                }
+            }
             out.getFD().sync();
         } finally { conn.disconnect(); }
         if (expectedSha256 != null && !expectedSha256.isEmpty()) {

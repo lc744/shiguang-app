@@ -47,6 +47,13 @@ const bridge = `
   window.__listVoicePacks = async function(){
     try{ return await NativeAlarm.listVoicePacks(); }catch(e){ return {packs:[]}; }
   };
+  window.__onVoiceProgress = null;
+  try{
+    NativeAlarm.addListener('voiceProgress', (ev) => {
+      const d = ev && (ev.data || ev);
+      if(window.__onVoiceProgress && d) window.__onVoiceProgress(d);
+    });
+  }catch(e){}
   window.__downloadVoicePack = async function(pack){
     return await NativeAlarm.downloadVoicePack({id:pack.id,url:pack.downloadUrl,vocoderUrl:pack.vocoderUrl||'',sha256:pack.sha256||''});
   };

@@ -185,10 +185,34 @@ async function loadVoicePacks(){
     <div style="margin-top:8px">${p.installed ? `<button class="secondary" onclick="previewVoicePack('${p.id}')">试听</button> ${p.bundled?'':`<button class="danger-btn" onclick="removeVoicePack('${p.id}')">删除</button>`}` : `<button class="primary" onclick="downloadVoicePackById('${p.id}',this)">下载语音包</button>`}</div></div>`).join('') || '<small>暂无语音包</small>';
 }
 async function downloadVoicePackById(id, btn){
-  const p=voicePackCatalog.find(x=>x.id===id); if(!p) return;
-  btn.disabled=true; btn.textContent='下载中…';
-  try{ await window.__downloadVoicePack(p); toast('语音包已下载，正在安装'); await loadVoicePacks(); }
-  catch(e){ btn.disabled=false; btn.textContent='重新下载'; toast('下载失败'); }
+  const p = voicePackCatalog.find(x => x.id === id); if(!p) return;
+  const holder = btn.parentElement;
+  btn.disabled = true; btn.textContent = '准备下载…';
+  let bar = holder.querySelector('.vp-progress');
+  if(!bar){ bar = document.createElement('div'); bar.className = 'vp-progress'; bar.innerHTML = '<div class="vp-track"><div class="vp-fill"></div></div><small class="vp-txt">连接下载源…</small>'; holder.appendChild(bar); }
+  const fill = bar.querySelector('.vp-fill'), txt = bar.querySelector('.vp-txt');
+  fill.style.width = '0%'; fill.classList.remove('ind'); txt.textContent = '连接下载源…';
+  const fmt = b => (b / 1048576).toFixed(1) + 'MB';
+  window.__onVoiceProgress = (d) => {
+    if(!d || d.id !== id) return;
+    if(d.phase === 'try'){ txt.textContent = '尝试下载源…'; }
+    else if(d.phase === 'download' && d.total > 0){
+      const pct = Math.max(1, Math.min(99, Math.round(d.received * 100 / d.total)));
+      fill.style.width = pct + '%';
+      txt.textContent = pct + '% · ' + fmt(d.received) + ' / ' + fmt(d.total);
+    } else if(d.phase === 'extract'){ fill.style.width = '100%'; fill.classList.add('ind'); txt.textContent = '解压安装中，请稍候…'; }
+    else if(d.phase === 'done'){ fill.style.width = '100%'; txt.textContent = '安装完成'; }
+  };
+  try{
+    await window.__downloadVoicePack(p);
+    window.__onVoiceProgress = null;
+    toast('语音包安装完成');
+    await loadVoicePacks();
+  }catch(e){
+    btn.disabled = false; btn.textContent = '重新下载';
+    txt.textContent = '下载失败（已自动尝试多个下载源），请检查网络后重试';
+    toast('下载失败，请重试');
+  }
 }
 async function removeVoicePack(id){ if(!confirm('删除这个离线语音包吗？')) return; await window.__deleteVoicePack(id); await loadVoicePacks(); toast('语音包已删除'); }
 async function previewVoicePack(id){

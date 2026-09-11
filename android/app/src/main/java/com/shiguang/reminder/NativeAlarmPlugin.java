@@ -196,11 +196,19 @@ public class NativeAlarmPlugin extends Plugin {
         if (id == null || url == null) { call.reject("missing id/url"); return; }
         new Thread(() -> {
             try {
-                java.io.File archive = VoicePackManager.download(getContext(), id, url, sha256);
+                VoicePackManager.ProgressCb cb = (phase, received, total) -> {
+                    try {
+                        JSObject d = new JSObject();
+                        d.put("id", id); d.put("phase", phase); d.put("received", received); d.put("total", total);
+                        notifyListeners("voiceProgress", d);
+                    } catch (Exception ignore) {}
+                };
+                java.io.File archive = VoicePackManager.download(getContext(), id, url, sha256, cb);
+                cb.onProgress("extract", 0, 0);
                 if ("matcha-baker-natural".equals(id)) {
                     String vocoderUrl = call.getString("vocoderUrl", "");
                     if (vocoderUrl.isEmpty()) throw new IllegalArgumentException("missing vocoderUrl");
-                    java.io.File vocoder = VoicePackManager.download(getContext(), id + "-vocoder", vocoderUrl, "");
+                    java.io.File vocoder = VoicePackManager.download(getContext(), id + "-vocoder", vocoderUrl, "", cb);
                     VoicePackManager.installMatchaPack(getContext(), id, archive, vocoder);
                     VoicePackManager.delete(getContext(), id + "-vocoder");
                 } else if ("melo-zh-en".equals(id)) {
@@ -211,6 +219,7 @@ public class NativeAlarmPlugin extends Plugin {
                     JSONObject marker = new JSONObject(); marker.put("id", id); marker.put("archive", archive.getAbsolutePath());
                     VoicePackManager.markInstalled(getContext(), id, marker);
                 }
+                cb.onProgress("done", 0, 0);
                 JSObject out = new JSObject(); out.put("downloaded", true); out.put("installed", true);
                 call.resolve(out);
             } catch (Exception ex) { call.reject("downloadVoicePack failed", ex); }

@@ -427,6 +427,13 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .post-detail-card{width:min(92vw,430px);max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#f6f6f2);border-radius:16px;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px));margin-top:var(--safe-top,0px)}
 .pd-photos{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
 .pd-photo{width:100%;border-radius:10px;display:block;background:#e8efe9;min-height:60px;cursor:pointer}
+/* 语音包下载进度 */
+.vp-progress{margin-top:8px}
+.vp-track{height:8px;background:#e3ece7;border-radius:999px;overflow:hidden}
+.vp-fill{height:100%;width:0;background:var(--brand,#3f7d64);border-radius:999px;transition:width .3s}
+.vp-fill.ind{background:repeating-linear-gradient(45deg,#3f7d64,#3f7d64 8px,#5b9a7f 8px,#5b9a7f 16px);animation:vpind 1s linear infinite}
+@keyframes vpind{to{background-position:32px 0}}
+.vp-txt{display:block;margin-top:4px;color:#6b7f76;font-size:11px}
 .id-row{display:flex;align-items:center;gap:12px;margin-top:10px;cursor:pointer}
 .id-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover}
 .id-avatar-ph{display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:18px}

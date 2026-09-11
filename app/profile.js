@@ -195,23 +195,28 @@ async function saveMeEdit(){
 function renderMeBody(){
   const box = document.getElementById('meBody');
   if(!box) return;
-  if(!currentUser){ box.innerHTML = ''; return; }
-  const birth = formatBirth(currentUser.birth);
-  const emailText = currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle());
+  const logged = !!currentUser;
+  const birth = logged ? formatBirth(currentUser.birth) : '';
+  const emailText = logged ? (currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle())) : '无';
+  const genderText = logged ? (GENDER_LABEL[currentUser.gender] || '未设置') : '无';
+  const birthText = logged ? (birth || '未设置') : '无';
+  const unset = v => (!v || v === '无' || v === '未设置') ? 'info-unset' : '';
+  const editHandler = logged ? 'openGenderEditor()' : 'requireLoginTip()';
+  const birthHandler = logged ? 'openBirthEditor()' : 'requireLoginTip()';
   box.innerHTML = `
     <div class="card me-menu">
-      <div class="me-item" title="${emailText}">
+      <div class="me-item" title="${logged ? emailText : '登录后显示'}">
         <text class="me-item-emoji">📧</text><text class="me-item-label">邮箱</text>
-        <text class="me-info-value">${emailText}</text>
+        <text class="me-info-value ${unset(emailText)}">${emailText}</text>
       </div>
-      <div class="me-item" onclick="openGenderEditor()" role="button">
+      <div class="me-item" onclick="${editHandler}" role="button">
         <text class="me-item-emoji">🚻</text><text class="me-item-label">性别</text>
-        <text class="me-info-value ${currentUser.gender ? '' : 'info-unset'}">${esc(GENDER_LABEL[currentUser.gender] || '未设置')}</text>
+        <text class="me-info-value ${unset(genderText)}">${esc(genderText)}</text>
         <text class="me-arrow">›</text>
       </div>
-      <div class="me-item" onclick="openBirthEditor()" role="button">
+      <div class="me-item" onclick="${birthHandler}" role="button">
         <text class="me-item-emoji">🎂</text><text class="me-item-label">出生年月</text>
-        <text class="me-info-value ${birth ? '' : 'info-unset'}">${esc(birth || '未设置')}</text>
+        <text class="me-info-value ${unset(birthText)}">${esc(birthText)}</text>
         <text class="me-arrow">›</text>
       </div>
       <div class="me-item" onclick="goMyPosts()" role="button">
@@ -220,12 +225,17 @@ function renderMeBody(){
       <div class="me-item" onclick="openSettings()" role="button">
         <text class="me-item-emoji">⚙️</text><text class="me-item-label">设置</text><text class="me-arrow">›</text>
       </div>
-      <div class="me-item" onclick="logoutUser()" role="button">
+      ${logged ? `<div class="me-item" onclick="logoutUser()" role="button">
         <text class="me-item-emoji">🚪</text><text class="me-item-label danger">退出登录</text><text class="me-arrow">›</text>
-      </div>
+      </div>` : ''}
     </div>`;
 }
-function goMyPosts(){ try{ if(window.showShareTab) showShareTab('mine'); }catch(e){} try{ showPage('page-share', document.querySelector('.tab[data-target=page-share]')); }catch(e){} }
+function requireLoginTip(){ toast('请先登录'); }
+function goMyPosts(){
+  if(!currentUser){ toast('请先登录'); return; }
+  try{ if(window.showShareTab) showShareTab('mine'); }catch(e){}
+  try{ showPage('page-share', document.querySelector('.tab[data-target=page-share]')); }catch(e){}
+}
 let pickedGender = '';
 function openGenderEditor(){
   if(!currentUser){ openLogin(); return; }
