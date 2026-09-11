@@ -82,6 +82,15 @@ function applyNativeSafeArea(){
 }
 applyNativeSafeArea();
 window.addEventListener('resize', applyNativeSafeArea);
+// 启动早期 Capacitor 原生桥可能未就绪（调用失败被吞掉）→ 间隔重试直到拿到真实状态栏高度
+(function safeAreaRetry(){
+  let n = 0;
+  const t = setInterval(() => {
+    n++;
+    if(document.documentElement.style.getPropertyValue('--safe-top') || n > 20){ clearInterval(t); return; }
+    applyNativeSafeArea();
+  }, 800);
+})();
 // 系统深浅色切换时（用户选了“跟随系统”）自动刷新主题
 if(window.matchMedia){
   try{

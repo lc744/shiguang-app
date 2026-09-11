@@ -168,7 +168,7 @@
     .tab.active{color:var(--main);font-weight:700}
     .tab i{font-style:normal;font-size:18px;line-height:1}
     .fab{position:fixed;right:50%;transform:translateX(175px);bottom:calc(82px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:20px;border:0;background:linear-gradient(135deg,var(--main) 0%,var(--main2) 100%);color:#fff;font-size:30px;box-shadow:0 16px 30px rgba(36,99,83,.28);cursor:pointer;z-index:11}
-    .remind-fullscreen{position:fixed;inset:0;background:rgba(238,244,241,.97);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+    .remind-fullscreen{position:fixed;inset:0;background:rgba(238,244,241,.97);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:100;padding:calc(24px + var(--safe-top,0px)) 24px 24px}
     .remind-fullscreen.show{display:flex}
     .remind-card{text-align:center;max-width:340px;width:100%}
     .remind-card .emoji{font-size:64px;line-height:1;margin-bottom:14px}
@@ -401,9 +401,9 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .loc-btn{flex:none;height:40px;padding:0 14px;border:none;border-radius:10px;background:linear-gradient(135deg,#2e7d64,#246353);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
 .loc-btn:disabled{opacity:.6}
 .loc-open{width:100%;padding:12px 0;font-size:14px}
-#mapPicker{align-items:stretch;justify-content:flex-start;padding:0;background:var(--bg,#f6f6f2)}
-#mapPicker .subhead{margin-top:var(--safe-top,0px)}
-#addrPicker{padding-top:calc(24px + var(--safe-top,0px))}
+#mapPicker{align-items:stretch;justify-content:flex-start;padding:var(--safe-top,0px) 0 0;background:var(--bg,#f6f6f2)}
+#mapPicker .subhead{margin-top:0}
+/* #addrPicker 顶部留白由 .remind-fullscreen 统一处理 */
 #mapPicker .subhead,#mapPicker .map-actions,#mapPicker .map-shell{width:100%}
 .map-shell{position:relative;flex:1;min-height:0;margin-top:8px}
 .pick-map{position:absolute;inset:0;background:#dfe8e4;z-index:0}
@@ -424,7 +424,7 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .post-cover{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:4/3;background:#e8efe9;margin-bottom:10px;cursor:pointer}
 .post-cover img{width:100%;height:100%;object-fit:cover;display:block}
 .pd-badge{position:absolute;right:8px;bottom:8px;background:rgba(17,45,36,.78);color:#fff;font-size:11px;padding:3px 9px;border-radius:999px}
-.post-detail-card{width:min(92vw,430px);max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#f6f6f2);border-radius:16px;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px));margin-top:var(--safe-top,0px)}
+.post-detail-card{width:min(92vw,430px);max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#f6f6f2);border-radius:16px;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px))}
 .pd-photos{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
 .pd-photo{width:100%;border-radius:10px;display:block;background:#e8efe9;min-height:60px;cursor:pointer}
 /* 语音包下载进度 */
@@ -456,5 +456,5 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .publish-tip{font-size:11px;color:var(--sub);text-align:center;margin-top:10px}
 
 /* 图片预览层 */
-.img-preview{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
-.img-preview img{max-width:94%;max-height:92%;object-fit:contain;border-radius:6px}
+.img-preview{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:calc(12px + var(--safe-top,0px)) 12px 12px}
+.img-preview img{max-width:94%;max-height:88%;object-fit:contain;border-radius:6px}
