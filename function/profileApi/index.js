@@ -213,6 +213,11 @@ async function handlePostAction(action, body, uid){
       "INSERT INTO posts (id, uid, nickname, type, name, addr, descr, photos, created_at) VALUES ('" +
       esc(id) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(type) + "', '" + esc(name) + "', '" + esc(addr) + "', '" + esc(desc) + "', '" +
       esc(JSON.stringify(photos)) + "', now())" });
+    // 头像自愈：发布时顺带补写/更新资料头像，保证信息流联表能取到
+    const avatar = (typeof p.avatar === 'string' && p.avatar.indexOf('data:image/') === 0) ? p.avatar.slice(0, 400000) : null;
+    if(avatar){
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO profiles (uid, avatar, updated_at) VALUES ('" + esc(uid) + "', '" + esc(avatar) + "', now()) ON CONFLICT (uid) DO UPDATE SET avatar = EXCLUDED.avatar, updated_at = now()" });
+    }
     return json(200, { ok: true, id });
   }
 

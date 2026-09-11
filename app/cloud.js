@@ -154,10 +154,10 @@
       else if(p.gender === 'female') body.gender = 'FEMALE';
       if(typeof p.birth === 'string' && /^\d{4}-\d{2}$/.test(p.birth)) body.birthdate = p.birth + '-01';
       if(Object.keys(body).length) await authFetch('/user/profile', { method: 'PATCH', body });
-      // 头像云同步（失败不影响整体保存结果）
+      // 头像云同步（失败提示用户，发布时会自动补传）
       if(typeof p.avatar === 'string'){
         try{ await profileApiCall('save', { avatar: p.avatar.slice(0, 400000) }); }
-        catch(e2){ console.warn('[cloud] 头像云同步暂不可用:', e2.message); }
+        catch(e2){ console.warn('[cloud] 头像云同步暂不可用:', e2.message); try{ toast('头像暂未同步云端，下次发布会自动补传'); }catch(e3){} }
       }
       return true;
     }catch(e){

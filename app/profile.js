@@ -77,6 +77,31 @@ async function restoreCloudSession(){
       if(changed){ persistUser(); saveAccountToRegistry(); renderUserCard(); }
     }
   }catch(e){ console.warn('[cloud] 会话恢复失败:', e && e.message); }
+  repairCloudAvatar();
+}
+
+/* ---- 头像云同步自愈：本地有头像而云端缺失时自动补传 ---- */
+async function avatarDataUrl(){
+  try{
+    if(!currentUser || !currentUser.avatar) return null;
+    const a = String(currentUser.avatar);
+    if(a.indexOf('data:image/') === 0) return a;
+    if(isAvatarRef(a)){
+      const d = await mediaGet(a);
+      return (d && String(d).indexOf('data:image/') === 0) ? d : null;
+    }
+    return null;
+  }catch(e){ return null; }
+}
+async function repairCloudAvatar(){
+  try{
+    if(!(window.CloudAuth && currentUser && currentUser.cloud && currentUser.id)) return;
+    if(!currentUser.avatar) return;
+    const prof = await CloudAuth.loadProfile(currentUser.id).catch(() => null);
+    if(prof && prof.avatar) return; // 云端已有头像，无需补传
+    const d = await avatarDataUrl();
+    if(d) syncCloudProfile({ avatar: d });
+  }catch(e){}
 }
 
 /* ---------------- 我的页渲染（与小程序 me 页一致：账号卡 + 无框资料行 + 菜单卡） ---------------- */
@@ -556,6 +581,7 @@ async function doEmailLogin(){
           avatar: p.avatar || null, createdAt: p.createdAt || new Date().toISOString(),
           cloud: true,
         });
+        repairCloudAvatar();
         closeLogin();
       }
     }catch(e){ showEmailError(e.message); }

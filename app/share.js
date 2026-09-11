@@ -724,10 +724,14 @@ async function doPublish(){
         if(!map[key]){ map[key] = String(photos[0].f).slice(3); try{ localStorage.setItem(DEFAULT_MEDIA_KEY, JSON.stringify(map)); }catch(e){} }
       }
     }catch(e){}
+    // 头像随发布一并上云（自愈：即使此前头像云同步失败，发布也会补上）
+    let avatarForCloud = null;
+    try{ avatarForCloud = await avatarDataUrl(); }catch(e){}
     const r = await shareApi('publish', { post: {
       type: pubType, name, addr, desc,
       photos: photos.map(x => ({ t: x.t, f: x.f })),
       nickname: (currentUser && currentUser.nickname) || '路过的朋友',
+      avatar: avatarForCloud || '',
     }});
     if(!r || r.ok === false) throw new Error(r && r.error || '发布失败');
     toast('发布成功');
