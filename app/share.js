@@ -89,11 +89,14 @@ function renderShareList(errMsg){
     return;
   }
   empty.style.display = 'none';
+  shareList.forEach((p, i) => { p._idx = i; });
   box.innerHTML = shareList.map(p => {
     const photos = (p.photos || []);
-    const photoHtml = photos.length ? `
-      <div class="post-photos ${photos.length === 1 ? 'single' : ''}">
-        ${photos.map((ph, i) => `<img class="post-photo" src="${esc(ph)}" loading="lazy" onclick="previewSharePhoto(${p._idx}, ${i})" />`).join('')}
+    const cover = photos[0] || '';
+    const photoHtml = cover ? `
+      <div class="post-cover" onclick="openPostDetail(${p._idx})">
+        <img src="${esc(cover)}" loading="lazy" />
+        ${photos.length > 1 ? `<text class="pd-badge">📷 ${photos.length}张</text>` : ''}
       </div>` : '';
     return `
       <div class="post-card card">
@@ -114,8 +117,6 @@ function renderShareList(errMsg){
         </div>
       </div>`;
   }).join('');
-  // 给每条记录记下数组下标，供预览取全图
-  shareList.forEach((p, i) => { p._idx = i; });
 }
 
 /* ---------------- 点赞 / 删除 / 举报 ---------------- */
@@ -151,6 +152,36 @@ function onShareReport(id){
     })
     .catch(e => toast(e.message || '举报失败'));
 }
+
+/* ---------------- 帖子详情页（列表只显封面，点开看全部大图） ---------------- */
+function openPostDetail(idx){
+  const p = shareList[idx]; if(!p) return;
+  const photos = (p.photos || []);
+  const body = document.getElementById('postDetailBody');
+  body.innerHTML = `
+    <div class="post-head"><text class="post-type">${esc(p.type || '娱乐')}</text>${p.name ? `<text class="post-name">${esc(p.name)}</text>` : ''}</div>
+    ${p.addr ? `<text class="post-addr">📍 ${esc(p.addr)}</text>` : ''}
+    ${p.desc ? `<text class="post-desc">${esc(p.desc)}</text>` : ''}
+    ${photos.length ? `<div class="pd-photos">${photos.map((ph, i) => `<img class="pd-photo" id="pdImg${i}" src="${esc(ph)}" loading="lazy" onclick="previewSharePhoto(${idx}, ${i})" />`).join('')}</div>` : '<text class="post-desc" style="opacity:.6">（没有配图）</text>'}
+    <div class="post-meta">
+      ${p.avatar ? `<img class="post-avatar" src="${esc(p.avatar)}" />` : '<text class="post-avatar post-avatar-ph">👤</text>'}
+      <text class="post-author">${esc(p.nickname || '路过的朋友')}</text>
+      <view class="post-tools">
+        <text class="post-tool ${p.selfLiked ? 'liked' : ''}" onclick="onShareLike('${esc(p.id)}')">${p.selfLiked ? '❤️' : '🤍'} ${p.likes || 0}</text>
+      </view>
+    </div>`;
+  document.getElementById('postDetail').style.display = 'flex';
+  // 详情里的图逐张换成高清全图（列表/详情先显示缩略图）
+  photos.forEach((ph, i) => {
+    shareApi('photo', { id: p.id, i }).then(r => {
+      if(r && r.url && String(r.url).indexOf('data:') === 0){
+        const img = document.getElementById('pdImg' + i);
+        if(img) img.src = r.url;
+      }
+    }).catch(() => {});
+  });
+}
+function closePostDetail(){ document.getElementById('postDetail').style.display = 'none'; }
 
 /* ---------------- 图片预览（缩略图点开看全图） ---------------- */
 function previewSharePhoto(idx, i){

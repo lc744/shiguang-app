@@ -517,6 +517,13 @@
     </div>
   </div>
 
+  <!-- 帖子详情弹层（点空白处返回） -->
+  <div class="remind-fullscreen" id="postDetail" style="display:none" onclick="if(event.target===this)closePostDetail()">
+    <div class="post-detail-card">
+      <div id="postDetailBody"></div>
+    </div>
+  </div>
+
   <!-- 地图选点弹层（全屏地图，实时定位 + 点选修正） -->
   <div class="remind-fullscreen" id="mapPicker" style="display:none">
     <div class="subhead"><h3>地图选点</h3><small>已定位到当前位置 · 点击地图或拖动标记修正</small><button class="pub-close" onclick="closeMapPicker()">✕</button></div>
