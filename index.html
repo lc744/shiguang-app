@@ -15,7 +15,7 @@
         <span>记事 · 闹钟 · 语音包 · 表情包</span>
       </div>
       <div class="header-actions">
-        <button class="icon-btn" onclick="showPage('page-calendar',this)" title="日历">◫</button>
+        <button class="icon-btn txt-btn" onclick="showPage('page-calendar',this)" title="日历">日历</button>
       </div>
     </div>
 
@@ -222,7 +222,7 @@
     <nav class="tabs">
       <button class="tab active" data-target="page-home" onclick="showPage('page-home',this)"><i>⌂</i>今天</button>
       <button class="tab" data-target="page-upcoming" onclick="showPage('page-upcoming',this)"><i>⏳</i>预告</button>
-      <button class="tab" onclick="openGenie()"><i class="tab-genie"><img src="app/genie.jpg" alt="精灵" /></i>精灵助手</button>
+      <button class="tab genie-tab" onclick="openGenie()" title="精灵助手"><i class="tab-genie"><img src="app/genie.jpg" alt="精灵" /></i></button>
       <button class="tab" data-target="page-share" onclick="showPage('page-share',this)"><i>✦</i>分享</button>
       <button class="tab" data-target="page-profile" onclick="showPage('page-profile',this)"><i>👤</i>我的</button>
     </nav>
