@@ -616,6 +616,7 @@ function shrinkDataUrl(dataUrl, width, q){
   });
 }
 async function fitPhotosForUpload(photos){
+  const isData = u => String(u).indexOf('data:') === 0;
   const calc = () => photos.reduce((s, p) => s + p.t.length + p.f.length, 0) + 2048;
   let out = photos;
   if(calc() <= PUB_BODY_BUDGET) return out;
@@ -623,13 +624,41 @@ async function fitPhotosForUpload(photos){
   for(const w of widths){
     const q = w >= 700 ? 0.7 : 0.62;
     const next = [];
-    for(const p of out){ next.push({ t: p.t, f: await shrinkDataUrl(p.f, w, q) }); }
+    for(const p of out){ next.push({ t: p.t, f: isData(p.f) ? await shrinkDataUrl(p.f, w, q) : p.f }); }
     out = next;
     if(calc() <= PUB_BODY_BUDGET) return out;
   }
   const last = [];
-  for(const p of out){ last.push({ t: await shrinkDataUrl(p.t, 240, 0.6), f: await shrinkDataUrl(p.f, 380, 0.55) }); }
+  for(const p of out){ last.push({ t: await shrinkDataUrl(p.t, 240, 0.6), f: isData(p.f) ? await shrinkDataUrl(p.f, 380, 0.55) : p.f }); }
   return last;
+}
+// 全图分片上传（绕开单请求 95KB 上限）：成功返回引用 '@m:<mid>'，失败返回原 dataURL
+async function mediaUploadDataUrl(dataUrl){
+  const raw = String(dataUrl || '');
+  if(raw.indexOf('@m:') === 0) return raw;
+  const b64 = raw.indexOf('base64,') >= 0 ? raw.slice(raw.indexOf('base64,') + 7) : raw;
+  const mid = 'm_' + uid();
+  const CHUNK = 48 * 1024;
+  const total = Math.max(1, Math.ceil(b64.length / CHUNK));
+  for(let i = 0; i < total; i++){
+    const r = await shareApi('mediaPut', { mid, i, n: total, c: b64.slice(i * CHUNK, (i + 1) * CHUNK) });
+    if(!r || r.ok === false) throw new Error((r && r.error) || '分片上传失败');
+  }
+  return '@m:' + mid;
+}
+const DEFAULT_MEDIA_KEY = 'shiguang_defmedia';
+function loadDefaultMediaMap(){ try{ return JSON.parse(localStorage.getItem(DEFAULT_MEDIA_KEY) || '{}'); }catch(e){ return {}; } }
+async function mediaUploadForPublish(photos){
+  const out = [];
+  for(const x of photos){
+    let f = x.f;
+    if(f.indexOf('data:') === 0){
+      try{ f = await mediaUploadDataUrl(f); }
+      catch(e){ /* 上传失败保留 dataURL，由预算压缩兜底 */ }
+    }
+    out.push({ t: x.t, f });
+  }
+  return out;
 }
 async function doPublish(){
   if(!(window.CloudAuth && CloudAuth.active())){ toast('云服务暂不可用，请稍后再试'); return; }
@@ -648,11 +677,22 @@ async function doPublish(){
   try{
     let photos = pubPhotos;
     if(!photos.length){
-      // 未选照片：按类型自动配一张官方图
+      // 未选照片：按类型自动配一张官方图（首次上传后缓存引用，之后秒传）
       const def = await ensureDefaultPhoto(pubType);
-      photos = [def];
+      const map = loadDefaultMediaMap();
+      const key = pubType === '景点' ? 'scene' : (pubType === '娱乐' ? 'fun' : 'food');
+      photos = map[key] ? [{ t: def.t, f: '@m:' + map[key] }] : [def];
     }
+    // 全图走分片上传转引用（保持原画质），缩略图内联；预算压缩只兜底
+    photos = await mediaUploadForPublish(photos);
     photos = await fitPhotosForUpload(photos);
+    try{
+      if(photos.length === 1 && String(photos[0].f).indexOf('@m:') === 0 && !pubPhotos.length){
+        const key = pubType === '景点' ? 'scene' : (pubType === '娱乐' ? 'fun' : 'food');
+        const map = loadDefaultMediaMap();
+        if(!map[key]){ map[key] = String(photos[0].f).slice(3); try{ localStorage.setItem(DEFAULT_MEDIA_KEY, JSON.stringify(map)); }catch(e){} }
+      }
+    }catch(e){}
     const r = await shareApi('publish', { post: {
       type: pubType, name, addr, desc,
       photos: photos.map(x => ({ t: x.t, f: x.f })),

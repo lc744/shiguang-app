@@ -130,6 +130,25 @@ exports.main = async (event) => {
     // 分享相关动作（uid 已验证）
     const POST_ACTIONS = ['publish', 'feed', 'mine', 'like', 'del', 'report', 'photo'];
     if(POST_ACTIONS.indexOf(action) >= 0) return await handlePostAction(action, body, uid);
+    if(action === 'mediaPut'){
+      // 全图分片上传：每请求 ≤ ~85KB，集齐 total 片后组装入库
+      const mid = String((body || {}).mid || '').slice(0, 48);
+      const idx = Math.max(0, Math.min(15, parseInt((body || {}).i, 10) || 0));
+      const total = Math.max(1, Math.min(16, parseInt((body || {}).n, 10) || 1));
+      const chunk = (typeof (body || {}).c === 'string') ? body.c.slice(0, 90000) : '';
+      if(!mid || !chunk) return json(400, { ok: false, error: '参数缺失' });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS media_chunks (mid TEXT, idx INT, data TEXT, PRIMARY KEY(mid, idx))" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO media_chunks (mid, idx, data) VALUES ('" + esc(mid) + "', " + idx + ", '" + esc(chunk) + "') ON CONFLICT (mid, idx) DO UPDATE SET data = EXCLUDED.data" });
+      const rc = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT idx, data FROM media_chunks WHERE mid = '" + esc(mid) + "'" });
+      const rows = ((rc && rc.Rows) || []).map(x => JSON.parse(x));
+      if(rows.length < total) return json(200, { ok: true, mid, assembled: false, have: rows.length, total });
+      rows.sort((a, b) => a[0] - b[0]);
+      const data = 'data:image/jpeg;base64,' + rows.map(x => x[1]).join('');
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS media (mid TEXT PRIMARY KEY, owner TEXT, data TEXT, created TIMESTAMPTZ DEFAULT now())" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO media (mid, owner, data) VALUES ('" + esc(mid) + "', '" + esc(uid) + "', '" + esc(data) + "') ON CONFLICT (mid) DO UPDATE SET data = EXCLUDED.data, created = now()" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM media_chunks WHERE mid = '" + esc(mid) + "'" });
+      return json(200, { ok: true, mid, assembled: true });
+    }
     if(action === 'get'){
       const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT avatar FROM profiles WHERE uid = '" + esc(uid) + "'" });
       let avatar = null;
@@ -266,6 +285,15 @@ async function handlePostAction(action, body, uid){
     try{ photos = JSON.parse(JSON.parse(r.Rows[0])[0]) || []; }catch(e){}
     const ph = photos[idx];
     const url = ph && typeof ph === 'object' ? ph.f : ph;
+    if(url && String(url).indexOf('@m:') === 0){
+      const mid = String(url).slice(3);
+      const mr = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT data FROM media WHERE mid = '" + esc(mid) + "'" });
+      if(mr && mr.Rows && mr.Rows.length){
+        let data = ''; try{ data = JSON.parse(mr.Rows[0])[0] || ''; }catch(e){}
+        return json(200, { ok: true, url: data });
+      }
+      return json(404, { ok: false, error: '图片不存在' });
+    }
     return json(200, { ok: true, url: url || null });
   }
 
