@@ -598,14 +598,51 @@ function useMapPick(){
   toast('选点已填入地址，确认无误后点"确定使用该地址"');
 }
 
+// 发布请求体上限约 95KB(实测 90KB 过/100KB 413) → 上传前把照片压进预算
+const PUB_BODY_BUDGET = 78 * 1024;
+function shrinkDataUrl(dataUrl, width, q){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const h = Math.max(1, Math.round(img.height * width / img.width));
+        const c = document.createElement('canvas'); c.width = width; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, width, h);
+        res(c.toDataURL('image/jpeg', q));
+      }catch(e){ rej(e); }
+    };
+    img.onerror = rej;
+    img.src = dataUrl;
+  });
+}
+async function fitPhotosForUpload(photos){
+  const calc = () => photos.reduce((s, p) => s + p.t.length + p.f.length, 0) + 2048;
+  let out = photos;
+  if(calc() <= PUB_BODY_BUDGET) return out;
+  const widths = [960, 820, 700, 600, 520, 440];
+  for(const w of widths){
+    const q = w >= 700 ? 0.7 : 0.62;
+    const next = [];
+    for(const p of out){ next.push({ t: p.t, f: await shrinkDataUrl(p.f, w, q) }); }
+    out = next;
+    if(calc() <= PUB_BODY_BUDGET) return out;
+  }
+  const last = [];
+  for(const p of out){ last.push({ t: await shrinkDataUrl(p.t, 240, 0.6), f: await shrinkDataUrl(p.f, 380, 0.55) }); }
+  return last;
+}
 async function doPublish(){
-  if(!(window.CloudAuth && CloudAuth.active())){ toast('云服务不可用'); return; }
-  if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ openLogin(); return; }
+  if(!(window.CloudAuth && CloudAuth.active())){ toast('云服务暂不可用，请稍后再试'); return; }
+  if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ toast('还差一步：请先登录后再发布'); openLogin(); return; }
   const name = (document.getElementById('postNameInput').value || '').trim();
   const addrInput = document.getElementById('postAddrInput');
   const addr = (addrInput.value || '').trim();
   const desc = (document.getElementById('postDescInput').value || '').trim();
-  if(!addr || addrInput.dataset.valid !== '1'){ toast('请点击"填写"选择规范地址'); return; }
+  if(!addr || addrInput.dataset.valid !== '1'){
+    toast('还差一步：点击"填写"选择规范地址（省市区+详细地址必填）');
+    openAddrPicker();
+    return;
+  }
   const btn = document.getElementById('publishBtn');
   btn.disabled = true; btn.textContent = '发布中…';
   try{
@@ -615,6 +652,7 @@ async function doPublish(){
       const def = await ensureDefaultPhoto(pubType);
       photos = [def];
     }
+    photos = await fitPhotosForUpload(photos);
     const r = await shareApi('publish', { post: {
       type: pubType, name, addr, desc,
       photos: photos.map(x => ({ t: x.t, f: x.f })),
