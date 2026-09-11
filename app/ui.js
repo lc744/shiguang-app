@@ -8,8 +8,39 @@ function toast(text){
   window.__toast = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
-function showPage(id, btn){
-  if(id !== 'page-create' && id !== 'page-detail') lastPage = id;
+/* ---------------- Android 侧滑/返回键：由内向外逐层关闭 ---------------- */
+function __handleBackGesture(){
+  const chain = [
+    ['imgPreview', closeImgPreview],
+    ['postDetail', closePostDetail],
+    ['mapPicker', closeMapPicker],
+    ['addrPicker', closeAddrPicker],
+    ['publishOverlay', closePublish],
+    ['genderOverlay', closeInfoEditor],
+    ['birthOverlay', closeInfoEditor],
+    ['settingsOverlay', closeSettings],
+    ['nickOverlay', closeNickEditor],
+    ['monthPickerOverlay', closeMonthPicker],
+    ['loginOverlay', closeLogin],
+  ];
+  for(const [id, fn] of chain){
+    const el = document.getElementById(id);
+    if(el && getComputedStyle(el).display !== 'none'){
+      try{ fn(); }catch(e){}
+      return true;
+    }
+  }
+  const gp = document.getElementById('geniePanel');
+  if(gp && gp.classList.contains('show')){ try{ closeGenie(); }catch(e){} return true; }
+  const active = document.querySelector('.page.active');
+  if(active && active.id !== 'page-home'){
+    showPage('page-home', document.querySelector('.tab[data-target="page-home"]'));
+    return true;
+  }
+  return false;
+}
+
+function showPage(id, btn){  if(id !== 'page-create' && id !== 'page-detail') lastPage = id;
   // 离开表单页时停止进行中的录音并丢弃未保存状态
   if(id !== 'page-create' && typeof stopRecording === 'function'){
     stopRecording(true);

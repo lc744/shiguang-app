@@ -22,6 +22,17 @@ const bridge = `
   // Capacitor 8 推荐通过 registerPlugin 获取自定义原生插件；旧版回退到 Plugins
   const NativeAlarm = caps.registerPlugin ? caps.registerPlugin('NativeAlarm') : caps.Plugins.NativeAlarm;
 
+  // Android 返回键/侧滑返回：优先由页面内部消化（关弹层/回主页），否则最小化应用（不误退出，闹钟照常）
+  try{
+    const AppPlugin = caps.registerPlugin ? caps.registerPlugin('App') : caps.Plugins.App;
+    if(AppPlugin && typeof AppPlugin.addListener === 'function'){
+      AppPlugin.addListener('backButton', () => {
+        if(window.__handleBackGesture && window.__handleBackGesture()) return;
+        Promise.resolve(AppPlugin.minimizeApp()).catch(() => {});
+      });
+    }
+  }catch(e){}
+
   // 原生闹钟权限（通知 + 精确闹钟 + 全屏通知）
   window.__requestNotifPerm = async function(){
     try{

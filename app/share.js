@@ -36,6 +36,59 @@ function switchShareTab(tab){
 function showShareTab(tab){ try{ showPage('page-share', document.querySelector('.tab[data-target=page-share]')); }catch(e){} switchShareTab(tab); }
 function refreshShare(){ if(!shareLoadedOnce){ shareLoadedOnce = true; loadShare(true); } }
 
+/* ---------------- 分享页下拉刷新 ---------------- */
+(function initSharePTR(){
+  function setup(){
+    const sc = document.querySelector('#page-share .share-scroll');
+    if(!sc || sc.dataset.ptr) return;
+    sc.dataset.ptr = '1';
+    const bar = document.createElement('div');
+    bar.className = 'share-ptr';
+    bar.innerHTML = '<span class="share-ptr-spin"></span><span class="share-ptr-txt">下拉刷新</span>';
+    sc.insertBefore(bar, sc.firstChild);
+    const spin = bar.querySelector('.share-ptr-spin');
+    const txt = bar.querySelector('.share-ptr-txt');
+    const THRESHOLD = 68;
+    let startY = 0, armed = false, dist = 0, busy = false;
+    sc.addEventListener('touchstart', (e) => {
+      if(busy) return;
+      if(sc.scrollTop <= 0){ startY = e.touches[0].clientY; armed = true; dist = 0; }
+      else armed = false;
+    }, { passive: true });
+    sc.addEventListener('touchmove', (e) => {
+      if(!armed || busy) return;
+      const dy = e.touches[0].clientY - startY;
+      if(dy <= 0){ dist = 0; bar.style.height = '0px'; return; }
+      dist = Math.min(100, Math.round(dy * 0.45));
+      if(dist > 6){
+        bar.style.transition = 'none';
+        bar.style.height = dist + 'px';
+        spin.classList.remove('on');
+        txt.textContent = dist >= THRESHOLD ? '释放立即刷新' : '下拉刷新';
+      }
+    }, { passive: true });
+    sc.addEventListener('touchend', () => {
+      if(!armed) return;
+      armed = false;
+      bar.style.transition = '';
+      if(dist >= THRESHOLD && typeof loadShare === 'function'){
+        busy = true;
+        bar.style.height = '44px';
+        spin.classList.add('on');
+        txt.textContent = '正在刷新…';
+        Promise.resolve(loadShare(true)).catch(() => {}).finally(() => {
+          setTimeout(() => { bar.style.height = '0px'; busy = false; }, 350);
+        });
+      } else {
+        bar.style.height = '0px';
+      }
+      dist = 0;
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
+
 async function loadShare(reset){
   if(shareLoading) return;
   if(!(window.CloudAuth && CloudAuth.active())){
