@@ -127,6 +127,9 @@ exports.main = async (event) => {
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, post_id TEXT, uid TEXT, nickname TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS reports INT DEFAULT 0" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS report_by TEXT DEFAULT '[]'" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, uid TEXT, city TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
 
     // 分享相关动作（uid 已验证）
@@ -137,6 +140,7 @@ exports.main = async (event) => {
       const postId = String((body || {}).id || '').slice(0, 40);
       const content = String((body || {}).content || '').trim().slice(0, 200);
       if(!postId || !content) return json(400, { ok: false, error: '评论内容不能为空' });
+      if(hasBadWord(content)) return json(400, { ok: false, error: '评论含违规内容，请修改后再发' });
       const nickname = String((body || {}).nickname || '路过的朋友').slice(0, 20);
       const cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO comments (id, post_id, uid, nickname, content) VALUES ('" + esc(cid) + "', '" + esc(postId) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(content) + "')" });
@@ -145,15 +149,74 @@ exports.main = async (event) => {
     if(action === 'commentList'){
       const postId = String((body || {}).id || '').slice(0, 40);
       if(!postId) return json(400, { ok: false, error: '参数缺失' });
-      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.uid, c.nickname, c.content, to_char(c.created, 'MM-DD HH24:MI'), (c.uid = p.uid) FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.post_id = '" + esc(postId) + "' ORDER BY c.created ASC LIMIT 200" });
-      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], uid: a[1], nickname: a[2], content: a[3], time: a[4], isOp: a[5] === true || a[5] === 'true' }; }catch(e){ return null; } }).filter(Boolean);
+      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.uid, c.nickname, c.content, to_char(c.created, 'MM-DD HH24:MI'), (c.uid = p.uid), p.uid FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.post_id = '" + esc(postId) + "' AND c.hidden = false ORDER BY c.created ASC LIMIT 200" });
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], uid: a[1], nickname: a[2], content: a[3], time: a[4], isOp: a[5] === true || a[5] === 'true', ownerUid: a[6] || '' }; }catch(e){ return null; } }).filter(Boolean);
       return json(200, { ok: true, list });
     }
     if(action === 'commentDel'){
       const cid = String((body || {}).cid || '').slice(0, 40);
       if(!cid) return json(400, { ok: false, error: '参数缺失' });
-      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "' AND uid = '" + esc(uid) + "'" });
+      // 权限：评论作者 / 帖子主人 / 管理员
+      const cr = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.uid, p.uid FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.id = '" + esc(cid) + "'" });
+      if(!cr || !cr.Rows || !cr.Rows.length) return json(404, { ok: false, error: '评论不存在' });
+      let commentUid = '', postOwner = '';
+      try{ const row = JSON.parse(cr.Rows[0]); commentUid = row[0] || ''; postOwner = row[1] || ''; }catch(e){}
+      const isAdmin = ADMIN_UIDS.indexOf(uid) >= 0;
+      if(!isAdmin && uid !== commentUid && uid !== postOwner) return json(403, { ok: false, error: '没有权限删除该评论' });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "'" });
       return json(200, { ok: true });
+    }
+    if(action === 'commentReport'){
+      const cid = String((body || {}).cid || '').slice(0, 40);
+      if(!cid) return json(400, { ok: false, error: '参数缺失' });
+      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT report_by, hidden FROM comments WHERE id = '" + esc(cid) + "'" });
+      if(!r || !r.Rows || !r.Rows.length) return json(404, { ok: false, error: '评论不存在' });
+      let reportBy = []; let hidden = false;
+      try{ const row = JSON.parse(r.Rows[0]); reportBy = JSON.parse(row[0] || '[]') || []; hidden = pgBool(row[1]); }catch(e){}
+      if(hidden) return json(200, { ok: true, already: true });
+      if(reportBy.indexOf(uid) >= 0) return json(200, { ok: true, already: true });
+      reportBy.push(uid);
+      const reports = reportBy.length;
+      const hideNow = reports >= COMMENT_HIDE_THRESHOLD;
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE comments SET reports = " + reports + ", report_by = '" + esc(JSON.stringify(reportBy)) + "'" + (hideNow ? ", hidden = true" : "") + " WHERE id = '" + esc(cid) + "'" });
+      return json(200, { ok: true, hiddenNow: !!hideNow });
+    }
+    // ---- 管理员 ----
+    if(action === 'adminCheck'){
+      return json(200, { ok: true, isAdmin: ADMIN_UIDS.indexOf(uid) >= 0 });
+    }
+    if(action === 'adminAction'){
+      if(ADMIN_UIDS.indexOf(uid) < 0) return json(403, { ok: false, error: '需要管理员权限' });
+      const op = String((body || {}).op || '');
+      if(op === 'hidePost' || op === 'unhidePost'){
+        const id = String((body || {}).id || '').slice(0, 40);
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE posts SET hidden = " + (op === 'hidePost' ? 'true' : 'false') + " WHERE id = '" + esc(id) + "'" });
+        return json(200, { ok: true });
+      }
+      if(op === 'delPost'){
+        const id = String((body || {}).id || '').slice(0, 40);
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE post_id = '" + esc(id) + "'" });
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM posts WHERE id = '" + esc(id) + "'" });
+        return json(200, { ok: true });
+      }
+      if(op === 'delComment'){
+        const cid = String((body || {}).cid || '').slice(0, 40);
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "'" });
+        return json(200, { ok: true });
+      }
+      if(op === 'unhideComment'){
+        const cid = String((body || {}).cid || '').slice(0, 40);
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE comments SET hidden = false, reports = 0, report_by = '[]' WHERE id = '" + esc(cid) + "'" });
+        return json(200, { ok: true });
+      }
+      if(op === 'pending'){
+        const rp = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, nickname, type, name, addr, reports, to_char(created_at, 'MM-DD HH24:MI') FROM posts WHERE hidden = true AND reports > 0 ORDER BY reports DESC LIMIT 50" });
+        const rc = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.nickname, c.content, c.reports, c.post_id, p.name FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.hidden = true ORDER BY c.reports DESC LIMIT 50" });
+        const posts = ((rp && rp.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { id: a[0], nickname: a[1], type: a[2], name: a[3], addr: a[4], reports: Number(a[5]) || 0, time: a[6] }; }catch(e){ return null; } }).filter(Boolean);
+        const comments = ((rc && rc.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], nickname: a[1], content: a[2], reports: Number(a[3]) || 0, pid: a[4], pname: a[5] || '' }; }catch(e){ return null; } }).filter(Boolean);
+        return json(200, { ok: true, posts, comments });
+      }
+      return json(400, { ok: false, error: '未知管理操作' });
     }
     if(action === 'myComments'){
       const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.post_id, c.content, to_char(c.created, 'YYYY-MM-DD HH24:MI'), p.name, p.type, p.addr, p.hidden FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.uid = '" + esc(uid) + "' ORDER BY c.created DESC LIMIT 100" });
@@ -222,6 +285,19 @@ exports.main = async (event) => {
 
 // ---------------- 分享（posts 表） ----------------
 const HIDE_THRESHOLD = 3;
+// ---- 治理配置 ----
+const COMMENT_HIDE_THRESHOLD = 3;
+const ADMIN_UIDS = ['2097125839932256258'];   // 管理员白名单（uid）
+const BAD_WORDS = ['加微信','加V','加v','＋V','赌博','博彩','下注','代开发票','色情','约炮','刷单','点赞返现','兼职日结','高利贷','办证','外挂','代练','转账返','资金盘','裸聊','枪支'];
+function hasBadWord(s){
+  const t = String(s || '');
+  for(const w of BAD_WORDS){ if(t.indexOf(w) >= 0) return true; }
+  return false;
+}
+function badAddr(s){
+  const t = String(s || '');
+  return /https?:\/\/|www\./i.test(t) || /^\d+$/.test(t.trim());
+}
 const MAX_PHOTOS = 3;
 
 function pgBool(v){ return v === true || v === 'true'; }
@@ -254,6 +330,8 @@ async function handlePostAction(action, body, uid){
     let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS) : [];
     photos = photos.map(x => (typeof x === 'string') ? { t: x, f: x } : x).filter(x => x && typeof x.t === 'string');
     if(!addr) return json(400, { ok: false, error: '请填写地址' });
+    if(badAddr(addr)) return json(400, { ok: false, error: '地址格式不合规，请填写真实地址' });
+    if(hasBadWord(name) || hasBadWord(addr) || hasBadWord(desc)) return json(400, { ok: false, error: '内容含违规词，请修改后发布' });
     for(const ph of photos){
       if(typeof ph.f === 'string') ph.f = ph.f.slice(0, 400000);
       if(typeof ph.t === 'string') ph.t = ph.t.slice(0, 60000);

@@ -221,6 +221,7 @@ function renderMeBody(){
   const box = document.getElementById('meBody');
   if(!box) return;
   const logged = !!currentUser;
+  const adminMode = logged && typeof __adminFlag === 'boolean' ? __adminFlag : false;
   const birth = logged ? formatBirth(currentUser.birth) : '';
   const emailText = logged ? (currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle())) : '无';
   const genderText = logged ? (GENDER_LABEL[currentUser.gender] || '未设置') : '无';
@@ -259,7 +260,16 @@ function renderMeBody(){
       ${logged ? `<div class="me-item" onclick="logoutUser()" role="button">
         <text class="me-item-emoji">🚪</text><text class="me-item-label danger">退出登录</text><text class="me-arrow">›</text>
       </div>` : ''}
-    </div>`;
+    </div>
+    ${logged && adminMode ? `<div class="card me-menu" style="margin-top:10px">
+      <div class="me-item" onclick="openAdminPanel()" role="button">
+        <text class="me-item-emoji">🛡</text><text class="me-item-label">内容管理（待审）</text><text class="me-arrow">›</text>
+      </div>
+    </div>` : ''}`;
+  // 管理员标记异步补渲染
+  if(logged && typeof isAdminUser === 'function'){
+    isAdminUser().then(am => { if(am && !adminMode){ adminMode = true; renderMeBody(); } }).catch(() => {});
+  }
 }
 function requireLoginTip(){ toast('请先登录'); }
 function goMyPosts(){

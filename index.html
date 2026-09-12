@@ -567,6 +567,17 @@
     </div>
   </div>
 
+  <!-- 内容管理面板（管理员） -->
+  <div class="remind-fullscreen" id="adminOverlay" style="display:none" onclick="if(event.target===this)closeAdminPanel()">
+    <div class="remind-card card" style="max-width:360px;max-height:80vh;overflow-y:auto;padding:18px 16px">
+      <h2 style="font-size:17px;margin:0 0 12px;text-align:center">🛡 内容管理</h2>
+      <div id="adminPanelBody"><small style="opacity:.6">加载中…</small></div>
+      <div class="action-row" style="margin-top:12px">
+        <button class="secondary" onclick="closeAdminPanel()">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 旅游攻略列表弹层（我的页） -->
   <div class="remind-fullscreen" id="plansOverlay" style="display:none" onclick="if(event.target===this)closePlansOverlay()">
     <div class="remind-card card" style="max-width:360px;max-height:78vh;overflow-y:auto;padding:18px 16px">

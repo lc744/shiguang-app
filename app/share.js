@@ -581,7 +581,7 @@ function openPostDetail(idx){
   const body = document.getElementById('postDetailBody');
   body.innerHTML = `
     <div class="post-head"><text class="post-type">${esc(p.type || '娱乐')}</text>${p.name ? `<text class="post-name">${esc(p.name)}</text>` : ''}</div>
-    ${p.addr ? `<text class="post-addr">📍 ${esc(p.addr)}</text>` : ''}
+    ${p.addr ? `<text class="post-addr">📍 ${esc(p.addr)}<small class="addr-note">（地址仅供参考）</small></text>` : ''}
     ${p.desc ? `<text class="post-desc">${esc(p.desc)}</text>` : ''}
     ${photos.length ? `<div class="pd-photos">${photos.map((ph, i) => `<img class="pd-photo" id="pdImg${i}" src="${esc(ph)}" loading="lazy" onclick="previewSharePhoto(${idx}, ${i})" />`).join('')}</div>` : '<text class="post-desc" style="opacity:.6">（没有配图）</text>'}
     <div class="post-meta">
@@ -601,6 +601,19 @@ function openPostDetail(idx){
       </div>
     </div>`;
   document.getElementById('postDetail').style.display = 'flex';
+  // 管理员管理行
+  isAdminUser().then(am => {
+    const bar = document.getElementById('pdAdminBar');
+    if(bar) bar.remove();
+    if(am){
+      const div = document.createElement('div');
+      div.className = 'pd-admin-bar'; div.id = 'pdAdminBar';
+      div.innerHTML = `<text>🛡 管理：</text>` +
+        (p.hidden ? `<text onclick="adminOp('unhidePost','${esc(p.id)}')">恢复显示</text>` : `<text onclick="adminOp('hidePost','${esc(p.id)}')">隐藏帖子</text>`) +
+        `<text class="danger-text" onclick="adminOp('delPost','${esc(p.id)}')">删除帖子</text>`;
+      document.getElementById('postDetailBody').appendChild(div);
+    }
+  }).catch(() => {});
   // 详情里的图逐张换成高清全图（列表/详情先显示缩略图）
   photos.forEach((ph, i) => {
     shareApi('photo', { id: p.id, i }).then(r => {
@@ -614,8 +627,66 @@ function openPostDetail(idx){
 }
 function closePostDetail(){ document.getElementById('postDetail').style.display = 'none'; }
 
+/* ---------------- 管理员操作 ---------------- */
+async function adminOp(op, id){
+  try{
+    const r = await shareApi('adminAction', { op, id });
+    if(!r || r.ok === false) throw new Error(r && r.error || '操作失败');
+    if(op === 'hidePost'){ toast('已隐藏该帖子'); closePostDetail(); if(typeof loadShare === 'function') loadShare(true); }
+    else if(op === 'unhidePost'){ toast('已恢复显示'); closePostDetail(); }
+    else if(op === 'delPost'){ toast('帖子已删除'); closePostDetail(); loadShare(true); }
+  }catch(e){ toast(e.message || '操作失败'); }
+}
+async function adminDelComment(cid, refresh){
+  try{ await shareApi('adminAction', { op: 'delComment', cid }); toast('评论已删除'); if(refresh) refreshAdminPanel(); }catch(e){ toast('操作失败'); }
+}
+async function adminRestoreComment(cid){
+  try{ await shareApi('adminAction', { op: 'unhideComment', cid }); toast('评论已恢复'); refreshAdminPanel(); }catch(e){ toast('操作失败'); }
+}
+async function refreshAdminPanel(){ openAdminPanel(true); }
+async function openAdminPanel(silent){
+  if(!(window.CloudAuth && CloudAuth.active() && CloudAuth.currentUser())){ toast('请先登录'); return; }
+  const am = await isAdminUser();
+  if(!am){ toast('需要管理员权限'); return; }
+  if(!silent){ document.getElementById('adminOverlay').style.display = 'flex'; }
+  const box = document.getElementById('adminPanelBody');
+  if(!silent) box.innerHTML = '<small style="opacity:.6">加载中…</small>';
+  try{
+    const r = await shareApi('adminAction', { op: 'pending' });
+    const posts = (r && r.posts) || [];
+    const comments = (r && r.comments) || [];
+    if(!posts.length && !comments.length){
+      box.innerHTML = '<small style="opacity:.6;display:block;text-align:center;padding:14px 0">当前没有待审内容 ✨</small>';
+      return;
+    }
+    box.innerHTML =
+      (posts.length ? '<b style="font-size:13px">被隐藏的帖子</b>' + posts.map(p => `
+        <div class="adm-item">
+          <div class="adm-txt"><b>${esc(p.name || p.addr || '（无标题）')}</b><small>${esc(p.type || '')} · 举报${p.reports}次 · ${esc(p.time || '')}</small></div>
+          <div class="adm-ops"><button class="secondary" onclick="adminOp('unhidePost','${esc(p.id)}')">恢复</button><button class="secondary danger-text" onclick="adminOp('delPost','${esc(p.id)}')">删除</button></div>
+        </div>`).join('') : '') +
+      (comments.length ? '<b style="font-size:13px;display:block;margin-top:10px">被隐藏的评论</b>' + comments.map(c => `
+        <div class="adm-item">
+          <div class="adm-txt"><b>${esc(c.content).slice(0, 40)}</b><small>${esc(c.nickname || '')} · 举报${c.reports}次 · 帖：${esc(c.pname || '').slice(0, 10)}</small></div>
+          <div class="adm-ops"><button class="secondary" onclick="adminRestoreComment('${esc(c.cid)}')">恢复</button><button class="secondary danger-text" onclick="adminDelComment('${esc(c.cid)}')">删除</button></div>
+        </div>`).join('') : '');
+  }catch(e){
+    box.innerHTML = '<small style="opacity:.6">加载失败：' + esc(e.message || '') + '</small>';
+  }
+}
+function closeAdminPanel(){ document.getElementById('adminOverlay').style.display = 'none'; }
+
 /* ---------------- 详情页评论区 ---------------- */
 async function myUid(){ try{ const u = CloudAuth.currentUser ? await CloudAuth.currentUser() : null; return u ? u.uid : ''; }catch(e){ return ''; } }
+let __adminFlag = null;   // null=未查询, true/false
+async function isAdminUser(){
+  if(__adminFlag !== null) return __adminFlag;
+  try{
+    const r = await shareApi('adminCheck', {});
+    if(r && r.ok !== false){ __adminFlag = !!(r && r.isAdmin); return __adminFlag; }
+  }catch(e){ /* 登录态未就绪：不缓存，下次再查 */ }
+  return false;
+}
 async function loadPostComments(idx){
   const p = shareList[idx]; if(!p) return;
   const listEl = document.getElementById('pdCmtList');
@@ -627,16 +698,33 @@ async function loadPostComments(idx){
     if(cntEl) cntEl.textContent = list.length ? '(' + list.length + ')' : '';
     if(!list.length){ listEl.innerHTML = '<small style="opacity:.6">还没有评论，来抢沙发</small>'; return; }
     const me = await myUid();
-    listEl.innerHTML = list.map(c => `
+    const amAdmin = await isAdminUser();
+    const ownerUid = list.length ? (list[0].ownerUid || '') : '';
+    listEl.innerHTML = list.map(c => {
+      const own = c.uid === me;
+      const canDel = own || (me && ownerUid && me === ownerUid) || amAdmin;
+      const ops = [];
+      if(canDel) ops.push(`<text class="pd-cmt-del" onclick="delPostComment('${esc(c.cid)}', ${idx})">删除</text>`);
+      if(!own) ops.push(`<text class="pd-cmt-rep" onclick="reportPostComment('${esc(c.cid)}')">举报</text>`);
+      return `
       <div class="pd-cmt-item">
         <text class="pd-cmt-nick">${esc(c.nickname || '路过的朋友')}${c.isOp ? '<text class="pd-cmt-op">贴主</text>' : ''}</text>
         <text class="pd-cmt-txt">${esc(c.content)}</text>
         <text class="pd-cmt-time">${esc(c.time || '')}</text>
-        ${c.uid === me ? `<text class="pd-cmt-del" onclick="delPostComment('${esc(c.cid)}', ${idx})">删除</text>` : ''}
-      </div>`).join('');
+        ${ops.join('')}
+      </div>`;
+    }).join('');
   }catch(e){
     listEl.innerHTML = '<small style="opacity:.6">评论加载失败</small>';
   }
+}
+async function reportPostComment(cid){
+  try{
+    const r = await shareApi('commentReport', { cid });
+    if(r && r.already) toast('你已举报过这条评论');
+    else if(r && r.hiddenNow) toast('举报成功，该评论已被自动隐藏');
+    else toast('举报成功，我们会尽快处理');
+  }catch(e){ toast('举报失败'); }
 }
 async function sendPostComment(idx){
   const p = shareList[idx]; if(!p) return;
@@ -1186,6 +1274,8 @@ async function doPublish(){
     openAddrPicker();
     return;
   }
+  if(/https?:\/\/|www\./i.test(addr) || /^\d+$/.test(addr)){ toast('地址格式不合规，请填写真实地址'); return; }
+  if(/加微信|赌博|代开发票|色情|约炮|刷单|高利贷/.test(name + addr + desc)){ toast('内容含违规词，请修改后再发布'); return; }
   const btn = document.getElementById('publishBtn');
   btn.disabled = true; btn.textContent = '发布中…';
   try{

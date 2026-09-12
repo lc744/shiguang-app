@@ -444,6 +444,17 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .pd-cmt-txt{display:block;font-size:13px;margin-top:2px;word-break:break-all}
 .pd-cmt-time{display:block;font-size:10px;color:#9ab0a6;margin-top:2px}
 .pd-cmt-del{position:absolute;right:8px;top:7px;font-size:11px;color:#c0564a;cursor:pointer}
+.pd-cmt-rep{position:absolute;right:8px;bottom:7px;font-size:11px;color:#9ab0a6;cursor:pointer}
+.addr-note{font-size:10px;color:#9ab0a6;font-weight:400;margin-left:4px}
+.pd-admin-bar{display:flex;gap:10px;align-items:center;margin-top:10px;padding:7px 10px;background:#fdf3e7;border-radius:10px;font-size:12px;color:#a06a2c}
+.pd-admin-bar text{cursor:pointer}
+.adm-item{display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--line,#e6efe8)}
+.adm-item:last-child{border-bottom:none}
+.adm-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.adm-txt b{font-size:13px;color:#26443a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-txt small{font-size:11px;color:#6b7f76}
+.adm-ops{display:flex;gap:6px}
+.adm-ops button{font-size:11px;padding:4px 10px;border-radius:8px}
 .pd-cmt-input{display:flex;gap:7px}
 .pd-cmt-input input{flex:1;min-width:0;border:1px solid var(--line,#dce8e1);border-radius:999px;padding:8px 14px;font-size:13px;background:#fff}
 .pd-cmt-input .primary{flex:none;padding:7px 16px;border-radius:999px;font-size:13px}
