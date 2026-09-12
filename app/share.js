@@ -322,7 +322,16 @@ function openPostDetail(idx){
       <text class="post-author">${esc(p.nickname || '路过的朋友')}</text>
       <view class="post-tools">
         <text class="post-tool ${p.selfLiked ? 'liked' : ''}" onclick="onShareLike('${esc(p.id)}')">${p.selfLiked ? '❤️' : '🤍'} ${p.likes || 0}</text>
+        <text class="post-tool" onclick="addPostToTrip(${idx})">🗓 行程</text>
       </view>
+    </div>
+    <div class="pd-cmt">
+      <div class="pd-cmt-head">评论 <span id="pdCmtCount">…</span></div>
+      <div class="pd-cmt-list" id="pdCmtList"><small style="opacity:.6">加载评论…</small></div>
+      <div class="pd-cmt-input">
+        <input id="pdCmtInput" placeholder="说点什么…" maxlength="200" onkeydown="if(event.key==='Enter')sendPostComment(${idx})" />
+        <button class="primary" onclick="sendPostComment(${idx})">发送</button>
+      </div>
     </div>`;
   document.getElementById('postDetail').style.display = 'flex';
   // 详情里的图逐张换成高清全图（列表/详情先显示缩略图）
@@ -334,8 +343,61 @@ function openPostDetail(idx){
       }
     }).catch(() => {});
   });
+  loadPostComments(idx);
 }
 function closePostDetail(){ document.getElementById('postDetail').style.display = 'none'; }
+
+/* ---------------- 详情页评论区 ---------------- */
+async function myUid(){ try{ const u = CloudAuth.currentUser ? await CloudAuth.currentUser() : null; return u ? u.uid : ''; }catch(e){ return ''; } }
+async function loadPostComments(idx){
+  const p = shareList[idx]; if(!p) return;
+  const listEl = document.getElementById('pdCmtList');
+  const cntEl = document.getElementById('pdCmtCount');
+  if(!listEl) return;
+  try{
+    const r = await shareApi('commentList', { id: p.id });
+    const list = (r && r.list) || [];
+    if(cntEl) cntEl.textContent = list.length ? '(' + list.length + ')' : '';
+    if(!list.length){ listEl.innerHTML = '<small style="opacity:.6">还没有评论，来抢沙发</small>'; return; }
+    const me = await myUid();
+    listEl.innerHTML = list.map(c => `
+      <div class="pd-cmt-item">
+        <text class="pd-cmt-nick">${esc(c.nickname || '路过的朋友')}</text>
+        <text class="pd-cmt-txt">${esc(c.content)}</text>
+        <text class="pd-cmt-time">${esc(c.time || '')}</text>
+        ${c.uid === me ? `<text class="pd-cmt-del" onclick="delPostComment('${esc(c.cid)}', ${idx})">删除</text>` : ''}
+      </div>`).join('');
+  }catch(e){
+    listEl.innerHTML = '<small style="opacity:.6">评论加载失败</small>';
+  }
+}
+async function sendPostComment(idx){
+  const p = shareList[idx]; if(!p) return;
+  const inp = document.getElementById('pdCmtInput');
+  const content = inp ? inp.value.trim() : '';
+  if(!content){ toast('先写点内容再发送'); return; }
+  try{
+    await shareApi('commentAdd', { id: p.id, content, nickname: (currentUser && currentUser.nickname) || '路过的朋友' });
+    if(inp) inp.value = '';
+    toast('评论已发送');
+    loadPostComments(idx);
+  }catch(e){ toast(e.message || '评论发送失败'); }
+}
+async function delPostComment(cid, idx){
+  try{ await shareApi('commentDel', { cid }); loadPostComments(idx); }catch(e){ toast('删除失败'); }
+}
+
+/* ---------------- 添加到行程：跳事件编辑页，带入名称与备注 ---------------- */
+async function addPostToTrip(idx){
+  const p = shareList[idx]; if(!p) return;
+  closePostDetail();
+  await openEditor(null);
+  const name = document.getElementById('fName');
+  const note = document.getElementById('fNote');
+  if(name) name.value = '行程';
+  if(note) note.value = '去往' + (p.addr || p.name || '该地点');
+  toast('已带入行程，补全时间就能保存');
+}
 
 /* ---------------- 图片预览（缩略图点开看全图） ---------------- */
 function previewSharePhoto(idx, i){

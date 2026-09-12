@@ -126,10 +126,34 @@ exports.main = async (event) => {
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS profiles (uid TEXT PRIMARY KEY, avatar TEXT, updated_at TIMESTAMPTZ DEFAULT now())" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, post_id TEXT, uid TEXT, nickname TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
 
     // 分享相关动作（uid 已验证）
     const POST_ACTIONS = ['publish', 'feed', 'mine', 'like', 'del', 'report', 'photo'];
     if(POST_ACTIONS.indexOf(action) >= 0) return await handlePostAction(action, body, uid);
+    // ---- 评论 ----
+    if(action === 'commentAdd'){
+      const postId = String((body || {}).id || '').slice(0, 40);
+      const content = String((body || {}).content || '').trim().slice(0, 200);
+      if(!postId || !content) return json(400, { ok: false, error: '评论内容不能为空' });
+      const nickname = String((body || {}).nickname || '路过的朋友').slice(0, 20);
+      const cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO comments (id, post_id, uid, nickname, content) VALUES ('" + esc(cid) + "', '" + esc(postId) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(content) + "')" });
+      return json(200, { ok: true, cid });
+    }
+    if(action === 'commentList'){
+      const postId = String((body || {}).id || '').slice(0, 40);
+      if(!postId) return json(400, { ok: false, error: '参数缺失' });
+      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, uid, nickname, content, to_char(created, 'MM-DD HH24:MI') FROM comments WHERE post_id = '" + esc(postId) + "' ORDER BY created ASC LIMIT 200" });
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], uid: a[1], nickname: a[2], content: a[3], time: a[4] }; }catch(e){ return null; } }).filter(Boolean);
+      return json(200, { ok: true, list });
+    }
+    if(action === 'commentDel'){
+      const cid = String((body || {}).cid || '').slice(0, 40);
+      if(!cid) return json(400, { ok: false, error: '参数缺失' });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "' AND uid = '" + esc(uid) + "'" });
+      return json(200, { ok: true });
+    }
     if(action === 'mediaPut'){
       // 全图分片上传：每请求 ≤ ~85KB，集齐 total 片后组装入库
       const mid = String((body || {}).mid || '').slice(0, 48);
