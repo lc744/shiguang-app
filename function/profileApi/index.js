@@ -155,6 +155,11 @@ exports.main = async (event) => {
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "' AND uid = '" + esc(uid) + "'" });
       return json(200, { ok: true });
     }
+    if(action === 'myComments'){
+      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.post_id, c.content, to_char(c.created, 'YYYY-MM-DD HH24:MI'), p.name, p.type, p.addr, p.hidden FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.uid = '" + esc(uid) + "' ORDER BY c.created DESC LIMIT 100" });
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], pid: a[1], content: a[2], time: a[3], pname: a[4] || '', ptype: a[5] || '', paddr: a[6] || '', hidden: a[7] === true }; }catch(e){ return null; } }).filter(Boolean);
+      return json(200, { ok: true, list });
+    }
     // ---- 旅游攻略 ----
     if(action === 'planSave'){
       const city = String((body || {}).city || '').trim().slice(0, 24);
@@ -288,6 +293,18 @@ async function handlePostAction(action, body, uid){
       "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.addr, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.uid = '" + esc(uid) + "' AND p.hidden = false ORDER BY p.created_at DESC LIMIT 50" });
     const list = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(line); }catch(e){ return null; } }).filter(Boolean).map(row => rowToPost(row, uid));
     return json(200, { ok: true, list });
+  }
+
+  // ---- 单帖获取（评论跳转等） ----
+  if(action === 'postGet'){
+    const postId = String(body.id || '').slice(0, 40);
+    if(!postId) return json(400, { ok: false, error: '参数缺失' });
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql:
+      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.addr, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.id = '" + esc(postId) + "' AND p.hidden = false" });
+    const line = r && r.Rows && r.Rows[0];
+    if(!line) return json(404, { ok: false, error: '帖子不存在或已删除' });
+    const row = JSON.parse(line);
+    return json(200, { ok: true, post: rowToPost(row, uid) });
   }
 
   // ---- 点赞切换 ----

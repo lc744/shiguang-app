@@ -15,6 +15,7 @@ function __handleBackGesture(){
     ['postDetail', closePostDetail],
     ['planOverlay', closePlanOverlay],
     ['plansOverlay', closePlansOverlay],
+    ['myCommentsOverlay', closeMyComments],
     ['cityPickOverlay', closeCityPick],
     ['mapPicker', closeMapPicker],
     ['addrPicker', closeAddrPicker],

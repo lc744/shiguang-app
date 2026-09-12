@@ -418,6 +418,52 @@ async function openPlansOverlay(){
 }
 function closePlansOverlay(){ document.getElementById('plansOverlay').style.display = 'none'; }
 let plansCache = [];
+
+/* ---------------- 我的评论（我的页） ---------------- */
+const CMT_TYPE_EMOJI = { '美食': '🍜', '景点': '🏞', '娱乐': '🎡', '餐厅': '🍜' };
+async function openMyComments(){
+  if(!(window.CloudAuth && CloudAuth.active()) || !(CloudAuth.currentUser && CloudAuth.currentUser())){ toast('请先登录'); return; }
+  document.getElementById('myCommentsOverlay').style.display = 'flex';
+  const box = document.getElementById('myCommentsList');
+  box.innerHTML = '<small style="opacity:.6">加载中…</small>';
+  try{
+    const r = await shareApi('myComments', {});
+    const list = (r && r.list) || [];
+    if(!list.length){ box.innerHTML = '<small style="opacity:.6;display:block;text-align:center;padding:18px 0">还没有评论，去帖子下面聊聊吧</small>'; return; }
+    box.innerHTML = list.map(c => {
+      const gone = c.hidden || (!c.pid && !c.pname);
+      const emoji = CMT_TYPE_EMOJI[c.ptype] || '📌';
+      const postName = c.pname || c.paddr || '帖子';
+      return `<div class="mc-item ${gone ? 'mc-gone' : ''}" ${gone ? '' : `onclick="jumpToCommentPost('${esc(c.pid)}')"`} role="button">
+        <div class="mc-post"><text>${emoji}</text> ${esc(truncStr(postName, 16))}${gone ? '<b class="mc-gone-tag">（帖子已删除）</b>' : '<text class="me-arrow">›</text>'}</div>
+        <div class="mc-cmt">${esc(c.content)}</div>
+        <small class="mc-time">${esc(c.time || '')}</small>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML = '<small style="opacity:.6">加载失败：' + esc(e.message || '') + '</small>';
+  }
+}
+function closeMyComments(){ document.getElementById('myCommentsOverlay').style.display = 'none'; }
+async function jumpToCommentPost(pid){
+  if(!pid) return;
+  closeMyComments();
+  try{
+    showPage('page-share', document.querySelector('.tab[data-target=page-share]'));
+    showShareTab('feed');
+    feedMode = 'default'; feedType = '';
+    renderFeedFilter();
+    await loadShare(true);
+    await new Promise(r => setTimeout(r, 2500));
+    let idx = shareList.findIndex(x => x.id === pid);
+    if(idx < 0){
+      const r = await shareApi('postGet', { id: pid }).catch(() => null);
+      if(r && r.post && r.post.id){ shareList.push(r.post); renderShareList(); idx = shareList.length - 1; }
+    }
+    if(idx >= 0){ openPostDetail(idx); }
+    else { toast('帖子可能已删除'); }
+  }catch(e){ toast('跳转失败，稍后再试'); }
+}
 async function viewSavedPlan(pid){
   try{
     const r = await shareApi('planList', {});

@@ -550,6 +550,17 @@
     </div>
   </div>
 
+  <!-- 我的评论列表弹层（我的页） -->
+  <div class="remind-fullscreen" id="myCommentsOverlay" style="display:none" onclick="if(event.target===this)closeMyComments()">
+    <div class="remind-card card" style="max-width:360px;max-height:78vh;overflow-y:auto;padding:18px 16px">
+      <h2 style="font-size:17px;margin:0 0 12px;text-align:center">💬 我的评论</h2>
+      <div id="myCommentsList"></div>
+      <div class="action-row" style="margin-top:12px">
+        <button class="secondary" onclick="closeMyComments()">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 旅游攻略列表弹层（我的页） -->
   <div class="remind-fullscreen" id="plansOverlay" style="display:none" onclick="if(event.target===this)closePlansOverlay()">
     <div class="remind-card card" style="max-width:360px;max-height:78vh;overflow-y:auto;padding:18px 16px">

@@ -452,6 +452,13 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .plan-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .plan-item-txt b{font-size:14px;color:#26443a}
 .plan-item-txt small{font-size:11px;color:#6b7f76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 我的评论 */
+.mc-item{border:1px solid var(--line,#e6efe8);border-radius:12px;padding:9px 11px;margin-bottom:9px;cursor:pointer;background:#fff}
+.mc-item.mc-gone{opacity:.55;cursor:default}
+.mc-post{font-size:12px;font-weight:700;color:#2f5d4a;display:flex;align-items:center;gap:4px;justify-content:space-between}
+.mc-post b.mc-gone-tag{font-weight:400;font-size:11px;color:#c0564a}
+.mc-cmt{font-size:13px;color:#26443a;margin-top:4px;word-break:break-all}
+.mc-time{display:block;font-size:10px;color:#9ab0a6;margin-top:4px}
 .danger-text{color:#c0564a !important}
 
 /* 大众推荐筛选条 */
