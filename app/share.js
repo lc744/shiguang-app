@@ -181,13 +181,16 @@ async function detectFeedCity(){
   }
 }
 
-async function openCityPick(){
+async function openCityPick(ctx){
+  planCtx = ctx || '';   // 默认用于 feed 筛选，防止残留 plan 态
   try{ await loadDivisions(); }catch(e){ toast('城市数据加载失败'); return; }
   const pv = document.getElementById('cfProv'), ct = document.getElementById('cfCity');
   if(!pv.options.length){
     pv.innerHTML = (divisions || []).map(p => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('');
   }
   onCfProv();
+  const t = document.getElementById('cfTitle');
+  if(t) t.textContent = planCtx === 'plan' ? '选择攻略城市' : '选择推荐城市';
   document.getElementById('cityPickOverlay').style.display = 'flex';
 }
 function onCfProv(){
@@ -209,14 +212,232 @@ function confirmCityPick(){
   if(cv === '__all__'){ name = p ? p.name : ''; }
   else { const c = p ? (p.children || []).find(x => x.code === cv) : null; name = c ? c.name : ''; }
   if(!p || !name){ toast('请选择城市'); return; }
+  closeCityPick();
+  if(planCtx === 'plan'){ planCtx = ''; makeTravelPlan(name); return; }
   feedCity = name;
   feedMode = 'city';
-  closeCityPick();
   renderFeedFilter();
   toast('已按 ' + name + ' 推荐');
   loadShare(true);
 }
 function closeCityPick(){ document.getElementById('cityPickOverlay').style.display = 'none'; }
+
+/* ---------------- 行程攻略生成器 ---------------- */
+let planCtx = '';        // cityPickOverlay 用途: '' = 筛选feed | 'plan' = 生成攻略
+let pendingPlan = null;  // {city, date, items}
+let planViewPid = '';
+
+function openPlanMaker(){
+  if(!(window.CloudAuth && CloudAuth.active()) || !(CloudAuth.currentUser && CloudAuth.currentUser())){ toast('请先登录'); return; }
+  openCityPick('plan');
+}
+
+async function makeTravelPlan(city){
+  toast('正在生成 ' + city + ' 行程攻略…');
+  try{
+    const [food, spot, fun] = await Promise.all([
+      shareApi('feed', { page: 0, city, type: '美食' }),
+      shareApi('feed', { page: 0, city, type: '景点' }),
+      shareApi('feed', { page: 0, city, type: '娱乐' })
+    ]);
+    const foods = (food && food.list) || [];
+    const plays = [].concat((spot && spot.list) || [], (fun && fun.list) || []);
+    const mk = (slot, time, emoji, p, fbName, fbAddr) => ({
+      slot, time, emoji,
+      name: p ? (p.name || p.addr || fbName) : fbName,
+      addr: p ? (p.addr || fbAddr || '') : fbAddr,
+      pid: p ? p.id : '',
+      thumb: (p && p.photos && p.photos[0]) ? p.photos[0] : ''
+    });
+    const picks = (arr, n) => {
+      const a = (arr || []).slice();
+      const out = [];
+      while(out.length < n && a.length){ out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); }
+      while(out.length < n) out.push(null);
+      return out;
+    };
+    const [f1, f2, f3] = picks(foods, 3);
+    const [p1, p2] = picks(plays, 2);
+    const items = [
+      mk('早餐', '08:00', '🥟', f1, '来一碗热乎的当地早餐', ''),
+      mk('上午游玩', '10:00', '🏞', p1, '逛逛本地的经典去处', ''),
+      mk('午餐', '12:00', '🍜', f2, '尝尝本地人气美味', ''),
+      mk('下午游玩', '14:30', '🎡', p2, '继续探索这座城市', ''),
+      mk('晚餐', '18:00', '🍲', f3, '用一顿好饭收尾', '')
+    ];
+    const d = new Date();
+    pendingPlan = { city, date: (d.getMonth() + 1) + '月' + d.getDate() + '日', items };
+    const url = await drawPlanPoster(pendingPlan);
+    showPlanOverlay(url, 'new');
+  }catch(e){
+    toast(e.message || '攻略生成失败，稍后再试');
+  }
+}
+
+function regenPlan(){
+  if(!pendingPlan){ closePlanOverlay(); return; }
+  makeTravelPlan(pendingPlan.city);
+}
+
+function showPlanOverlay(url, mode){
+  const img = document.getElementById('planImg');
+  if(img) img.src = url;
+  document.getElementById('planTitle').textContent = mode === 'view' ? ('🧳 ' + pendingPlan.city + ' · ' + (pendingPlan.date || '')) : (pendingPlan.city + ' 一日游攻略已生成');
+  document.getElementById('planBtnsNew').style.display = mode === 'new' ? 'flex' : 'none';
+  document.getElementById('planBtnsView').style.display = mode === 'view' ? 'flex' : 'none';
+  document.getElementById('planOverlay').style.display = 'flex';
+}
+function closePlanOverlay(){ document.getElementById('planOverlay').style.display = 'none'; }
+
+/* ---- 海报绘制：750×1160 头部绿带 + 奶油底时间轴 ---- */
+function roundRectPath(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function truncStr(s, n){ s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function loadImg(src){
+  return new Promise(res => {
+    if(!src){ res(null); return; }
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => res(null);
+    im.src = src;
+  });
+}
+async function drawPlanPoster(plan){
+  const W = 750, H = 1160;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  // 头部
+  const grad = ctx.createLinearGradient(0, 0, W, 300);
+  grad.addColorStop(0, '#2f5d4a'); grad.addColorStop(1, '#3f7d64');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, 300);
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  ctx.beginPath(); ctx.arc(W - 60, 40, 110, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(50, 280, 70, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.font = '700 30px sans-serif'; ctx.fillText('— 一日游行程攻略 —', W / 2, 96);
+  ctx.font = '800 72px sans-serif'; ctx.fillText(truncStr(plan.city, 8), W / 2, 190);
+  ctx.font = '400 26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.fillText(plan.date + ' · 由「绸缪」大众推荐生成', W / 2, 248);
+  // 身体
+  ctx.fillStyle = '#faf6ee'; ctx.fillRect(0, 300, W, H - 300);
+  const rowH = 152, top0 = 330;
+  const imgs = await Promise.all(plan.items.map(it => loadImg(it.thumb)));
+  plan.items.forEach((it, i) => {
+    const y = top0 + i * rowH;
+    // 时间胶囊
+    ctx.fillStyle = '#2f5d4a';
+    roundRectPath(ctx, 46, y + 34, 96, 44, 22); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '600 26px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(it.time, 94, y + 64);
+    // 封面/emoji 圆
+    const cx = 196, cy = y + 56, r = 44;
+    if(imgs[i]){
+      ctx.save(); roundRectPath(ctx, cx - r, cy - r, r * 2, r * 2, 16); ctx.clip();
+      ctx.drawImage(imgs[i], cx - r, cy - r, r * 2, r * 2); ctx.restore();
+    } else {
+      ctx.fillStyle = '#e6efe8'; roundRectPath(ctx, cx - r, cy - r, r * 2, r * 2, 16); ctx.fill();
+      ctx.font = '40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(it.emoji, cx, cy + 2); ctx.textBaseline = 'alphabetic';
+    }
+    // 文案
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#8aa898'; ctx.font = '600 24px sans-serif';
+    ctx.fillText(it.slot, 268, y + 40);
+    ctx.fillStyle = '#26443a'; ctx.font = '700 34px sans-serif';
+    ctx.fillText(truncStr(it.name, 11), 268, y + 82);
+    ctx.fillStyle = '#7c948a'; ctx.font = '400 23px sans-serif';
+    ctx.fillText(truncStr(it.addr || '地址待探索', 18), 268, y + 120);
+    // 分隔线
+    if(i < plan.items.length - 1){
+      ctx.strokeStyle = '#eee4d4'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(46, y + rowH - 6); ctx.lineTo(W - 46, y + rowH - 6); ctx.stroke();
+    }
+  });
+  // 底部
+  ctx.textAlign = 'center'; ctx.fillStyle = '#b3a893'; ctx.font = '400 22px sans-serif';
+  ctx.fillText('早 → 晚行程一图掌握 · 快去「绸缪」发布你的推荐', W / 2, H - 36);
+  return cv.toDataURL('image/jpeg', 0.88);
+}
+
+/* ---- 保存 / 我的攻略 ---- */
+async function saveTravelPlan(){
+  if(!pendingPlan) return;
+  try{
+    // 控制体积：优先保留缩略图，超限则逐个丢弃
+    const strip = it => Object.assign({}, it, { thumb: '' });
+    let items = pendingPlan.items;
+    let content = JSON.stringify({ city: pendingPlan.city, date: pendingPlan.date, items });
+    let idx = 0;
+    while(content.length > 55000 && items.some(x => x.thumb)){
+      const cand = items.map((x, i2) => ({ i: i2, len: (x.thumb || '').length })).filter(x => x.len).sort((a, b) => b.len - a.len)[0];
+      if(!cand) break;
+      items = items.map((x, i2) => i2 === cand.i ? strip(x) : x);
+      content = JSON.stringify({ city: pendingPlan.city, date: pendingPlan.date, items });
+      idx++;
+    }
+    const r = await shareApi('planSave', { city: pendingPlan.city, content });
+    if(!r || r.ok === false) throw new Error(r && r.error || '保存失败');
+    closePlanOverlay();
+    toast('已保存到 我的·旅游攻略');
+  }catch(e){ toast(e.message || '保存失败'); }
+}
+
+async function openPlansOverlay(){
+  if(!(window.CloudAuth && CloudAuth.active()) || !(CloudAuth.currentUser && CloudAuth.currentUser())){ toast('请先登录'); return; }
+  document.getElementById('plansOverlay').style.display = 'flex';
+  const box = document.getElementById('plansList');
+  box.innerHTML = '<small style="opacity:.6">加载中…</small>';
+  try{
+    const r = await shareApi('planList', {});
+    const list = (r && r.list) || [];
+    if(!list.length){ box.innerHTML = '<small style="opacity:.6;display:block;text-align:center;padding:18px 0">还没有攻略，去分享页点「🧳 攻略」生成一张吧</small>'; return; }
+    box.innerHTML = list.map(p => {
+      const th = (p.items || []).find(x => x.thumb);
+      const names = (p.items || []).filter(x => x.pid).map(x => x.name).slice(0, 3).join(' · ');
+      return `<div class="plan-item" onclick="viewSavedPlan('${esc(p.pid)}')">
+        ${th ? `<img class="plan-item-img" src="${esc(th.thumb)}" />` : '<text class="plan-item-img plan-item-ph">🧳</text>'}
+        <div class="plan-item-txt">
+          <b>${esc(p.city)} · 一日游</b>
+          <small>${esc(names || '暂无具体点位')}</small>
+          <small style="opacity:.7">${esc((p.time || '').slice(0, 10))}</small>
+        </div>
+        <text class="me-arrow">›</text>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML = '<small style="opacity:.6">加载失败：' + esc(e.message || '') + '</small>';
+  }
+}
+function closePlansOverlay(){ document.getElementById('plansOverlay').style.display = 'none'; }
+let plansCache = [];
+async function viewSavedPlan(pid){
+  try{
+    const r = await shareApi('planList', {});
+    plansCache = (r && r.list) || [];
+  }catch(e){}
+  const p = plansCache.find(x => x.pid === pid);
+  if(!p){ toast('攻略不存在或已删除'); openPlansOverlay(); return; }
+  planViewPid = pid;
+  pendingPlan = { city: p.city, date: (p.time || '').slice(5, 10).replace('-', '月') + '日', items: p.items || [] };
+  const url = await drawPlanPoster(pendingPlan);
+  closePlansOverlay();
+  showPlanOverlay(url, 'view');
+}
+async function delSavedPlan(){
+  if(!planViewPid) return;
+  try{ await shareApi('planDel', { pid: planViewPid }); }catch(e){}
+  planViewPid = '';
+  closePlanOverlay();
+  toast('攻略已删除');
+}
 function renderShareError(msg){
   shareList = [];
   renderShareList(msg);

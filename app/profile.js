@@ -247,6 +247,9 @@ function renderMeBody(){
       <div class="me-item" onclick="goMyPosts()" role="button">
         <text class="me-item-emoji">📮</text><text class="me-item-label">我的发布</text><text class="me-arrow">›</text>
       </div>
+      <div class="me-item" onclick="openPlansOverlay()" role="button">
+        <text class="me-item-emoji">🧳</text><text class="me-item-label">旅游攻略</text><text class="me-arrow">›</text>
+      </div>
       <div class="me-item" onclick="openSettings()" role="button">
         <text class="me-item-emoji">⚙️</text><text class="me-item-label">设置</text><text class="me-arrow">›</text>
       </div>

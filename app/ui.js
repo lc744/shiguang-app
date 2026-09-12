@@ -13,6 +13,8 @@ function __handleBackGesture(){
   const chain = [
     ['imgPreview', closeImgPreview],
     ['postDetail', closePostDetail],
+    ['planOverlay', closePlanOverlay],
+    ['plansOverlay', closePlansOverlay],
     ['cityPickOverlay', closeCityPick],
     ['mapPicker', closeMapPicker],
     ['addrPicker', closeAddrPicker],

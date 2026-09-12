@@ -185,6 +185,7 @@
               <button class="seg seg-on" id="segFeed" onclick="switchShareTab('feed')">大众推荐</button>
               <button class="seg" id="segMine" onclick="switchShareTab('mine')">我的发布</button>
             </div>
+            <button class="pub-pill" onclick="openPlanMaker()">🧳 攻略</button>
             <button class="pub-pill" onclick="openPublish()">＋ 发布</button>
           </div>
           <div class="share-scroll">
@@ -539,12 +540,41 @@
   <!-- 推荐城市选择弹层 -->
   <div class="remind-fullscreen" id="cityPickOverlay" style="display:none" onclick="if(event.target===this)closeCityPick()">
     <div class="remind-card card" style="max-width:340px;padding:20px 18px">
-      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">选择推荐城市</h2>
+      <h2 id="cfTitle" style="font-size:17px;margin:0 0 14px;text-align:center">选择推荐城市</h2>
       <div class="form-row" style="margin-bottom:10px"><select id="cfProv" class="form-input" onchange="onCfProv()" style="width:100%"></select></div>
       <div class="form-row"><select id="cfCity" class="form-input" style="width:100%"></select></div>
       <div class="action-row" style="margin-top:14px">
         <button class="secondary" onclick="closeCityPick()">取消</button>
         <button class="primary" onclick="confirmCityPick()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 旅游攻略列表弹层（我的页） -->
+  <div class="remind-fullscreen" id="plansOverlay" style="display:none" onclick="if(event.target===this)closePlansOverlay()">
+    <div class="remind-card card" style="max-width:360px;max-height:78vh;overflow-y:auto;padding:18px 16px">
+      <h2 style="font-size:17px;margin:0 0 12px;text-align:center">🧳 我的旅游攻略</h2>
+      <div id="plansList"></div>
+      <div class="action-row" style="margin-top:12px">
+        <button class="secondary" onclick="closePlansOverlay()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 行程攻略海报弹层 -->
+  <div class="remind-fullscreen" id="planOverlay" style="display:none" onclick="if(event.target===this)closePlanOverlay()">
+    <div class="plan-card card" style="max-width:360px;max-height:86vh;padding:16px 14px;display:flex;flex-direction:column">
+      <h2 id="planTitle" style="font-size:17px;margin:0 0 10px;text-align:center">行程攻略已生成</h2>
+      <div style="flex:1;min-height:0;overflow-y:auto;background:#f2f5f0;border-radius:10px">
+        <img id="planImg" style="width:100%;display:block" alt="行程攻略图" />
+      </div>
+      <div class="action-row" id="planBtnsNew" style="margin-top:12px">
+        <button class="secondary" onclick="regenPlan()">重新生成</button>
+        <button class="primary" onclick="saveTravelPlan()">保存到旅游攻略</button>
+      </div>
+      <div class="action-row" id="planBtnsView" style="margin-top:12px;display:none">
+        <button class="secondary danger-text" onclick="delSavedPlan()">删除该攻略</button>
+        <button class="primary" onclick="closePlanOverlay()">关闭</button>
       </div>
     </div>
   </div>

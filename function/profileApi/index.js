@@ -127,6 +127,7 @@ exports.main = async (event) => {
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, post_id TEXT, uid TEXT, nickname TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, uid TEXT, city TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
 
     // 分享相关动作（uid 已验证）
     const POST_ACTIONS = ['publish', 'feed', 'mine', 'like', 'del', 'report', 'photo'];
@@ -152,6 +153,26 @@ exports.main = async (event) => {
       const cid = String((body || {}).cid || '').slice(0, 40);
       if(!cid) return json(400, { ok: false, error: '参数缺失' });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "' AND uid = '" + esc(uid) + "'" });
+      return json(200, { ok: true });
+    }
+    // ---- 旅游攻略 ----
+    if(action === 'planSave'){
+      const city = String((body || {}).city || '').trim().slice(0, 24);
+      const content = String((body || {}).content || '').slice(0, 60000);
+      if(!city || !content) return json(400, { ok: false, error: '参数缺失' });
+      const pid = 'pl' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO plans (id, uid, city, content) VALUES ('" + esc(pid) + "', '" + esc(uid) + "', '" + esc(city) + "', '" + esc(content) + "')" });
+      return json(200, { ok: true, pid });
+    }
+    if(action === 'planList'){
+      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, city, content, to_char(created, 'YYYY-MM-DD HH24:MI') FROM plans WHERE uid = '" + esc(uid) + "' ORDER BY created DESC LIMIT 50" });
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); let items = []; try{ items = JSON.parse(a[2] || '[]').items || []; }catch(e){} return { pid: a[0], city: a[1], items, time: a[3] }; }catch(e){ return null; } }).filter(Boolean);
+      return json(200, { ok: true, list });
+    }
+    if(action === 'planDel'){
+      const pid = String((body || {}).pid || '').slice(0, 40);
+      if(!pid) return json(400, { ok: false, error: '参数缺失' });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM plans WHERE id = '" + esc(pid) + "' AND uid = '" + esc(uid) + "'" });
       return json(200, { ok: true });
     }
     if(action === 'mediaPut'){
