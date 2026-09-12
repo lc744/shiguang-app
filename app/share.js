@@ -193,17 +193,27 @@ async function openCityPick(){
 function onCfProv(){
   const p = (divisions || []).find(x => x.code === document.getElementById('cfProv').value);
   const cs = p ? (p.children || []) : [];
-  document.getElementById('cfCity').innerHTML = cs.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join('');
+  const ct = document.getElementById('cfCity');
+  // 直辖市（北京/上海/重庆）下级是"市辖区/县"，不是真实城市 → 直接按"全市"处理
+  const real = cs.filter(c => c.name.indexOf('市辖区') < 0 && c.name !== '县');
+  if(!real.length){
+    ct.innerHTML = `<option value="__all__">${esc(p.name)}（全市）</option>`;
+  } else {
+    ct.innerHTML = real.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join('');
+  }
 }
 function confirmCityPick(){
   const p = (divisions || []).find(x => x.code === document.getElementById('cfProv').value);
-  const c = p ? (p.children || []).find(x => x.code === document.getElementById('cfCity').value) : null;
-  if(!c){ toast('请选择城市'); return; }
-  feedCity = c.name;
+  const cv = document.getElementById('cfCity').value;
+  let name = '';
+  if(cv === '__all__'){ name = p ? p.name : ''; }
+  else { const c = p ? (p.children || []).find(x => x.code === cv) : null; name = c ? c.name : ''; }
+  if(!p || !name){ toast('请选择城市'); return; }
+  feedCity = name;
   feedMode = 'city';
   closeCityPick();
   renderFeedFilter();
-  toast('已按 ' + c.name + ' 推荐');
+  toast('已按 ' + name + ' 推荐');
   loadShare(true);
 }
 function closeCityPick(){ document.getElementById('cityPickOverlay').style.display = 'none'; }
