@@ -225,8 +225,14 @@ async function handlePostAction(action, body, uid){
   if(action === 'feed'){
     const page = Math.max(0, Math.min(50, parseInt(body.page, 10) || 0));
     const pageSize = 10;
+    // 筛选：城市（地址包含匹配，精确到市）+ 类型（美食/景点/娱乐）
+    const city = String(body.city || '').trim().slice(0, 24);
+    const type = ['美食', '景点', '娱乐'].indexOf(body.type) >= 0 ? body.type : '';
+    let where = 'p.hidden = false';
+    if(city) where += " AND p.addr LIKE '%" + esc(city) + "%'";
+    if(type) where += " AND p.type = '" + type + "'";
     const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql:
-      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.addr, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT " + pageSize + " OFFSET " + (page * pageSize) });
+      "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.addr, p.descr, p.photos, p.likes, p.liked_by, p.hidden, to_char(p.created_at, 'YYYY-MM-DD HH24:MI'), pr.avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE " + where + " ORDER BY p.created_at DESC LIMIT " + pageSize + " OFFSET " + (page * pageSize) });
     const list = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(line); }catch(e){ return null; } }).filter(Boolean).map(row => rowToPost(row, uid));
     return json(200, { ok: true, list, page, hasMore: list.length === pageSize });
   }

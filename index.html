@@ -188,6 +188,19 @@
             <button class="pub-pill" onclick="openPublish()">＋ 发布</button>
           </div>
           <div class="share-scroll">
+            <div class="share-filter" id="shareFilter">
+              <div class="sf-row">
+                <button class="sf-chip sf-mode on" data-mode="default" onclick="pickFeedMode('default')">默认</button>
+                <button class="sf-chip sf-mode" data-mode="loc" onclick="pickFeedMode('loc')">📍 按我的位置</button>
+                <button class="sf-chip sf-mode" data-mode="city" onclick="pickFeedMode('city')">🏙 选城市<span id="sfCityName"></span></button>
+              </div>
+              <div class="sf-row">
+                <button class="sf-chip sf-type on" data-type="" onclick="pickFeedType('')">全部</button>
+                <button class="sf-chip sf-type" data-type="美食" onclick="pickFeedType('美食')">🍜 美食</button>
+                <button class="sf-chip sf-type" data-type="景点" onclick="pickFeedType('景点')">🏞 景点</button>
+                <button class="sf-chip sf-type" data-type="娱乐" onclick="pickFeedType('娱乐')">🎡 娱乐</button>
+              </div>
+            </div>
             <div id="shareEmpty" style="display:none">
               <div class="share-empty"><span class="share-empty-emoji" id="shareEmptyEmoji">🌱</span><span class="share-empty-text" id="shareEmptyText">还没有人分享，来当第一个</span><button class="primary share-cta" onclick="openPublish()">＋ 发布推荐</button></div>
             </div>
@@ -520,6 +533,19 @@
   <div class="remind-fullscreen" id="postDetail" style="display:none" onclick="if(event.target===this)closePostDetail()">
     <div class="post-detail-card">
       <div id="postDetailBody"></div>
+    </div>
+  </div>
+
+  <!-- 推荐城市选择弹层 -->
+  <div class="remind-fullscreen" id="cityPickOverlay" style="display:none" onclick="if(event.target===this)closeCityPick()">
+    <div class="remind-card card" style="max-width:340px;padding:20px 18px">
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">选择推荐城市</h2>
+      <div class="form-row" style="margin-bottom:10px"><select id="cfProv" class="form-input" onchange="onCfProv()" style="width:100%"></select></div>
+      <div class="form-row"><select id="cfCity" class="form-input" style="width:100%"></select></div>
+      <div class="action-row" style="margin-top:14px">
+        <button class="secondary" onclick="closeCityPick()">取消</button>
+        <button class="primary" onclick="confirmCityPick()">确定</button>
+      </div>
     </div>
   </div>
 

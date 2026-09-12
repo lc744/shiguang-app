@@ -97,10 +97,15 @@ async function loadShare(reset){
     if(!(window.CloudAuth && CloudAuth.active())){ renderShareError('云服务不可用，稍后再试'); return; }
   }
   if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ renderShareError('登录后即可浏览与发布分享'); return; }
+  renderFeedFilter();
   shareLoading = true;
   const loadingEl = document.getElementById('shareLoading');
   if(loadingEl) loadingEl.style.display = 'block';
-  shareApi(shareTab === 'feed' ? 'feed' : 'mine', { page: reset ? 0 : sharePage })
+  shareApi(shareTab === 'feed' ? 'feed' : 'mine', {
+    page: reset ? 0 : sharePage,
+    city: (shareTab === 'feed' && feedMode !== 'default' && feedCity) ? feedCity : '',
+    type: (shareTab === 'feed' && feedType) ? feedType : ''
+  })
     .then(r => {
       if(!r || r.ok === false) throw new Error(r && r.error || '加载失败');
       const rows = r.list || [];
@@ -117,6 +122,91 @@ async function loadShare(reset){
       if(end) end.style.display = (!shareHasMore && shareList.length > 3) ? 'block' : 'none';
     });
 }
+
+/* ---------------- 大众推荐筛选（模式：默认/按位置/选城市 × 类型：美食/景点/娱乐） ---------------- */
+let feedMode = 'default';   // default | loc | city
+let feedCity = '';          // 生效的城市名（推荐=定位城市；选城市=手选城市）
+let feedType = '';          // '' 全部 | 美食 | 景点 | 娱乐
+let locDetecting = false;
+
+function renderFeedFilter(){
+  const bar = document.getElementById('shareFilter');
+  if(bar) bar.style.display = shareTab === 'feed' ? 'block' : 'none';
+  document.querySelectorAll('#shareFilter .sf-mode').forEach(b => b.classList.toggle('on', b.dataset.mode === feedMode));
+  document.querySelectorAll('#shareFilter .sf-type').forEach(b => b.classList.toggle('on', (b.dataset.type || '') === feedType));
+  const lbl = document.getElementById('sfCityName');
+  if(lbl) lbl.textContent = (feedCity && feedMode !== 'default') ? '：' + feedCity : '';
+}
+
+async function pickFeedMode(mode){
+  if(mode === 'loc'){
+    feedMode = 'loc';
+    renderFeedFilter();
+    if(!feedCity){ await detectFeedCity(); }
+    loadShare(true);
+    return;
+  }
+  if(mode === 'city'){
+    openCityPick();   // 确定后再切换模式并刷新
+    return;
+  }
+  feedMode = 'default';
+  renderFeedFilter();
+  loadShare(true);
+}
+
+function pickFeedType(t){
+  feedType = t || '';
+  renderFeedFilter();
+  loadShare(true);
+}
+
+async function detectFeedCity(){
+  if(locDetecting) return;
+  locDetecting = true;
+  try{
+    toast('正在定位你的城市…');
+    const ll = await getCoords();
+    let n = null;
+    try{ n = await bdcReverse(ll); }catch(e){ n = null; }
+    if(!n || !n.prov){ try{ n = await nominatimReverse(ll); }catch(e){ n = null; } }
+    if(n && n.city){ feedCity = n.city; toast('已按 ' + n.city + ' 推荐'); }
+    else { feedCity = ''; toast('没识别到城市，可手动选城市或用默认推荐'); }
+  }catch(e){
+    feedCity = '';
+    toast('定位失败，可手动选城市或用默认推荐');
+  }finally{
+    locDetecting = false;
+    renderFeedFilter();
+  }
+}
+
+async function openCityPick(){
+  try{ await loadDivisions(); }catch(e){ toast('城市数据加载失败'); return; }
+  const pv = document.getElementById('cfProv'), ct = document.getElementById('cfCity');
+  if(!pv.options.length){
+    pv.innerHTML = (divisions || []).map(p => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('');
+  }
+  onCfProv();
+  document.getElementById('cityPickOverlay').style.display = 'flex';
+}
+function onCfProv(){
+  const p = (divisions || []).find(x => x.code === document.getElementById('cfProv').value);
+  const cs = p ? (p.children || []) : [];
+  document.getElementById('cfCity').innerHTML = cs.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join('');
+}
+function confirmCityPick(){
+  const p = (divisions || []).find(x => x.code === document.getElementById('cfProv').value);
+  const c = p ? (p.children || []).find(x => x.code === document.getElementById('cfCity').value) : null;
+  if(!c){ toast('请选择城市'); return; }
+  feedCity = c.name;
+  feedMode = 'city';
+  closeCityPick();
+  renderFeedFilter();
+  toast('已按 ' + c.name + ' 推荐');
+  loadShare(true);
+}
+function closeCityPick(){ document.getElementById('cityPickOverlay').style.display = 'none'; }
 function renderShareError(msg){
   shareList = [];
   renderShareList(msg);
@@ -135,7 +225,8 @@ function renderShareList(errMsg){
   }
   document.querySelector('.share-cta').style.display = '';
   document.getElementById('shareEmptyEmoji').textContent = shareTab === 'feed' ? '🌱' : '📭';
-  document.getElementById('shareEmptyText').textContent = shareTab === 'feed' ? '还没有人分享，来当第一个' : '你还没有发布过';
+  const filtered = shareTab === 'feed' && (feedType || (feedMode !== 'default' && feedCity));
+  document.getElementById('shareEmptyText').textContent = filtered ? '当前筛选条件下还没有分享，换个筛选试试' : (shareTab === 'feed' ? '还没有人分享，来当第一个' : '你还没有发布过');
   if(!shareList.length){
     box.innerHTML = '';
     empty.style.display = 'block';
