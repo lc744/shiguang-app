@@ -629,7 +629,7 @@ async function loadPostComments(idx){
     const me = await myUid();
     listEl.innerHTML = list.map(c => `
       <div class="pd-cmt-item">
-        <text class="pd-cmt-nick">${esc(c.nickname || '路过的朋友')}</text>
+        <text class="pd-cmt-nick">${esc(c.nickname || '路过的朋友')}${c.isOp ? '<text class="pd-cmt-op">贴主</text>' : ''}</text>
         <text class="pd-cmt-txt">${esc(c.content)}</text>
         <text class="pd-cmt-time">${esc(c.time || '')}</text>
         ${c.uid === me ? `<text class="pd-cmt-del" onclick="delPostComment('${esc(c.cid)}', ${idx})">删除</text>` : ''}

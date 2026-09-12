@@ -437,6 +437,7 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .pd-cmt-list{display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;margin-bottom:10px}
 .pd-cmt-item{background:#fff;border:1px solid var(--line,#dce8e1);border-radius:10px;padding:7px 10px;position:relative}
 .pd-cmt-nick{display:block;font-size:11px;color:#6b7f76;font-weight:600}
+.pd-cmt-op{display:inline-block;background:#2f5d4a;color:#fff;font-size:9px;font-weight:600;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}
 .pd-cmt-txt{display:block;font-size:13px;margin-top:2px;word-break:break-all}
 .pd-cmt-time{display:block;font-size:10px;color:#9ab0a6;margin-top:2px}
 .pd-cmt-del{position:absolute;right:8px;top:7px;font-size:11px;color:#c0564a;cursor:pointer}

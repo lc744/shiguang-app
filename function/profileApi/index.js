@@ -145,8 +145,8 @@ exports.main = async (event) => {
     if(action === 'commentList'){
       const postId = String((body || {}).id || '').slice(0, 40);
       if(!postId) return json(400, { ok: false, error: '参数缺失' });
-      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, uid, nickname, content, to_char(created, 'MM-DD HH24:MI') FROM comments WHERE post_id = '" + esc(postId) + "' ORDER BY created ASC LIMIT 200" });
-      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], uid: a[1], nickname: a[2], content: a[3], time: a[4] }; }catch(e){ return null; } }).filter(Boolean);
+      const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.uid, c.nickname, c.content, to_char(c.created, 'MM-DD HH24:MI'), (c.uid = p.uid) FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.post_id = '" + esc(postId) + "' ORDER BY c.created ASC LIMIT 200" });
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], uid: a[1], nickname: a[2], content: a[3], time: a[4], isOp: a[5] === true || a[5] === 'true' }; }catch(e){ return null; } }).filter(Boolean);
       return json(200, { ok: true, list });
     }
     if(action === 'commentDel'){
@@ -157,7 +157,7 @@ exports.main = async (event) => {
     }
     if(action === 'myComments'){
       const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.post_id, c.content, to_char(c.created, 'YYYY-MM-DD HH24:MI'), p.name, p.type, p.addr, p.hidden FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.uid = '" + esc(uid) + "' ORDER BY c.created DESC LIMIT 100" });
-      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], pid: a[1], content: a[2], time: a[3], pname: a[4] || '', ptype: a[5] || '', paddr: a[6] || '', hidden: a[7] === true }; }catch(e){ return null; } }).filter(Boolean);
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], pid: a[1], content: a[2], time: a[3], pname: a[4] || '', ptype: a[5] || '', paddr: a[6] || '', hidden: a[7] === true || a[7] === 'true' }; }catch(e){ return null; } }).filter(Boolean);
       return json(200, { ok: true, list });
     }
     // ---- 旅游攻略 ----
