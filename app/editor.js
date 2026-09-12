@@ -216,7 +216,7 @@ async function openEditor(id){
 async function saveEvent(){
   const name = document.getElementById('fName').value.trim();
   const note = document.getElementById('fNote').value.trim();
-  const date = document.getElementById('fDate').value;
+  let date = document.getElementById('fDate').value;
   const time = document.getElementById('fTime').value;
 
   let ok = true;
@@ -231,11 +231,27 @@ async function saveEvent(){
     errNameEl.style.display = 'none';
   }
 
-  // 验证时间
+  // 验证时间：重复事件（每天/周一到周五/自定义）只看时分，日期过期自动平铺到下一个重复日
   const validTime = date && time;
-  const isFuture = validTime && new Date(`${date}T${time}:00`) > new Date();
+  const isRepeatEv = !isBirthdayMode && selectedRepeat !== 'none';
+  let isFuture = validTime && new Date(`${date}T${time}:00`) > new Date();
+  let rolledDate = '';
+  if(validTime && !isFuture && isRepeatEv){
+    const wdSet = selectedWeekdays.length ? selectedWeekdays : [1,2,3,4,5,6,7];
+    const d = new Date(`${date}T${time}:00`);
+    for(let i = 0; i < 15; i++){
+      const w = d.getDay() === 0 ? 7 : d.getDay();
+      if(wdSet.includes(w) && d > new Date()) break;
+      d.setDate(d.getDate() + 1);
+    }
+    rolledDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    date = rolledDate;
+    document.getElementById('fDate').value = date;
+    isFuture = true;
+  }
   if(!validTime || !isFuture) {
     errTimeEl.style.display = 'block';
+    toast(isBirthdayMode ? '请选择今年接下来的生日日期' : '请选择将来的日期和时间');
     ok = false;
   } else {
     errTimeEl.style.display = 'none';
