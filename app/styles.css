@@ -261,6 +261,9 @@
     .genie-head small{display:block;color:var(--sub,#6e7f79);font-size:11px}
     .genie-close{margin-left:auto;border:none;background:transparent;font-size:20px;color:var(--sub,#6e7f79);cursor:pointer;padding:4px}
     .genie-bubbles{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+    .genie-chips{display:flex;gap:6px;padding:8px 12px 0;overflow-x:auto;scrollbar-width:none}
+    .genie-chips::-webkit-scrollbar{display:none}
+    .genie-chips button{flex:none;border:1px solid var(--line,#d7e3dc);background:var(--surface2,#f6faf8);color:var(--main,#2f5d4a);font-size:11px;padding:5px 11px;border-radius:999px;cursor:pointer}
     .genie-bubble{max-width:82%;padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
     .genie-assistant{align-self:flex-start;background:var(--surface2,#f6faf8);border-bottom-left-radius:4px;color:var(--text,#1c2a26)}
     .genie-user{align-self:flex-end;background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff;border-bottom-right-radius:4px}

@@ -226,6 +226,12 @@
         <button class="genie-close" onclick="closeGenie()">✕</button>
       </div>
       <div class="genie-bubbles" id="genieBubbles"></div>
+      <div class="genie-chips">
+        <button onclick="genieQuick('明天有什么安排')">明天安排</button>
+        <button onclick="genieQuick('生成一份苏州攻略')">生成攻略</button>
+        <button onclick="genieQuick('看看我的评论')">我的评论</button>
+        <button onclick="genieQuick('看看苏州的美食')">苏州美食</button>
+      </div>
       <div class="genie-inputbar">
         <input id="genieInput" placeholder="例如：明天下午3点开会" onkeydown="onGenieKeydown(event)" />
         <button id="genieVoiceBtn" onclick="toggleGenieVoice()" title="语音输入">🎤</button>
