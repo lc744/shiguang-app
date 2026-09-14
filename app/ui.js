@@ -10,6 +10,7 @@ function toast(text){
 
 /* ---------------- Android 侧滑/返回键：由内向外逐层关闭 ---------------- */
 function __handleBackGesture(){
+  if(typeof multiSelOn !== 'undefined' && multiSelOn){ try{ exitMultiSel(); }catch(e){} return true; }
   const chain = [
     ['imgPreview', closeImgPreview],
     ['postDetail', closePostDetail],
@@ -167,15 +168,18 @@ function renderHome(){
   }
   list.innerHTML = todays.map(e => {
     const done = isDoneOn(e, t);
+    const sel = multiSelOn && multiSelPage === 'home';
     return `
-    <div class="event ${done?'done':''}" onclick="openDetail('${e.id}')">
+    <div class="event ${done?'done':''} ${sel && multiSelIds.indexOf(e.id) >= 0 ? 'multi-on' : ''}" data-eid="${e.id}" onclick="${sel ? `toggleMultiSel('${e.id}')` : `openDetail('${e.id}')`}">
+      ${sel ? `<div class="multi-check ${multiSelIds.indexOf(e.id) >= 0 ? 'on' : ''}">✓</div>` : ''}
       <div class="event-time"><span>${esc(e.time)}</span><small>${periodOf(e.time)}</small></div>
       <div class="event-body"><strong>${esc(e.name)}</strong><p>${esc(e.note)||'无备注'}</p>
         <div class="tags"><span class="tag">${emojiTag(e.emoji,20)}</span><span class="tag">${e.voice==='自定义录音'&&e.voiceData?'● 已录音':'♫ '+esc(e.voice)}</span>${repeatLabel(e)?`<span class="tag">↻ ${esc(repeatLabel(e))}</span>`:''}</div>
       </div>
-      <button class="event-check" onclick="toggleDone(event,'${e.id}')">✓</button>
+      ${sel ? '' : `<button class="event-check" onclick="toggleDone(event,'${e.id}')">✓</button>`}
     </div>`;
   }).join('');
+  bindMultiLongPress('todayList', 'home');
 }
 
 /* ---------------- 渲染：预告页 ---------------- */
@@ -211,14 +215,101 @@ function renderUpcoming(){
   el.innerHTML = items.map(({e, ds}) => {
     const d = daysUntil(ds);
     const label = d === 0 ? '今天' : d === 1 ? '明天' : d === 2 ? '后天' : `${d} 天后`;
+    const sel = multiSelOn && multiSelPage === 'upcoming';
     return `
-    <div class="event" onclick="openDetail('${e.id}')">
+    <div class="event ${sel && multiSelIds.indexOf(e.id) >= 0 ? 'multi-on' : ''}" data-eid="${e.id}" onclick="${sel ? `toggleMultiSel('${e.id}')` : `openDetail('${e.id}')`}">
+      ${sel ? `<div class="multi-check ${multiSelIds.indexOf(e.id) >= 0 ? 'on' : ''}">✓</div>` : ''}
       <div class="event-time"><span>${esc(e.time)}</span><small>${esc(label)}</small></div>
       <div class="event-body"><strong>${esc(e.name)}</strong><p>${esc(e.note)||'无备注'}</p>
         <div class="tags"><span class="tag">${emojiTag(e.emoji,20)}</span><span class="tag">♫ ${esc(e.voice)}</span><span class="tag">${dateLabel(ds)}</span>${repeatLabel(e)?`<span class="tag">↻ ${esc(repeatLabel(e))}</span>`:''}</div>
       </div>
     </div>`;
   }).join('');
+  bindMultiLongPress('upcomingList', 'upcoming');
+}
+
+/* ---------------- 多选删除 ---------------- */
+let multiSelOn = false;
+let multiSelIds = [];
+let multiSelPage = '';   // 'home' | 'upcoming'
+function enterMultiSel(page, firstId){
+  multiSelOn = true;
+  multiSelPage = page;
+  multiSelIds = firstId ? [firstId] : [];
+  try{ showPage(page === 'home' ? 'page-home' : 'page-upcoming', document.querySelector(`.tab[data-target=page-${page === 'home' ? 'home' : 'upcoming'}]`)); }catch(e){}
+  renderAll();
+  updateMultiBar();
+  toast('已进入多选模式，点选要删除的事件');
+}
+function exitMultiSel(){
+  multiSelOn = false; multiSelIds = []; multiSelPage = '';
+  const bar = document.getElementById('multiBar');
+  if(bar) bar.style.display = 'none';
+  renderAll();
+}
+function toggleMultiSel(id){
+  const i = multiSelIds.indexOf(id);
+  if(i >= 0) multiSelIds.splice(i, 1); else multiSelIds.push(id);
+  renderAll();
+  updateMultiBar();
+}
+function multiSelAll(){
+  const t = todayStr();
+  let ids = [];
+  if(multiSelPage === 'home'){
+    ids = events.filter(e => occursOn(e, t)).map(e => e.id);
+  } else {
+    const nowHHMM = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
+    const nowStamp = `${t}T${nowHHMM}`;
+    ids = events.filter(e => {
+      let ds;
+      if(e.snooze && e.snooze > nowStamp) ds = e.snooze.slice(0,10);
+      else {
+        ds = nextOccur(e, t);
+        if(!ds) return false;
+        if(ds === t && e.time <= nowHHMM && !e.weekdays.length) return false;
+        if(ds === t && isDoneOn(e, t)) return false;
+      }
+      return true;
+    }).map(e => e.id);
+  }
+  const allOn = ids.length && ids.every(id => multiSelIds.indexOf(id) >= 0);
+  multiSelIds = allOn ? [] : ids;
+  renderAll();
+  updateMultiBar();
+}
+function multiSelDelete(){
+  if(!multiSelIds.length){ toast('先勾选要删除的事件'); return; }
+  if(!confirm(`确定删除选中的 ${multiSelIds.length} 个事件吗？删除后不可恢复`)) return;
+  const delSet = multiSelIds.slice();
+  events.forEach(e => { if(delSet.indexOf(e.id) >= 0 && isRecRef(e.voiceData)) mediaDel(e.voiceData); });
+  events = events.filter(e => delSet.indexOf(e.id) < 0);
+  persist(); renderAll(); renderBackupList();
+  exitMultiSel();
+  toast(`已删除 ${delSet.length} 个事件`);
+}
+function updateMultiBar(){
+  const bar = document.getElementById('multiBar');
+  if(!bar) return;
+  bar.style.display = multiSelOn ? 'flex' : 'none';
+  const btn = document.getElementById('multiDelBtn');
+  if(btn) btn.textContent = `删除(${multiSelIds.length})`;
+}
+function bindMultiLongPress(listId, page){
+  const el = document.getElementById(listId);
+  if(!el) return;
+  Array.from(el.children).forEach(card => {
+    const eid = card.dataset ? card.dataset.eid : card.getAttribute('data-eid');
+    if(!eid) return;
+    let timer = null;
+    card.addEventListener('pointerdown', () => {
+      if(multiSelOn) return;
+      timer = setTimeout(() => { timer = null; enterMultiSel(page, eid); }, 480);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel', 'pointermove'].forEach(t => card.addEventListener(t, () => {
+      if(timer){ clearTimeout(timer); timer = null; }
+    }));
+  });
 }
 
 /* ---------------- 渲染：日历页 ---------------- */

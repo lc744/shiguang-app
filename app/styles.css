@@ -467,6 +467,13 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .plan-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .plan-item-txt b{font-size:14px;color:#26443a}
 .plan-item-txt small{font-size:11px;color:#6b7f76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 多选删除 */
+.event.multi-on{outline:2px solid var(--main2,#3b8d76);outline-offset:-2px;border-radius:12px}
+.multi-check{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--line,#c8d8d0);display:flex;align-items:center;justify-content:center;font-size:13px;color:transparent;background:var(--surface,#fff);margin-right:4px}
+.multi-check.on{background:var(--main2,#3b8d76);border-color:var(--main2,#3b8d76);color:#fff}
+.multi-bar{position:fixed;left:14px;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;padding:10px 12px;background:var(--surface,#fff);border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.18);z-index:70}
+.multi-bar button{font-size:13px;padding:8px 16px;border-radius:10px}
+.multi-bar .danger-btn{background:#c0564a;color:#fff;border:none}
 /* 我的评论 */
 .mc-item{border:1px solid var(--line,#e6efe8);border-radius:12px;padding:9px 11px;margin-bottom:9px;cursor:pointer;background:#fff}
 .mc-item.mc-gone{opacity:.55;cursor:default}

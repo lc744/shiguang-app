@@ -215,6 +215,13 @@
 
     <button class="fab" id="fabAdd" onclick="openEditor(null)">+</button>
 
+    <!-- 多选删除操作条 -->
+    <div class="multi-bar" id="multiBar" style="display:none">
+      <button class="secondary" onclick="multiSelAll()">全选</button>
+      <button class="danger-btn" id="multiDelBtn" onclick="multiSelDelete()">删除(0)</button>
+      <button class="secondary" onclick="exitMultiSel()">取消</button>
+    </div>
+
     <!-- 绸缪精灵 -->
     <div class="genie-panel" id="geniePanel">
       <div class="genie-head">
