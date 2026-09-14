@@ -181,25 +181,23 @@
       <section class="page" id="page-share">
         <div class="detail-wrap share-page">
           <div class="seg-row">
-            <div class="seg-group">
-              <button class="seg seg-on" id="segFeed" onclick="switchShareTab('feed')">大众推荐</button>
-              <button class="seg" id="segMine" onclick="switchShareTab('mine')">我的发布</button>
-            </div>
+            <button class="seg seg-on" id="segFeed" onclick="switchShareTab('feed')">大众推荐</button>
+            <button class="seg" id="segMine" onclick="switchShareTab('mine')">我的发布</button>
             <button class="pub-pill" onclick="openPlanMaker()">🧳 攻略</button>
             <button class="pub-pill" onclick="openPublish()">＋ 发布</button>
           </div>
           <div class="share-scroll">
             <div class="share-filter" id="shareFilter">
-              <div class="sf-row">
+              <div class="sf-row sf-eq3">
                 <button class="sf-chip sf-mode on" data-mode="default" onclick="pickFeedMode('default')">默认</button>
-                <button class="sf-chip sf-mode" data-mode="loc" onclick="pickFeedMode('loc')">📍 按我的位置</button>
-                <button class="sf-chip sf-mode" data-mode="city" onclick="pickFeedMode('city')">🏙 选城市<span id="sfCityName"></span></button>
+                <button class="sf-chip sf-mode" data-mode="loc" onclick="pickFeedMode('loc')">位置</button>
+                <button class="sf-chip sf-mode" data-mode="city" onclick="pickFeedMode('city')">选城市<span id="sfCityName"></span></button>
               </div>
-              <div class="sf-row">
+              <div class="sf-row sf-eq4">
                 <button class="sf-chip sf-type on" data-type="" onclick="pickFeedType('')">全部</button>
-                <button class="sf-chip sf-type" data-type="美食" onclick="pickFeedType('美食')">🍜 美食</button>
-                <button class="sf-chip sf-type" data-type="景点" onclick="pickFeedType('景点')">🏞 景点</button>
-                <button class="sf-chip sf-type" data-type="娱乐" onclick="pickFeedType('娱乐')">🎡 娱乐</button>
+                <button class="sf-chip sf-type" data-type="美食" onclick="pickFeedType('美食')">美食</button>
+                <button class="sf-chip sf-type" data-type="景点" onclick="pickFeedType('景点')">景点</button>
+                <button class="sf-chip sf-type" data-type="娱乐" onclick="pickFeedType('娱乐')">娱乐</button>
               </div>
             </div>
             <div id="shareEmpty" style="display:none">
@@ -556,6 +554,10 @@
       <h2 id="cfTitle" style="font-size:17px;margin:0 0 14px;text-align:center">选择推荐城市</h2>
       <div class="form-row" style="margin-bottom:10px"><select id="cfProv" class="form-input" onchange="onCfProv()" style="width:100%"></select></div>
       <div class="form-row"><select id="cfCity" class="form-input" style="width:100%"></select></div>
+      <div class="form-row" id="cfPlanDateRow" style="margin-top:10px;display:none">
+        <small style="font-size:11px;color:#6b7f76">出行日期（一键添加到事件将按此日期创建提醒）</small>
+        <input type="date" id="cfPlanDate" class="form-input" style="width:100%;margin-top:4px">
+      </div>
       <div class="action-row" style="margin-top:14px">
         <button class="secondary" onclick="closeCityPick()">取消</button>
         <button class="primary" onclick="confirmCityPick()">确定</button>
@@ -604,12 +606,14 @@
         <img id="planImg" style="width:100%;display:block" alt="行程攻略图" />
       </div>
       <div class="action-row" id="planBtnsNew" style="margin-top:12px">
+        <button class="primary" onclick="addPlanToEvents()">一键添加到事件</button>
+        <button class="secondary" onclick="saveTravelPlan()">保存攻略</button>
         <button class="secondary" onclick="regenPlan()">重新生成</button>
-        <button class="primary" onclick="saveTravelPlan()">保存到旅游攻略</button>
       </div>
       <div class="action-row" id="planBtnsView" style="margin-top:12px;display:none">
+        <button class="primary" onclick="addPlanToEvents()">一键添加到事件</button>
         <button class="secondary danger-text" onclick="delSavedPlan()">删除该攻略</button>
-        <button class="primary" onclick="closePlanOverlay()">关闭</button>
+        <button class="secondary" onclick="closePlanOverlay()">关闭</button>
       </div>
     </div>
   </div>

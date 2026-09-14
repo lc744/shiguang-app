@@ -234,7 +234,7 @@ exports.main = async (event) => {
     }
     if(action === 'planList'){
       const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, city, content, to_char(created, 'YYYY-MM-DD HH24:MI') FROM plans WHERE uid = '" + esc(uid) + "' ORDER BY created DESC LIMIT 50" });
-      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); let items = []; try{ items = JSON.parse(a[2] || '[]').items || []; }catch(e){} return { pid: a[0], city: a[1], items, time: a[3] }; }catch(e){ return null; } }).filter(Boolean);
+      const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); let items = [], planDate = ''; try{ const c = JSON.parse(a[2] || '{}'); items = c.items || []; planDate = String(c.dateIso || ''); }catch(e){} return { pid: a[0], city: a[1], items, time: a[3], planDate }; }catch(e){ return null; } }).filter(Boolean);
       return json(200, { ok: true, list });
     }
     if(action === 'planDel'){

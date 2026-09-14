@@ -191,6 +191,16 @@ async function openCityPick(ctx){
   onCfProv();
   const t = document.getElementById('cfTitle');
   if(t) t.textContent = planCtx === 'plan' ? '选择攻略城市' : '选择推荐城市';
+  const dateRow = document.getElementById('cfPlanDateRow');
+  if(dateRow){
+    if(planCtx === 'plan'){
+      dateRow.style.display = 'block';
+      const inp = document.getElementById('cfPlanDate');
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      inp.value = todayStr(d);
+      inp.min = todayStr();
+    } else dateRow.style.display = 'none';
+  }
   document.getElementById('cityPickOverlay').style.display = 'flex';
 }
 function onCfProv(){
@@ -213,7 +223,7 @@ function confirmCityPick(){
   else { const c = p ? (p.children || []).find(x => x.code === cv) : null; name = c ? c.name : ''; }
   if(!p || !name){ toast('请选择城市'); return; }
   closeCityPick();
-  if(planCtx === 'plan'){ planCtx = ''; makeTravelPlan(name); return; }
+  if(planCtx === 'plan'){ planCtx = ''; const dv = (document.getElementById('cfPlanDate') || {}).value || ''; makeTravelPlan(name, dv); return; }
   feedCity = name;
   feedMode = 'city';
   renderFeedFilter();
@@ -232,14 +242,30 @@ function openPlanMaker(){
   openCityPick('plan');
 }
 
-async function makeTravelPlan(city){
-  toast('正在生成 ' + city + ' 行程攻略…');
+async function makeTravelPlan(city, dateIso){
+  // 出行日期：默认明天；非法/过去日期回退明天
+  const t0 = todayStr();
+  const d1 = new Date(); d1.setDate(d1.getDate() + 1);
+  const fallback = todayStr(d1);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateIso || '') || dateIso < t0) dateIso = fallback;
+  toast('正在生成 ' + city + ' ' + (dateIso || '').slice(5).replace('-', '月') + '日 行程攻略…');
   try{
-    const [food, spot, fun] = await Promise.all([
-      shareApi('feed', { page: 0, city, type: '美食' }),
-      shareApi('feed', { page: 0, city, type: '景点' }),
-      shareApi('feed', { page: 0, city, type: '娱乐' })
-    ]);
+    // 串行拉取三个分类（间隔 400ms），避开云端每秒 20 次频控；限流失败自动重试
+    const fetchFeed = async (type) => {
+      for(let t = 0; t < 3; t++){
+        try{
+          const r = await shareApi('feed', { page: 0, city, type });
+          await new Promise(res => setTimeout(res, 400));
+          return r;
+        }catch(err){
+          if(t === 2) throw err;
+          await new Promise(res => setTimeout(res, 900));
+        }
+      }
+    };
+    const food = await fetchFeed('美食');
+    const spot = await fetchFeed('景点');
+    const fun = await fetchFeed('娱乐');
     const foods = (food && food.list) || [];
     const plays = [].concat((spot && spot.list) || [], (fun && fun.list) || []);
     const mk = (slot, time, emoji, p, fbName, fbAddr) => ({
@@ -266,7 +292,7 @@ async function makeTravelPlan(city){
       mk('晚餐', '18:00', '🍲', f3, '用一顿好饭收尾', '')
     ];
     const d = new Date();
-    pendingPlan = { city, date: (d.getMonth() + 1) + '月' + d.getDate() + '日', items };
+    pendingPlan = { city, date: dateIso.slice(5).replace('-', '月') + '日', dateIso, items };
     const url = await drawPlanPoster(pendingPlan);
     showPlanOverlay(url, 'new');
   }catch(e){
@@ -277,6 +303,39 @@ async function makeTravelPlan(city){
 function regenPlan(){
   if(!pendingPlan){ closePlanOverlay(); return; }
   makeTravelPlan(pendingPlan.city);
+}
+
+/* ---- 攻略一键添加到事件（按所选出行日期与推荐时间，行程模式：名称=行程·环节，备注=去往地址） ---- */
+function addPlanToEvents(){
+  if(!pendingPlan || !(pendingPlan.items || []).length){ toast('先生成一份攻略'); return; }
+  const t0 = todayStr();
+  let date = pendingPlan.dateIso || '';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < t0){
+    date = t0;
+    if(pendingPlan.dateIso && pendingPlan.dateIso < t0) toast('出行日期已过，事件按今天创建');
+  }
+  let n = 0;
+  pendingPlan.items.forEach(it => {
+    const name = '行程·' + (it.slot || '');
+    // 防重复：同日期同时段同名已存在则跳过
+    if(events.some(e => e.name === name && e.date === date)) return;
+    events.push({
+      id: uid(),
+      name,
+      note: '去往' + (it.addr || it.name || ''),
+      date,
+      time: it.time || '09:00',
+      emoji: it.emoji || EMOJIS[0],
+      voice: VOICES[0],
+      weekdays: [],
+      doneOn: [],
+      firedOn: []
+    });
+    n++;
+  });
+  persist(); renderAll(); renderBackupList();
+  if(n){ toast(`已添加 ${n} 个行程提醒（${date.slice(5).replace('-', '月') + '日'}）`); closePlanOverlay(); }
+  else toast('这些行程已在事件里，无需重复添加');
 }
 
 function showPlanOverlay(url, mode){
@@ -374,13 +433,13 @@ async function saveTravelPlan(){
     // 控制体积：优先保留缩略图，超限则逐个丢弃
     const strip = it => Object.assign({}, it, { thumb: '' });
     let items = pendingPlan.items;
-    let content = JSON.stringify({ city: pendingPlan.city, date: pendingPlan.date, items });
+    let content = JSON.stringify({ city: pendingPlan.city, date: pendingPlan.date, dateIso: pendingPlan.dateIso || '', items });
     let idx = 0;
     while(content.length > 55000 && items.some(x => x.thumb)){
       const cand = items.map((x, i2) => ({ i: i2, len: (x.thumb || '').length })).filter(x => x.len).sort((a, b) => b.len - a.len)[0];
       if(!cand) break;
       items = items.map((x, i2) => i2 === cand.i ? strip(x) : x);
-      content = JSON.stringify({ city: pendingPlan.city, date: pendingPlan.date, items });
+      content = JSON.stringify({ city: pendingPlan.city, date: pendingPlan.date, dateIso: pendingPlan.dateIso || '', items });
       idx++;
     }
     const r = await shareApi('planSave', { city: pendingPlan.city, content });
@@ -472,7 +531,8 @@ async function viewSavedPlan(pid){
   const p = plansCache.find(x => x.pid === pid);
   if(!p){ toast('攻略不存在或已删除'); openPlansOverlay(); return; }
   planViewPid = pid;
-  pendingPlan = { city: p.city, date: (p.time || '').slice(5, 10).replace('-', '月') + '日', items: p.items || [] };
+  pendingPlan = { city: p.city, date: (p.time || '').slice(5, 10).replace('-', '月') + '日', dateIso: p.planDate || '', items: p.items || [] };
+  if(pendingPlan.dateIso) pendingPlan.date = pendingPlan.dateIso.slice(5).replace('-', '月') + '日';
   const url = await drawPlanPoster(pendingPlan);
   closePlansOverlay();
   showPlanOverlay(url, 'view');
