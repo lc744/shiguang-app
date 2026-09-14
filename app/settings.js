@@ -164,13 +164,39 @@ async function renderNativePerms(){
       row('精确闹钟', !!s.exactAlarms, '__permExact()', '保证准时触发'),
       row('全屏通知', !!s.fullScreenIntent, '__permFullScreen()', '锁屏时全屏提醒'),
       row('电池优化豁免', !s.batteryRestricted, '__permBattery()', '后台不被系统限制'),
-    ].join('');
+    ].join('') + __brandTips();
   }
+  // AI 增强开关（精灵大模型兜底）
+  const aiOn = window.genieAiEnabled ? genieAiEnabled() : true;
+  const aiRow = document.getElementById('aiEnhanceRow');
+  if(aiRow) aiRow.innerHTML = '<div class="backup-item"><div class="backup-info"><b>' + (aiOn ? '🤖 AI 增强已开启' : '🤖 AI 增强已关闭') + '</b><small>精灵听不懂时走云端大模型解析（规则优先，不额外消耗）</small></div><div class="backup-actions"><button class="secondary" onclick="__toggleAiEnhance()">' + (aiOn ? '关闭' : '开启') + '</button></div></div>';
 }
+async function __toggleAiEnhance(){ if(window.setGenieAiEnabled) setGenieAiEnabled(!(window.genieAiEnabled ? genieAiEnabled() : true)); renderNativePerms(); toast('已' + ((window.genieAiEnabled && genieAiEnabled()) ? '开启' : '关闭') + ' AI 增强'); }
 async function __permNotif(){ try{ await window.__requestNotifPerm(); }catch(e){} renderNativePerms(); }
 async function __permExact(){ try{ await window.__openExactAlarmSettings(); }catch(e){} renderNativePerms(); }
 async function __permFullScreen(){ try{ await window.__openFullScreenSettings(); }catch(e){} renderNativePerms(); }
 async function __permBattery(){ try{ await window.__openBatterySettings(); }catch(e){} renderNativePerms(); }
+
+/* 各品牌后台管控差异提示（系统 API 查不到自启动等私有权限，只能给指引） */
+function __brandTips(){
+  const ua = navigator.userAgent || '';
+  let brand = '';
+  if(/HarmonyOS|HUAWEI/i.test(ua) || /HONOR/i.test(ua)) brand = '荣耀/华为';
+  else if(/vivo|IQOO|OriginOS/i.test(ua)) brand = 'vivo/iQOO';
+  else if(/OPPO|ColorOS|OnePlus|一加/i.test(ua)) brand = 'OPPO/一加';
+  else if(/MI\s?\d|MIUI|Xiaomi|Redmi|Redmi/i.test(ua)) brand = '小米/红米';
+  else if(/samsung/i.test(ua)) brand = '三星';
+  const common = '<div class="backup-item"><div class="backup-info"><b>💡 品牌后台设置</b><small>以上权限之外，各品牌还需在<b style="font-weight:600">系统设置 → 应用管理 → 绸缪</b> 里开启：</small></div></div>';
+  const tips = {
+    'vivo/iQOO': '① 自启动 → 允许 ② 后台弹出界面 → 允许 ③ 锁屏显示 → 允许 ④ 电池 → 允许后台高耗电',
+    'OPPO/一加': '① 自启动 → 允许 ② 允许完全后台行为/关联启动 ③ 锁屏显示通知 ④ 电池 → 不限制后台',
+    '荣耀/华为': '① 自启动管理 → 允许 ② 锁屏显示 → 允许 ③ 电池 → 启动管理改为手动（三向全开）',
+    '小米/红米': '① 自启动 → 允许 ② 省电策略 → 无限制 ③ 锁屏后断开网络 → 关（如需云提醒）',
+    '三星': '① 电池 → 后台使用限制 → 取消休眠 ② 通知类别全部开启',
+    '': '在系统设置中允许本应用自启动与后台运行，可提升提醒可靠性',
+  };
+  return common + `<div class="backup-item"><div class="backup-info"><small>${brand ? '<b style="font-weight:600">检测到 ' + brand + '</b>：' : ''}${esc(tips[brand] || tips[''])}</small></div></div>`;
+}
 
 let voicePackCatalog = [];
 async function loadVoicePacks(){

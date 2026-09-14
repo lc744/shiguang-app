@@ -98,6 +98,7 @@ async function loadShare(reset){
   }
   if(!(CloudAuth.currentUser && CloudAuth.currentUser())){ renderShareError('登录后即可浏览与发布分享'); return; }
   renderFeedFilter();
+  if(reset) scenicPage = 0;   // 名胜流分页随 feed 重置
   shareLoading = true;
   const loadingEl = document.getElementById('shareLoading');
   if(loadingEl) loadingEl.style.display = 'block';
@@ -548,6 +549,59 @@ function renderShareError(msg){
   shareList = [];
   renderShareList(msg);
 }
+
+/* ---------------- 官方名胜推荐流（feed 空态填充） ---------------- */
+let scenicPage = 0;
+const SCENIC_PAGE_SIZE = 12;
+function scenicPool(){
+  // 筛选了城市时优先展示该城市的景点；没有匹配则回退全部
+  if(shareTab === 'feed' && feedCity){
+    const bare = feedCity.replace(/市$/, '');
+    const hit = SCENIC_SPOTS.filter(s => s.c === bare || s.p === bare || (s.c + '市') === feedCity);
+    if(hit.length) return hit;
+  }
+  return SCENIC_SPOTS;
+}
+function scenicCityParam(s){
+  // 帖子 addr 是完整地址，用 LIKE 匹配：城市名带"市"（直辖市/地级市通用）
+  return s.c + '市';
+}
+function renderScenicHtml(){
+  const pool = scenicPool();
+  const shown = pool.slice(0, Math.min((scenicPage + 1) * SCENIC_PAGE_SIZE, pool.length));
+  const inCity = feedCity && pool !== SCENIC_SPOTS;
+  const head = `<div class="scenic-head"><b>🏛️ 国家名胜 · 官方推荐</b><small>${inCity ? esc(feedCity) + ' · ' : ''}共 ${pool.length} 个精选景点，下拉点卡片可生成攻略</small></div>`;
+  const cards = shown.map((s, i) => `
+    <div class="post-card card scenic-card">
+      <div class="scenic-cover" onclick="scenicAction(${i}, 'plan')">
+        <text class="scenic-emoji">${s.e}</text>
+        <text class="scenic-tag">${esc(s.t)} · ${esc(s.p)}</text>
+      </div>
+      <div class="post-body">
+        <div class="post-head"><text class="post-name">${esc(s.n)}</text><text class="post-type">${esc(s.c)}</text></div>
+        <text class="post-desc">${esc(s.d)}</text>
+        <div class="scenic-actions">
+          <button class="secondary" onclick="scenicAction(${i}, 'plan')">🗓️ 生成${esc(s.c)}攻略</button>
+          <button class="secondary" onclick="scenicAction(${i}, 'city')">📍 看分享</button>
+        </div>
+      </div>
+    </div>`).join('');
+  const rest = pool.length - shown.length;
+  const more = rest > 0 ? `<div class="scenic-more"><button class="secondary" onclick="scenicMore()">看更多名胜（还剩 ${rest} 个）</button></div>` : '';
+  return head + cards + more;
+}
+function scenicMore(){ scenicPage++; renderShareList(); }
+function scenicAction(i, kind){
+  const s = scenicPool()[i];
+  if(!s) return;
+  const city = scenicCityParam(s);
+  if(kind === 'plan'){ makeTravelPlan(city); return; }
+  feedCity = city;
+  feedMode = 'city';
+  renderFeedFilter();
+  toast('已按 ' + city + ' 筛选');
+  loadShare(true);
+}
 function renderShareList(errMsg){
   const box = document.getElementById('shareList');
   const empty = document.getElementById('shareEmpty');
@@ -565,8 +619,13 @@ function renderShareList(errMsg){
   const filtered = shareTab === 'feed' && (feedType || (feedMode !== 'default' && feedCity));
   document.getElementById('shareEmptyText').textContent = filtered ? '当前筛选条件下还没有分享，换个筛选试试' : (shareTab === 'feed' ? '还没有人分享，来当第一个' : '你还没有发布过');
   if(!shareList.length){
-    box.innerHTML = '';
     empty.style.display = 'block';
+    // 冷启动：feed 空态用「国家名胜」官方推荐流填充，仍有东西可刷
+    if(shareTab === 'feed' && typeof SCENIC_SPOTS !== 'undefined'){
+      box.innerHTML = renderScenicHtml();
+      return;
+    }
+    box.innerHTML = '';
     return;
   }
   empty.style.display = 'none';

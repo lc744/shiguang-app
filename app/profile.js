@@ -50,6 +50,14 @@ async function restoreCloudSession(){
   try{
     const u = await CloudAuth.currentUser();
     if(!u || !u.uid){
+      // 网络未就绪但本地会话仍在（refresh_token 未被网关拒绝）→ 保留登录态，稍后自动恢复
+      if(window.CloudAuth && CloudAuth.hasLocalSession && CloudAuth.hasLocalSession()){
+        if(currentUser && currentUser.cloud){
+          try{ toast('网络未就绪，云端稍后自动恢复'); }catch(e){}
+        }
+        repairCloudAvatar();
+        return;
+      }
       // 云会话已失效但本机仍残留云账号记录 → 对齐为未登录，避免"假登录"状态
       if(currentUser && currentUser.cloud){
         currentUser = null;

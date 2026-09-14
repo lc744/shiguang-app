@@ -274,8 +274,8 @@ async function processGenie(text){
     return;
   }
 
-  // ③ 查询日程（今天/明天/后天/大后天/星期X/M月D日）——排除添加语句
-  if(!/添加|新建|创建|设置|记录|生日|提醒我/.test(t) && /今天|今日|明天|明日|后天|大后天|星期|礼拜|周[一二三四五六日天]|月\d|\d+月\d+[日号]/.test(t) && (/有什么|事件|提醒|待办|安排|查询|查看|看看|日程|列表/.test(t) || /提醒$/.test(t))){
+  // ③ 查询日程（今天/明天/后天/大后天/星期X/M月D日）——排除添加语句与带具体钟点的句子（后者更可能是添加，交给 ⑤/⑦）
+  if(!/添加|新建|创建|设置|记录|生日|提醒我/.test(t) && !/[零一二两三四五六七八九\d]{1,2}[点:：]/.test(t) && /今天|今日|明天|明日|后天|大后天|星期|礼拜|周[一二三四五六日天]|月\d|\d+月\d+[日号]/.test(t) && (/有什么|事件|提醒|待办|安排|查询|查看|看看|日程|列表/.test(t) || /提醒$/.test(t))){
     const tgt = genieTargetDate(t);
     if(tgt){
       const dayEvents = events.filter(e => occursOn(e, tgt.date)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
@@ -310,6 +310,10 @@ async function processGenie(text){
   const chat = smallTalk(t);
   if(chat){ addGenieBubble('assistant', chat); return; }
 
+  // ⑦ AI 大模型兜底（规则全部未命中时）：口语化说法也能听懂
+  const ai = await genieLlmFallback(text, genieMessages);
+  if(ai){ addGenieBubble('assistant', ai); return; }
+
   // 未识别
   addGenieBubble('assistant', pick([
     '抱歉，我还不太懂这句话 😅 可以试试下面的快捷指令，或说"帮助"看全部技能',
@@ -317,6 +321,102 @@ async function processGenie(text){
     '我没太理解～ 换个说法试试？比如"明天下午3点开会""看看苏州的美食"',
     '这个有点难住我了 🤔 你也可以说"帮助"看看我都会什么'
   ]));
+}
+
+/* ---- AI 大模型兜底：把自由口语解析成结构化操作 ---- */
+const GENIE_AI_KEY = 'shiguang_ai_enhance';   // 设置开关（默认开）
+let __llmLastAt = 0;
+function genieAiEnabled(){
+  try{ return localStorage.getItem(GENIE_AI_KEY) !== 'off'; }catch(e){ return true; }
+}
+function setGenieAiEnabled(v){ try{ localStorage.setItem(GENIE_AI_KEY, v ? 'on' : 'off'); }catch(e){} }
+function _llmThinkingBubble(){
+  const el = document.getElementById('genieBubbles');
+  const b = document.createElement('div');
+  b.className = 'genie-bubble genie-assistant';
+  b.textContent = '🤔 让我想想…';
+  el.appendChild(b); el.scrollTop = el.scrollHeight;
+  return b;
+}
+async function genieLlmFallback(rawText, history){
+  if(!genieAiEnabled()) return null;
+  if(!(window.CloudAuth && CloudAuth.active() && CloudAuth.currentUser())) return null;
+  const now = Date.now();
+  if(now - __llmLastAt < 2000) return null;   // 节流：2 秒内不重复调用
+  __llmLastAt = now;
+  if(!(window.CloudAuth && CloudAuth._profileApiCall)){ return null; }
+  const thinking = _llmThinkingBubble();
+  const d = new Date();
+  const wd = ['日','一','二','三','四','五','六'][d.getDay()];
+  const sys = '你是日程提醒App「绸缪」的助手精灵。当前时间：' + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + '（星期' + wd + '）。' +
+    '把用户的话解析成一个操作，只输出一个 JSON 对象（禁止任何解释、markdown 或多余文字）：\n' +
+    '{"intent":"add","name":"事件名(≤16字)","dateExpr":"日期短语","time":"HH:MM","repeat":"none|daily|weekly|weekdays"}\n' +
+    '{"intent":"query","dateExpr":"日期短语"}\n' +
+    '{"intent":"delete","name":"要删的事件关键词"}\n' +
+    '{"intent":"chat","reply":"简短友好回复(≤60字)"}\n' +
+    '{"intent":"unknown","reply":"未听懂的简短回复"}\n' +
+    '规则：\n' +
+    '1. dateExpr 只能是这些标准化短语之一：今天、明天、后天、大后天、周X（如周三）、下周X（如下周三）、大下周X、M月D日（如10月1日）、YYYY-MM-DD。你负责把口语日期（如下个星期三、后天早上、8号）翻译成这些短语，禁止自己推算具体日期。\n' +
+    '2. repeat 仅当用户明确说"每天/每日"(daily)、"每周"(weekly)、"工作日"(weekdays)才设置，其余一律 "none"。\n' +
+    '3. time 用 24 小时制 HH:MM，晚上8点=20:00；缺失用 09:00。\n' +
+    '4. 闲聊、问候、倾诉用 chat；无法解析用 unknown。\n' +
+    '示例：用户说"帮我安排下周五晚上八点和老王吃饭" → {"intent":"add","name":"和老王吃饭","dateExpr":"下周五","time":"20:00","repeat":"none"}';
+  const msgs = [{ role: 'system', content: sys }]
+    .concat((history || []).slice(-4).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: String(m.text || '').slice(0, 150) })))
+    .concat([{ role: 'user', content: String(rawText || '').slice(0, 300) }]);
+  let content = '';
+  try{
+    const r = await CloudAuth._profileApiCall('llm', { messages: msgs });
+    if(r && r.ok) content = String(r.content || '');
+  }catch(e){ /* 静默降级 */ }
+  thinking.remove();
+  if(!content) return null;
+  // 剥离可能的 ```json 包裹 / <think> 残留
+  const m = content.match(/\{[\s\S]*\}/);
+  if(!m) return null;
+  let j = null;
+  try{ j = JSON.parse(m[0]); }catch(e){ return null; }
+  const intent = String(j.intent || 'unknown');
+  try{
+    if(intent === 'add'){
+      const name = String(j.name || '').trim().slice(0, 16) || '提醒';
+      // 日期计算交给本地解析器（模型只做语义标准化，避免日期算术出错）
+      const tgt = genieTargetDate(String(j.dateExpr || ''));
+      const date = tgt ? tgt.date : (/^\d{4}-\d{2}-\d{2}$/.test(String(j.date || '')) ? j.date : todayStr());
+      const time = /^\d{2}:\d{2}$/.test(String(j.time || '')) ? j.time : '09:00';
+      const repeat = String(j.repeat || 'none');
+      const weekdays = repeat === 'daily' ? [1,2,3,4,5,6,0] : repeat === 'weekdays' ? [1,2,3,4,5] : repeat === 'weekly' ? [new Date(date + 'T00:00:00').getDay()] : [];
+      events.push({ id: uid(), name, note: '', date, time, emoji: EMOJIS[0], voice: VOICES[0], weekdays, doneOn: [], firedOn: [] });
+      persist(); renderAll(); renderBackupList();
+      return '已保存：' + name + '\n' + date + ' ' + time + (weekdays.length ? ' · ' + repeatLabel({ weekdays }) : '') + ' ✓';
+    }
+    if(intent === 'query'){
+      const tgt = genieTargetDate(String(j.dateExpr || '')) || { date: todayStr(), label: '今天' };
+      const dayEvents = events.filter(e => occursOn(e, tgt.date)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+      if(!dayEvents.length) return tgt.label + '暂无事件 ✨ 要添加一个吗？';
+      return tgt.label + '有 ' + dayEvents.length + ' 个事件：\n' + dayEvents.map(e => e.time + ' · ' + emojiIcon(e.emoji) + ' ' + e.name).join('\n');
+    }
+    if(intent === 'delete'){
+      const kw = String(j.name || '').trim();
+      if(!kw) return null;
+      const found = events.filter(e => e.name.includes(kw) || kw.includes(e.name));
+      if(found.length === 1){
+        const e = found[0];
+        if(isRecRef(e.voiceData)) mediaDel(e.voiceData);
+        events = events.filter(x => x.id !== e.id);
+        persist(); renderAll(); renderBackupList();
+        return '已删除「' + e.name + '」✓';
+      }
+      if(found.length > 1) return '找到多个匹配：\n' + found.map((e, i) => (i + 1) + '. ' + e.name + ' (' + e.date + ' ' + e.time + ')').join('\n') + '\n\n请说得更精确一些';
+      return '没有找到包含「' + kw + '」的事件';
+    }
+    if(intent === 'chat'){
+      const reply = String(j.reply || '').trim();
+      return reply || null;
+    }
+  }catch(e){ return null; }
+  const reply = String(j.reply || '').trim();
+  return intent === 'unknown' ? (reply || null) : null;
 }
 
 function genieHelpText(){
@@ -333,15 +433,23 @@ function genieTargetDate(t){
   if(/后天/.test(t)){ const d = new Date(now); d.setDate(d.getDate() + 2); return { date: todayStr(d), label: '后天' }; }
   if(/明天|明日/.test(t)){ const d = new Date(now); d.setDate(d.getDate() + 1); return { date: todayStr(d), label: '明天' }; }
   if(/今天|今日/.test(t)) return { date: todayStr(), label: '今天' };
-  const wk = t.match(/(?:星期|礼拜|周)([一二三四五六日天])/);
+  const wk = t.match(/(大下|下|本|这个|这)?(?:星期|礼拜|周)\s*([一二三四五六日天1-7])/);
   if(wk){
-    const map = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '日':7, '天':7 };
-    const target = map[wk[1]];
+    const map = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '日':7, '天':7, '1':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7 };
+    const wkChar = /[1-7]/.test(wk[2]) ? '一二三四五六日'[parseInt(wk[2]) - 1] : wk[2];
+    const target = map[wk[2]];
     const cur = (now.getDay() === 0) ? 7 : now.getDay();
     let diff = (target - cur + 7) % 7;
-    if(diff === 0) diff = 7;   // "周一"默认指下一个周一
+    if(diff === 0) diff = 7;   // "周X"默认指下一个周X
+    if(wk[1] === '下' || wk[1] === '大下'){
+      // 周一起始的 ISO 周：下周X = 本周一 + 7*weeksAhead + (target-1) 天；本周一 = 今天 - (cur-1)
+      const base = new Date(now); base.setDate(base.getDate() - (cur - 1));   // 本周一
+      const weeksAhead = wk[1] === '大下' ? 2 : 1;
+      base.setDate(base.getDate() + 7 * weeksAhead + (target - 1));
+      return { date: todayStr(base), label: (wk[1] === '大下' ? '大下周' : '下周') + wkChar };
+    }
     const d = new Date(now); d.setDate(d.getDate() + diff);
-    return { date: todayStr(d), label: '下周' + wk[1] };
+    return { date: todayStr(d), label: '周' + wkChar };
   }
   const md = t.match(/(\d{1,2})月(\d{1,2})[日号]/);
   if(md){

@@ -34,9 +34,9 @@
     return msg.slice(0, 90) || '操作失败，请稍后再试';
   }
 
-  function authHeaders(extra){
+  function authHeaders(extra, skipAuth){
     const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
-    if(__session && __session.access) h['Authorization'] = 'Bearer ' + __session.access;
+    if(!skipAuth && __session && __session.access) h['Authorization'] = 'Bearer ' + __session.access;
     return h;
   }
 
@@ -45,7 +45,7 @@
     const url = AUTH_BASE + path + '?client_id=' + CLOUD_ENV;
     const resp = await fetch(url, {
       method: opts.method || 'POST',
-      headers: authHeaders(opts.headers),
+      headers: authHeaders(opts.headers, opts.noAuth),
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
     let j = null;
@@ -53,6 +53,7 @@
     if(!resp.ok){
       const err = new Error(j.error_description || j.error || ('HTTP ' + resp.status));
       err.payload = j;
+      err.__status = resp.status;   // 明确的 HTTP 拒绝（网络异常则无此标记）
       throw err;
     }
     return j;
@@ -72,19 +73,39 @@
     return null;
   }
 
+  let __refreshDead = false; // refresh_token 被网关明确拒绝（会话真死）；网络失败不置位
+
   async function refreshSession(){
     if(!__session || !__session.refresh) return false;
-    try{
-      const j = await authFetch('/token', { body: { grant_type: 'refresh_token', refresh_token: __session.refresh } });
-      if(j.access_token){
-        __session.access = j.access_token;
-        __session.refresh = j.refresh_token || __session.refresh;
-        __session.expiresAt = Date.now() + ((j.expires_in || 3600) * 1000) - 60000;
-        saveSession();
-        return true;
+    const tryOnce = async () => {
+      try{
+        // token 刷新是匿名端点：不能带当前（可能已过期的）Bearer，否则网关先拒 Bearer 导致有效 refresh 也失败
+        const j = await authFetch('/token', { noAuth: true, body: { grant_type: 'refresh_token', refresh_token: __session.refresh } });
+        if(j.access_token){
+          __session.access = j.access_token;
+          __session.refresh = j.refresh_token || __session.refresh;
+          __session.expiresAt = Date.now() + ((j.expires_in || 3600) * 1000) - 60000;
+          saveSession();
+          __refreshDead = false;
+          return true;
+        }
+        __refreshDead = true;   // 网关明确拒绝：会话真死
+        return false;
+      }catch(e){
+        // 网关对"refresh_token 无效/过期"的拒绝：4xx，或 5xx+invalid token 文案（实测 500 unknown invalid token header）
+        const msg = String((e && e.error_description) || (e && e.message) || '');
+        if(e && e.__status && ((e.__status >= 400 && e.__status < 500) || /invalid\s*token/i.test(msg))){
+          __refreshDead = true;
+          return false;
+        }
+        return false;           // 网络类失败：不判死
       }
-      return false;
-    }catch(e){ return false; }
+    };
+    const first = await tryOnce();
+    if(first || __refreshDead) return first;
+    // 网络抖动（回前台瞬间常见）：小退避后重试一次
+    await new Promise(r => setTimeout(r, 1200));
+    return tryOnce();
   }
 
   async function ensureFreshToken(){
@@ -187,7 +208,10 @@
           if(me && me.sub) return { uid: me.sub, email: me.email || __session.email };
         }catch(e2){}
       }
-      clearSession();
+      // 只有会话被网关"明确拒绝"才清会话；网络抖动时保留，避免误杀有效登录态
+      if(__refreshDead || (e && e.__status === 401)){
+        clearSession();
+      }
       return null;
     }
   }
@@ -275,6 +299,23 @@
     return __active;
   }
 
+  // ---------- 会话保鲜：回前台立即续期 + 前台每 5 分钟静默续期 ----------
+  function hasLocalSession(){ return !!(loadStoredSession() && !__refreshDead); }
+  if(typeof document !== 'undefined' && document.addEventListener){
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible' && __session && __active){
+        ensureFreshToken().catch(() => {});
+      }
+    });
+  }
+  if(typeof setInterval === 'function'){
+    setInterval(() => {
+      if(__session && __active && document.visibilityState === 'visible'){
+        ensureFreshToken().catch(() => {});
+      }
+    }, 5 * 60 * 1000);
+  }
+
   window.CloudAuth = {
     ENV: CLOUD_ENV,
     init, probe,
@@ -282,6 +323,7 @@
     active(){ return __active && enabled(); },
     setEnabled,
     enabled,
+    hasLocalSession,
     sendRegisterCode,
     completeRegister,
     login,

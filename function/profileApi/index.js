@@ -12,6 +12,50 @@ const API_VER = '2018-06-08';
 function sha256hex(s){ return crypto.createHash('sha256').update(s).digest('hex'); }
 function hmacBuf(key, s){ return crypto.createHmac('sha256', key).update(s).digest(); }
 
+// ---- LLM 兜底（双免费供应商故障转移：智谱 glm-4-flash 主 → 硅基流动 Qwen2.5-7B 备）----
+const ZHIPU_KEY = 'f0d4847de0494325aad271ef1c5ff74e.NBNkn34ZpXDSBIRM';
+const SILICON_KEY = 'sk-etwwwjyntfbarfkeunyqtyiicaetmhqnhwhxxabazmpmofvd';
+function httpsPostJson(hostname, path, authKey, bodyStr, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname, path, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authKey, 'Content-Length': Buffer.byteLength(bodyStr) },
+      timeout: timeoutMs || 22000,
+    }, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => { let j = null; try{ j = JSON.parse(d); }catch(e){} resolve({ status: res.statusCode, json: j }); });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.write(bodyStr); req.end();
+  });
+}
+async function llmChat(messages){
+  const call = async (hostname, path, key, model) => {
+    const r = await httpsPostJson(hostname, path, key, JSON.stringify({ model, messages, max_tokens: 500, temperature: 0.2 }), 22000);
+    if(r.status === 429) throw Object.assign(new Error('HTTP 429'), { rateLimited: true });
+    if(r.status !== 200) throw new Error('HTTP ' + r.status);
+    const c = r.json && r.json.choices && r.json.choices[0] && r.json.choices[0].message;
+    const content = (c && c.content || '').trim();
+    if(!content) throw new Error('empty');
+    return content;
+  };
+  // 智谱优先；429 退避重试一次；仍失败或其它错误 → 切硅基流动
+  try{
+    try{ return { content: await call('open.bigmodel.cn', '/api/paas/v4/chat/completions', ZHIPU_KEY, 'glm-4-flash'), provider: 'zhipu' }; }
+    catch(e1){
+      if(e1 && e1.rateLimited){
+        await new Promise(r2 => setTimeout(r2, 900));
+        try{ return { content: await call('open.bigmodel.cn', '/api/paas/v4/chat/completions', ZHIPU_KEY, 'glm-4-flash'), provider: 'zhipu' }; }catch(e2){}
+      }
+    }
+    return { content: await call('api.siliconflow.cn', '/v1/chat/completions', SILICON_KEY, 'Qwen/Qwen2.5-7B-Instruct'), provider: 'silicon' };
+  }catch(e){
+    return null;
+  }
+}
+
 // TC3-HMAC-SHA256 直签（JSON 载荷）
 function callApi(action, payload){
   return new Promise((resolve, reject) => {
@@ -180,6 +224,15 @@ exports.main = async (event) => {
       const hideNow = reports >= COMMENT_HIDE_THRESHOLD;
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE comments SET reports = " + reports + ", report_by = '" + esc(JSON.stringify(reportBy)) + "'" + (hideNow ? ", hidden = true" : "") + " WHERE id = '" + esc(cid) + "'" });
       return json(200, { ok: true, hiddenNow: !!hideNow });
+    }
+    // ---- LLM 兜底（精灵助手）：需登录，限流防滥用 ----
+    if(action === 'llm'){
+      const msgs = Array.isArray((body || {}).messages) ? body.messages : [];
+      const safe = msgs.slice(-8).map(m => ({ role: String(m.role || 'user').slice(0, 10), content: String(m.content || '').slice(0, 600) }));
+      if(!safe.length) return json(400, { ok: false, error: 'messages 缺失' });
+      const r = await llmChat(safe);
+      if(!r) return json(200, { ok: false, error: 'AI 服务暂不可用，请稍后再试' });
+      return json(200, { ok: true, content: r.content, provider: r.provider });
     }
     // ---- 管理员 ----
     if(action === 'adminCheck'){

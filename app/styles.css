@@ -505,6 +505,22 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 
 .post-cover{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:4/3;background:#e8efe9;margin-bottom:10px;cursor:pointer}
 .post-cover img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* 官方名胜推荐流（feed 空态） */
+.scenic-head{display:flex;flex-direction:column;gap:3px;margin:2px 0 12px}
+.scenic-head b{font-size:15px;color:var(--ink,#1c2b24)}
+.scenic-head small{color:#6b7f76;font-size:12px}
+.scenic-cover{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:16/7;margin-bottom:10px;cursor:pointer;
+  background:linear-gradient(135deg,#7fae94 0%,#4f8a6d 45%,#2f5d4a 100%);display:flex;align-items:center;justify-content:center}
+.scenic-card:nth-child(3n) .scenic-cover{background:linear-gradient(135deg,#f0c987 0%,#dd9a41 55%,#b8742a 100%)}
+.scenic-card:nth-child(3n+1) .scenic-cover{background:linear-gradient(135deg,#93b5d6 0%,#5b83b0 55%,#39587a 100%)}
+.scenic-emoji{font-size:44px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+.scenic-tag{position:absolute;left:10px;top:10px;background:rgba(17,45,36,.55);color:#fff;font-size:11px;padding:3px 9px;border-radius:999px;backdrop-filter:blur(4px)}
+.scenic-actions{display:flex;gap:8px;margin-top:8px}
+.scenic-actions button{flex:1 1 0;box-sizing:border-box;padding:7px 4px;font-size:12px;margin:0}
+.scenic-more{display:flex;justify-content:center;margin:12px 0 4px}
+.scenic-more button{padding:8px 18px}
+
 .pd-badge{position:absolute;right:8px;bottom:8px;background:rgba(17,45,36,.78);color:#fff;font-size:11px;padding:3px 9px;border-radius:999px}
 .post-detail-card{width:min(92vw,430px);max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#f6f6f2);border-radius:16px;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px))}
 .pd-photos{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
