@@ -532,6 +532,8 @@
         <input class="p-input" id="addrTown" placeholder="例如：虞山镇" maxlength="20" />
         <div class="p-label mt">详细地址<text class="p-req">（必填：村/小区/楼栋/门牌号）</text></div>
         <input class="p-input" id="addrDetail" placeholder="例如：甸桥村幸福家园 3 栋 502" maxlength="60" />
+        <div class="p-label mt">楼栋 / 单元<text class="p-optional">（选填：已在详细地址选好小区？补这里更精确）</text></div>
+        <input class="p-input" id="addrBlock" placeholder="例如：3 栋 2 单元 502" maxlength="30" />
         <div class="addr-preview" id="addrPreview">地址预览：—</div>
         <div class="p-label mt">定位<text class="p-optional">（不知道地址？地图上选点自动填入）</text></div>
         <button type="button" class="primary loc-open" onclick="openMapPicker()">🗺️ 定位 · 地图选点</button>
@@ -625,6 +627,7 @@
       <div id="pickMap" class="pick-map"></div>
       <div class="addr-marker-tip" id="pickTip">定位中…</div>
     </div>
+    <div class="near-list" id="nearList" style="display:none"></div>
     <div class="map-actions">
       <button type="button" class="ghost-btn" onclick="closeMapPicker()">取消</button>
       <button type="button" class="primary" onclick="useMapPick()">使用该位置</button>

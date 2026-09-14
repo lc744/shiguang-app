@@ -478,6 +478,14 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 .multi-check.on{background:var(--main2,#3b8d76);border-color:var(--main2,#3b8d76);color:#fff}
 .multi-bar{position:fixed;left:14px;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;padding:10px 12px;background:var(--surface,#fff);border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.18);z-index:70}
 .multi-bar button{font-size:13px;padding:8px 16px;border-radius:10px}
+/* 附近地点列表（地图选点下方，美团式 POI 候选） */
+.near-list{max-height:170px;overflow-y:auto;margin:8px 14px;padding:6px;background:#fff;border:1px solid var(--line,#e6efe8);border-radius:12px}
+.near-head{font-size:11px;color:#6b7f76;padding:4px 6px}
+.near-item{padding:7px 8px;border-bottom:1px solid #f0f5f1;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.near-item:last-child{border-bottom:none}
+.near-item:active{background:#eef6f1}
+.near-item b{font-size:13px;color:#26443a}
+.near-item small{font-size:11px;color:#6b7f76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .multi-bar .danger-btn{background:#c0564a;color:#fff;border:none}
 /* 我的评论 */
 .mc-item{border:1px solid var(--line,#e6efe8);border-radius:12px;padding:9px 11px;margin-bottom:9px;cursor:pointer;background:#fff}

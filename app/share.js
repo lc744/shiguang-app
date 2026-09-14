@@ -1009,6 +1009,8 @@ function loadDivisions(){
 }
 function openAddrPicker(){
   document.getElementById('addrPicker').style.display = 'flex';
+  const blk = document.getElementById('addrBlock');
+  if(blk) blk.value = '';
   loadDivisions().then(d => {
     const sel = document.getElementById('selProv');
     const cur = sel.value;
@@ -1034,6 +1036,54 @@ function onCityChange(){
 function onAreaChange(){ updateAddrPreview(); }
 function addrTownVal(){ return (document.getElementById('addrTown').value || '').trim(); }
 function addrDetailVal(){ return (document.getElementById('addrDetail').value || '').trim(); }
+function addrBlockVal(){ return (document.getElementById('addrBlock') ? document.getElementById('addrBlock').value : '').trim(); }
+
+/* ---- 高德 Web 服务（逆地理 + 附近POI）----
+   AMAP_WEB_KEY 在高德开放平台(lbs.amap.com)创建"Web服务"类型 Key 后填入；
+   留空则自动回退原有 BigDataCloud/Nominatim 链路（精度较低）。 */
+const AMAP_WEB_KEY = '6c6551e4b4386aa115db5bc121003d7c';
+
+/* WGS-84(系统定位) → GCJ-02(高德/国内地图) 标准偏移算法 */
+function wgs2gcj(lat, lng){
+  const a = 6378245.0, ee = 0.00669342162296594323;
+  const inChina = (lng, lat) => lng >= 72.004 && lng <= 137.8347 && lat >= 0.8293 && lat <= 55.8271;
+  if(!inChina(lng, lat)) return { lat, lng };
+  const dLat = (x, y) => -100 + 2*x + 3*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x)) + (20*Math.sin(6*x*Math.PI) + 20*Math.sin(2*x*Math.PI)) * 2/3 + (20*Math.sin(y*Math.PI) + 40*Math.sin(y/3*Math.PI)) * 2/3 + (160*Math.sin(y/12*Math.PI) + 320*Math.sin(y*Math.PI/30)) * 2/3;
+  const dLng = (x, y) => 300 + x + 2*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x)) + (20*Math.sin(6*x*Math.PI) + 20*Math.sin(2*x*Math.PI)) * 2/3 + (20*Math.sin(x*Math.PI) + 40*Math.sin(x/3*Math.PI)) * 2/3 + (150*Math.sin(x/12*Math.PI) + 300*Math.sin(x/30*Math.PI)) * 2/3;
+  let d = dLat(lng - 105, lat - 35), m = dLng(lng - 105, lat - 35);
+  const rad = lat / 180 * Math.PI;
+  let magic = Math.sin(rad); magic = 1 - ee * magic * magic;
+  const sqrt = Math.sqrt(magic);
+  d = (d * 180) / ((a * (1 - ee)) / (magic * sqrt) * Math.PI);
+  m = (m * 180) / (a / sqrt * Math.cos(rad) * Math.PI);
+  return { lat: lat + d, lng: lng + m };
+}
+
+/* 高德逆地理（GCJ-02 输入）：省市区街 + 附近POI 列表 */
+async function amapRegeo(lat, lng){
+  if(!AMAP_WEB_KEY) throw new Error('no key');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 9000);
+  const url = 'https://restapi.amap.com/v3/geocode/regeo?key=' + AMAP_WEB_KEY + '&location=' + lng.toFixed(6) + ',' + lat.toFixed(6) + '&extensions=all&radius=1000&roadlevel=0';
+  const r = await fetch(url, { signal: ctrl.signal });
+  clearTimeout(timer);
+  if(!r.ok) throw new Error('bad');
+  const j = await r.json();
+  if(!j || j.status !== '1' || !j.regeocode) throw new Error('amap: ' + ((j && j.info) || 'fail'));
+  const comp = j.regeocode.addressComponent || {};
+  const one = v => Array.isArray(v) ? (v[0] || '') : String(v || '');
+  const prov = one(comp.province);
+  const city = one(comp.city) || prov;   // 直辖市 city 为 []
+  const area = one(comp.district);
+  const town = one(comp.township);
+  const street = (one(comp.street) + ' ' + one(comp.number)).trim();
+  const pois = (j.regeocode.pois || []).slice(0, 10).map(p => ({
+    name: String(p.name || ''),
+    addr: String(p.address || ''),
+    dist: Math.round(parseFloat(p.distance) || 0)
+  }));
+  return { prov, city, area, town, street, pois, detail: pois.length ? pois[0].name : street, allNames: [prov, city, area, town].filter(Boolean), src: 'amap' };
+}
 function addrName(code, list){
   const it = (list || []).find(x => x.code === code);
   return it ? it.name : '';
@@ -1055,7 +1105,9 @@ function composeAddr(){
   const city = cityRaw ? addrName(cityCode, provObj.children) : '';
   const area = cityRaw ? addrName(areaCode, cityRaw.children || []) : '';
   const town = addrTownVal();
-  const detail = addrDetailVal();
+  let detail = addrDetailVal();
+  const block = addrBlockVal();
+  if(detail && block) detail = (detail + ' ' + block).slice(0, 60);
   if(!prov || !area || !detail) return '';
   return [prov, cityRaw && (cityRaw.name === '市辖区' || cityRaw.name === '县') ? '' : city, area, town, detail].filter(Boolean).join('');
 }
@@ -1116,6 +1168,31 @@ function setPickTip(t){
   tip.style.display = t ? 'block' : 'none';
 }
 function getCoords(){
+  // 优先高德融合定位 SDK（GCJ-02，误差 5-50m）；失败回退系统定位（WGS-84，国内网络定位误差大）
+  const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AmapLocation;
+  if(A){
+    return (async () => {
+      try{
+        // 高德 SDK 在异常场景（key 无效/室内无信号）可能长时间不回调，18s 强制超时回退
+        const pos = await Promise.race([
+          A.getCurrentLocation({ timeout: 15000 }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('AMAP_TIMEOUT')), 18000))
+        ]);
+        if(pos && pos.lat) return { lat: pos.lat, lon: pos.lon, gcj: true, accuracy: pos.accuracy };
+      }catch(e){ /* 回退 */ }
+      const G = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+      if(!G) throw new Error('no geo');
+      let st = null;
+      if(G.checkPermissions){ st = await G.checkPermissions(); }
+      const state = st ? (st.location || st.coarseLocation) : null;
+      if(state === 'denied') throw new Error('PERM_DENIED');
+      if(state === 'prompt' || state === 'prompt-with-rationale' || !state){
+        if(G.requestPermissions){ await G.requestPermissions(); }
+      }
+      const pos = await G.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+      return { lat: pos.coords.latitude, lon: pos.coords.longitude, gcj: false };
+    })();
+  }
   const G = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
   if(G){
     // 原生插件路径：先检查/请求权限（Capacitor 8 不会自动弹授权框）
@@ -1129,7 +1206,7 @@ function getCoords(){
           if(G.requestPermissions){ await G.requestPermissions(); }
         }
         const pos = await G.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
-        return { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        return { lat: pos.coords.latitude, lon: pos.coords.longitude, gcj: false };
       }catch(e){
         throw (e && e.message === 'PERM_DENIED') ? e : e;
       }
@@ -1137,7 +1214,7 @@ function getCoords(){
   }
   if(navigator.geolocation){
     return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
-      p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      p => res({ lat: p.coords.latitude, lon: p.coords.longitude, gcj: false }),
       rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }));
   }
   return Promise.reject(new Error('no geo'));
@@ -1150,10 +1227,11 @@ async function locateForAddrMap(){
     setPickTip('定位失败：请在系统设置中允许绸缪使用位置权限，或直接点击地图选点');
     return;
   }
-  const ll = [c.lat, c.lon];
-  if(addrMap){ addrMap.setView(ll, 16); addrMarker.setLatLng(ll); }
+  // 高德底图是 GCJ-02：系统定位(WGS-84)必须先偏移转换，否则点/标记整体偏移数百米
+  const ll = c.gcj ? [c.lat, c.lon] : (() => { const g = wgs2gcj(c.lat, c.lon); return [g.lat, g.lng]; })();
+  if(addrMap){ addrMap.setView(ll, c.gcj ? 17 : 16); addrMarker.setLatLng(ll); }
   setPickTip('');
-  reversePick({ lat: c.lat, lng: c.lon });
+  reversePick({ lat: ll[0], lng: ll[1] });
 }
 async function photonDetail(ll){
   // Photon(OpenStreetMap) 补充路名/POI 作为详细地址
@@ -1200,19 +1278,44 @@ async function nominatimReverse(ll){
   const town = a.county && (a.county.indexOf('镇') >= 0 || a.county.indexOf('街道') >= 0 || a.county.indexOf('乡') >= 0) ? a.county : (a.suburb || a.village || '');
   return { prov: a.state || a.province || '', city: a.city || a.town || '', area: a.county || a.district || a.suburb || '', town: String(town), detail: [a.road, a.neighbourhood, a.house_number].filter(Boolean).join('') };
 }
+let nearPois = [];
+function renderNearList(pois){
+  nearPois = pois || [];
+  const box = document.getElementById('nearList');
+  if(!box) return;
+  if(!nearPois.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<div class="near-head">📍 附近地点（点击选为详细地址）</div>' +
+    nearPois.map((p, i) => `
+    <div class="near-item" onclick="nearPick(${i})">
+      <b>${esc(p.name)}</b><small>${esc(p.addr || '')}${p.dist ? ' · 约' + p.dist + '米' : ''}</small>
+    </div>`).join('');
+}
+function nearPick(i){
+  const p = nearPois[i];
+  if(!p) return;
+  const det = document.getElementById('addrDetail');
+  if(det && p.name) det.value = String(p.name).slice(0, 60);
+  updateAddrPreview();
+  closeMapPicker();
+  toast('已选「' + String(p.name).slice(0, 12) + '」，可补充楼栋单元后确定');
+}
 async function reversePick(ll){
   setPickTip('解析选点地址…');
   let n = null;
-  try{ n = await bdcReverse(ll); }catch(e){ n = null; }
-  if(!n || !n.prov){
-    try{ n = await nominatimReverse(ll); }catch(e){ n = null; }
-  }
+  // 高德优先（GCJ-02 数据 + POI 级精度）；无 key 或失败回退 BDC/Nominatim
+  try{ n = await amapRegeo(ll.lat, ll.lng); }catch(e){ n = null; }
+  renderNearList(n && n.pois ? n.pois : []);
+  if(!n){ try{ n = await bdcReverse(ll); }catch(e){ n = null; } }
+  if(!n || !n.prov){ try{ n = await nominatimReverse(ll); }catch(e){ n = null; } }
   if(!n || !n.prov){ setPickTip('选点解析失败，请手动填写详细地址'); return; }
-  // 详细地址：Photon 路名/POI 优先，避免与已用的镇街/区县重名
-  try{
-    const ph = await photonDetail(ll);
-    if(ph && ph !== n.town && ph !== n.area && ph !== n.city) n.detail = ph;
-  }catch(e){}
+  // 详细地址：Photon 路名/POI 优先（仅兜底链路需要；高德已带 POI），避免与已用的镇街/区县重名
+  if(!n.src || n.src !== 'amap'){
+    try{
+      const ph = await photonDetail(ll);
+      if(ph && ph !== n.town && ph !== n.area && ph !== n.city) n.detail = ph;
+    }catch(e){}
+  }
   try{
     await loadDivisions();
     const provName = n.prov;
