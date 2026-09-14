@@ -570,12 +570,13 @@ function renderScenicHtml(){
   const pool = scenicPool();
   const shown = pool.slice(0, Math.min((scenicPage + 1) * SCENIC_PAGE_SIZE, pool.length));
   const inCity = feedCity && pool !== SCENIC_SPOTS;
-  const head = `<div class="scenic-head"><b>🏛️ 国家名胜 · 官方推荐</b><small>${inCity ? esc(feedCity) + ' · ' : ''}共 ${pool.length} 个精选景点，下拉点卡片可生成攻略</small></div>`;
+  const head = `<div class="scenic-head"><b>🏛️ 国家名胜 · 官方推荐</b><small>${inCity ? esc(feedCity) + ' · ' : ''}共 ${pool.length} 个精选景点，<a href="javascript:void(0)" onclick="openScenicOverlay()">打开名胜库</a></small></div>`;
   const cards = shown.map((s, i) => `
     <div class="post-card card scenic-card">
       <div class="scenic-cover" onclick="scenicAction(${i}, 'plan')">
         <text class="scenic-emoji">${s.e}</text>
         <text class="scenic-tag">${esc(s.t)} · ${esc(s.p)}</text>
+        <text class="scenic-level s-lv${s.a || 0}">${esc(scenicLevel(s.a))}</text>
       </div>
       <div class="post-body">
         <div class="post-head"><text class="post-name">${esc(s.n)}</text><text class="post-type">${esc(s.c)}</text></div>
@@ -596,6 +597,76 @@ function scenicAction(i, kind){
   if(!s) return;
   const city = scenicCityParam(s);
   if(kind === 'plan'){ makeTravelPlan(city); return; }
+  closeScenicOverlay();
+  feedCity = city;
+  feedMode = 'city';
+  renderFeedFilter();
+  toast('已按 ' + city + ' 筛选');
+  loadShare(true);
+}
+
+/* ---------------- 国家名胜库（独立入口浏览） ---------------- */
+let scenicGrade = '';
+function openScenicOverlay(){
+  const ov = document.getElementById('scenicOverlay');
+  if(!ov) return;
+  ov.style.display = 'flex';
+  // 隐藏分享页本体，避免与弹层重叠
+  const page = document.getElementById('page-share');
+  if(page) page.style.visibility = 'hidden';
+  const sel = document.getElementById('scenicProv');
+  if(sel && sel.options.length <= 1){
+    const provs = Array.from(new Set(SCENIC_SPOTS.map(s => s.p)));
+    sel.innerHTML = '<option value="">全部省份</option>' + provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  }
+  document.getElementById('scenicEntryCount').textContent = SCENIC_SPOTS.length;
+  renderScenicLib();
+}
+function closeScenicOverlay(){
+  const ov = document.getElementById('scenicOverlay');
+  if(ov) ov.style.display = 'none';
+  const page = document.getElementById('page-share');
+  if(page) page.style.visibility = '';
+}
+function pickScenicGrade(g){
+  scenicGrade = g;
+  document.querySelectorAll('#scenicOverlay .scenic-lib-grades .sf-chip').forEach(b => b.classList.toggle('on', b.dataset.g === g));
+  renderScenicLib();
+}
+function renderScenicLib(){
+  const box = document.getElementById('scenicLibList');
+  if(!box) return;
+  const prov = (document.getElementById('scenicProv') || {}).value || '';
+  const kw = ((document.getElementById('scenicSearch') || {}).value || '').trim();
+  let list = SCENIC_SPOTS;
+  if(prov) list = list.filter(s => s.p === prov);
+  if(scenicGrade) list = list.filter(s => String(s.a || 0) === scenicGrade);
+  if(kw) list = list.filter(s => s.n.indexOf(kw) >= 0 || s.c.indexOf(kw) >= 0 || s.d.indexOf(kw) >= 0);
+  document.getElementById('scenicEntryCount').textContent = list.length;
+  if(!list.length){ box.innerHTML = '<div class="scenic-empty">没有匹配的景点，换个条件试试</div>'; return; }
+  box.innerHTML = list.map((s, i) => `
+    <div class="post-card card scenic-card">
+      <div class="scenic-cover" onclick="scenicLibAction(${SCENIC_SPOTS.indexOf(s)}, 'plan')">
+        <text class="scenic-emoji">${s.e}</text>
+        <text class="scenic-tag">${esc(s.t)} · ${esc(s.p)}</text>
+        <text class="scenic-level s-lv${s.a || 0}">${esc(scenicLevel(s.a))}</text>
+      </div>
+      <div class="post-body">
+        <div class="post-head"><text class="post-name">${esc(s.n)}</text><text class="post-type">${esc(s.c)}</text></div>
+        <text class="post-desc">${esc(s.d)}</text>
+        <div class="scenic-actions">
+          <button class="secondary" onclick="scenicLibAction(${SCENIC_SPOTS.indexOf(s)}, 'plan')">🗓️ 生成${esc(s.c)}攻略</button>
+          <button class="secondary" onclick="scenicLibAction(${SCENIC_SPOTS.indexOf(s)}, 'city')">📍 看分享</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function scenicLibAction(spotIdx, kind){
+  const s = SCENIC_SPOTS[spotIdx];
+  if(!s) return;
+  const city = scenicCityParam(s);
+  if(kind === 'plan'){ makeTravelPlan(city); return; }
+  closeScenicOverlay();
   feedCity = city;
   feedMode = 'city';
   renderFeedFilter();
@@ -622,9 +693,12 @@ function renderShareList(errMsg){
     empty.style.display = 'block';
     // 冷启动：feed 空态用「国家名胜」官方推荐流填充，仍有东西可刷
     if(shareTab === 'feed' && typeof SCENIC_SPOTS !== 'undefined'){
+      // 名胜流模式下压缩空态提示区（大 emoji 改小条），让名胜卡更早入屏
+      empty.classList.add('share-empty-compact');
       box.innerHTML = renderScenicHtml();
       return;
     }
+    empty.classList.remove('share-empty-compact');
     box.innerHTML = '';
     return;
   }

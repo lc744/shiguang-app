@@ -186,6 +186,7 @@
             <button class="pub-pill" onclick="openPlanMaker()">🧳 攻略</button>
             <button class="pub-pill" onclick="openPublish()">＋ 发布</button>
           </div>
+          <button class="scenic-entry" onclick="openScenicOverlay()"><text>🏛️ 国家名胜</text><small>5A/4A 精选 · <span id="scenicEntryCount">119</span> 个</small></button>
           <div class="share-scroll">
             <div class="share-filter" id="shareFilter">
               <div class="sf-row sf-eq3">
@@ -212,6 +213,26 @@
     </main>
 
     <button class="fab" id="fabAdd" onclick="openEditor(null)">+</button>
+
+    <!-- 国家名胜库 -->
+    <div class="remind-fullscreen" id="scenicOverlay" style="display:none" onclick="if(event.target===this) closeScenicOverlay()">
+      <div class="detail-card scenic-lib">
+        <div class="scenic-lib-head">
+          <div><b>🏛️ 国家名胜</b><small>官方精选 · 34 省区市</small></div>
+          <button class="secondary" onclick="closeScenicOverlay()">关闭</button>
+        </div>
+        <div class="scenic-lib-filter">
+          <select id="scenicProv" onchange="renderScenicLib()"><option value="">全部省份</option></select>
+          <div class="scenic-lib-grades">
+            <button class="sf-chip on" data-g="" onclick="pickScenicGrade('')">全部</button>
+            <button class="sf-chip" data-g="5" onclick="pickScenicGrade('5')">5A</button>
+            <button class="sf-chip" data-g="4" onclick="pickScenicGrade('4')">4A</button>
+          </div>
+        </div>
+        <input id="scenicSearch" class="text-input" placeholder="搜索景点名 / 城市" oninput="renderScenicLib()" />
+        <div id="scenicLibList" class="scenic-lib-list"></div>
+      </div>
+    </div>
 
     <!-- 多选删除操作条 -->
     <div class="multi-bar" id="multiBar" style="display:none">
