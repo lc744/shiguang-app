@@ -274,9 +274,12 @@ function renderMeBody(){
         <text class="me-item-emoji">🛡</text><text class="me-item-label">内容管理（待审）</text><text class="me-arrow">›</text>
       </div>
     </div>` : ''}`;
-  // 管理员标记异步补渲染（登录态未就绪时自动重试）
+  // 管理员标记异步补渲染（登录态未就绪时自动重试；失败则清残留——防止切换账号后入口残留）
   if(logged && typeof whenAdmin === 'function'){
-    whenAdmin(() => { if(!adminMode){ adminMode = true; renderMeBody(); } });
+    whenAdmin(
+      () => { if(!adminMode){ adminMode = true; renderMeBody(); } },
+      () => { if(adminMode){ adminMode = false; renderMeBody(); } }
+    );
   }
 }
 function requireLoginTip(){ toast('请先登录'); }

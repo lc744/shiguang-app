@@ -839,10 +839,17 @@ async function adminRestoreComment(cid){
 async function refreshAdminPanel(){ openAdminPanel(true); }
 async function openAdminPanel(silent){
   if(!(window.CloudAuth && CloudAuth.active() && CloudAuth.currentUser())){ toast('请先登录'); return; }
-  const am = await isAdminUser();
-  if(!am){ toast('需要管理员权限'); return; }
   if(!silent){ document.getElementById('adminOverlay').style.display = 'flex'; }
   const box = document.getElementById('adminPanelBody');
+  if(!silent) box.innerHTML = '<small style="opacity:.6">验证权限…</small>';
+  // 权限验证带重试（面板场景 2 次≈5s，避免久等）：网络失败不误报"需要管理员权限"
+  const am = await new Promise(res => whenAdmin(() => res(true), () => res(false), 2));
+  if(!am){
+    if(silent){ toast('需要管理员权限'); return; }
+    box.innerHTML = '<small style="opacity:.6">需要管理员权限</small>';
+    setTimeout(() => { try{ closeAdminPanel(); }catch(e){} }, 1500);
+    return;
+  }
   if(!silent) box.innerHTML = '<small style="opacity:.6">加载中…</small>';
   // 管理员打开面板时顺带刷新自己的心跳
   try{ if(window.CloudAuth && CloudAuth._profileApiCall) await CloudAuth._profileApiCall('heartbeat', { nickname: (function(){ try{ const u = JSON.parse(localStorage.getItem('shiguang_user') || 'null'); return (u && u.nickname) || ''; }catch(e){ return ''; } })() }); }catch(e){}
@@ -898,22 +905,24 @@ function closeAdminPanel(){ document.getElementById('adminOverlay').style.displa
 
 /* ---------------- 详情页评论区 ---------------- */
 async function myUid(){ try{ const u = CloudAuth.currentUser ? await CloudAuth.currentUser() : null; return u ? u.uid : ''; }catch(e){ return ''; } }
-let __adminFlag = null;   // null=未查询, true/false（仅缓存成功结果，失败不缓存以便重试）
 async function isAdminUser(){
+  // 每次实查不缓存：避免账号切换后残留上一账号的管理员状态
   try{
     const r = await shareApi('adminCheck', {});
-    if(r && r.ok !== false){ __adminFlag = !!(r && r.isAdmin); return __adminFlag; }
-  }catch(e){ /* 登录态未就绪：不缓存，下次再查 */ }
+    if(r && r.ok !== false) return !!(r && r.isAdmin);
+  }catch(e){ /* 登录态未就绪或网络失败 */ }
   return false;
 }
-/* 管理入口助手：登录态未就绪时自动重试（最多 4 次 × 2.5s），就绪后回调 */
-function whenAdmin(cb){
+/* 管理入口助手：登录态未就绪时自动重试，就绪后回调，全部失败走 failCb */
+function whenAdmin(cb, failCb, maxTries){
   let tries = 0;
+  const cap = maxTries || 4;
   const go = () => {
     isAdminUser().then(am => {
       if(am) cb();
-      else if(tries < 4){ tries++; setTimeout(go, 2500); }
-    }).catch(() => { if(tries < 4){ tries++; setTimeout(go, 2500); } });
+      else if(tries < cap){ tries++; setTimeout(go, 2500); }
+      else if(failCb) failCb();
+    }).catch(() => { if(tries < cap){ tries++; setTimeout(go, 2500); } else if(failCb) failCb(); });
   };
   go();
 }
