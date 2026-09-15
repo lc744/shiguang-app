@@ -3,7 +3,7 @@ const CloudBase = require('@cloudbase/manager-node');
 const fs = require('fs');
 const path = require('path');
 
-const sec = JSON.parse(fs.readFileSync(process.env.TEMP + '/shiguang_secrets_bak/asr_secret.json', 'utf8'));
+const sec = JSON.parse(fs.readFileSync(__dirname + '/cloud_secrets.json', 'utf8'));
 const ENV = 'gerenceshi-d0gguq5u39b4b86b2';
 
 (async () => {

@@ -844,15 +844,42 @@ async function openAdminPanel(silent){
   if(!silent){ document.getElementById('adminOverlay').style.display = 'flex'; }
   const box = document.getElementById('adminPanelBody');
   if(!silent) box.innerHTML = '<small style="opacity:.6">加载中…</small>';
+  // 管理员打开面板时顺带刷新自己的心跳
+  try{ if(window.CloudAuth && CloudAuth._profileApiCall) await CloudAuth._profileApiCall('heartbeat', { nickname: (function(){ try{ const u = JSON.parse(localStorage.getItem('shiguang_user') || 'null'); return (u && u.nickname) || ''; }catch(e){ return ''; } })() }); }catch(e){}
+  const pendingP = shareApi('adminAction', { op: 'pending' }).catch(e => ({ err: e }));
+  const usersP = shareApi('adminAction', { op: 'users' }).catch(e => ({ err: e }));
+  let usersHtml = '';
   try{
-    const r = await shareApi('adminAction', { op: 'pending' });
+    const ur = await usersP;
+    if(ur && ur.ok !== false && ur.list){
+      const users = ur.list;
+      const fmtAgo = (s) => {
+        if(s < 0) return '从未上线';
+        if(s < 60) return '刚刚';
+        if(s < 3600) return Math.floor(s / 60) + ' 分钟前';
+        if(s < 86400) return Math.floor(s / 3600) + ' 小时前';
+        return Math.floor(s / 86400) + ' 天前';
+      };
+      const online = users.filter(u => u.agoSec >= 0 && u.agoSec <= 300).length;
+      const recent = users.filter(u => u.agoSec > 300 && u.agoSec <= 1800).length;
+      usersHtml = '<b style="font-size:13px;display:block;margin-bottom:6px">👥 用户在线 <small style="font-weight:400;opacity:.6">共 ' + users.length + ' 人 · 🟢 在线 ' + online + ' · 🟡 最近 ' + recent + '</small></b>' +
+        users.map(u => {
+          const name = esc(u.nickname || (u.email || '').split('@')[0] || '用户');
+          const dot = u.agoSec < 0 ? '⚪' : (u.agoSec <= 300 ? '🟢' : (u.agoSec <= 1800 ? '🟡' : '⚪'));
+          const idTag = (u.email ? esc(u.email) : '…' + esc(u.uidTail)) + ' <small style="opacity:.5">…' + esc(u.uidTail) + '</small>';
+          return '<div class="adm-item"><div class="adm-txt"><b>' + dot + ' ' + name + '</b><small>' + idTag + '</small></div><div class="adm-ops"><small style="opacity:.6">' + fmtAgo(u.agoSec) + '</small></div></div>';
+        }).join('');
+    }
+  }catch(e){}
+  try{
+    const r = await pendingP;
     const posts = (r && r.posts) || [];
     const comments = (r && r.comments) || [];
-    if(!posts.length && !comments.length){
+    if(!posts.length && !comments.length && !usersHtml){
       box.innerHTML = '<small style="opacity:.6;display:block;text-align:center;padding:14px 0">当前没有待审内容 ✨</small>';
       return;
     }
-    box.innerHTML =
+    box.innerHTML = usersHtml + '<div style="margin-top:10px"></div>' +
       (posts.length ? '<b style="font-size:13px">被隐藏的帖子</b>' + posts.map(p => `
         <div class="adm-item">
           <div class="adm-txt"><b>${esc(p.name || p.addr || '（无标题）')}</b><small>${esc(p.type || '')} · 举报${p.reports}次 · ${esc(p.time || '')}</small></div>

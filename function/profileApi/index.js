@@ -104,6 +104,29 @@ function callApi(action, payload){
 
 function esc(s){ return String(s).replace(/'/g, "''"); }
 
+// 管理员名单改为读 admins 表（可随时 INSERT/DELETE uid 换管理员，无需改代码）
+const __adminCache = { ts: 0, list: [] };
+async function getAdminUids(){
+  // 注意：云函数内 callApi 已解包 Response（resolve j.Response），错误时 reject
+  if(Date.now() - __adminCache.ts < 30000) return __adminCache.list;   // 30s 内存缓存
+  try{
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT uid FROM admins" });
+    const list = ((r && r.Rows) || []).map(x => { try{ return JSON.parse(x)[0]; }catch(e){ return x; } }).filter(Boolean);
+    __adminCache.ts = Date.now(); __adminCache.list = list;
+    return list;
+  }catch(e){ return []; }
+}
+
+// 登录用户登记表：verifyToken 顺带 UPSERT（每实例每 uid 只写一次）
+const __userSeen = new Set();
+async function upsertUser(uid, email){
+  if(!uid || __userSeen.has(uid)) return;
+  __userSeen.add(uid);
+  try{
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO users (uid, email) VALUES ('" + esc(uid) + "', '" + esc(email || '') + "') ON CONFLICT (uid) DO UPDATE SET email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email)" });
+  }catch(e){}
+}
+
 function verifyToken(token){
   return new Promise((resolve) => {
     const req = https.request({
@@ -118,7 +141,9 @@ function verifyToken(token){
       res.on('end', () => {
         try{
           const j = JSON.parse(d);
-          resolve((res.statusCode === 200 && j && j.sub) ? j.sub : null);
+          if(res.statusCode === 200 && j && j.sub){
+            resolve({ uid: j.sub, email: j.email || j.username || '' });
+          } else resolve(null);
         }catch(e){ resolve(null); }
       });
     });
@@ -163,8 +188,9 @@ exports.main = async (event) => {
     }
 
     if(!token) return json(401, { error: '缺少登录凭据' });
-    uid = await verifyToken(token);
-    if(!uid) return json(401, { error: '登录状态无效或已过期' });
+    const me = await verifyToken(token);
+    if(!me) return json(401, { error: '登录状态无效或已过期' });
+    uid = me.uid;
 
     // 自愈建表
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS profiles (uid TEXT PRIMARY KEY, avatar TEXT, updated_at TIMESTAMPTZ DEFAULT now())" });
@@ -175,6 +201,11 @@ exports.main = async (event) => {
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS report_by TEXT DEFAULT '[]'" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false" });
     await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, uid TEXT, city TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, email TEXT DEFAULT '')" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT ''" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ" });
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY)" });
+    await upsertUser(uid, me.email);   // 同步登记（函数可能随时冻结，不留给后台）
 
     // 分享相关动作（uid 已验证）
     const POST_ACTIONS = ['publish', 'feed', 'mine', 'like', 'del', 'report', 'photo'];
@@ -205,7 +236,7 @@ exports.main = async (event) => {
       if(!cr || !cr.Rows || !cr.Rows.length) return json(404, { ok: false, error: '评论不存在' });
       let commentUid = '', postOwner = '';
       try{ const row = JSON.parse(cr.Rows[0]); commentUid = row[0] || ''; postOwner = row[1] || ''; }catch(e){}
-      const isAdmin = ADMIN_UIDS.indexOf(uid) >= 0;
+      const isAdmin = (await getAdminUids()).indexOf(uid) >= 0;
       if(!isAdmin && uid !== commentUid && uid !== postOwner) return json(403, { ok: false, error: '没有权限删除该评论' });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM comments WHERE id = '" + esc(cid) + "'" });
       return json(200, { ok: true });
@@ -234,13 +265,28 @@ exports.main = async (event) => {
       if(!r) return json(200, { ok: false, error: 'AI 服务暂不可用，请稍后再试' });
       return json(200, { ok: true, content: r.content, provider: r.provider });
     }
+    // ---- 在线心跳：前台用户定期上报，刷新 last_seen ----
+    if(action === 'heartbeat'){
+      const nickname = String((body || {}).nickname || '').slice(0, 20);
+      const em = esc(me.email || '');
+      const nk = esc(nickname);
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO users (uid, email, nickname, last_seen) VALUES ('" + esc(uid) + "', '" + em + "', '" + nk + "', now()) ON CONFLICT (uid) DO UPDATE SET last_seen = now(), nickname = CASE WHEN '" + nk + "' <> '' THEN '" + nk + "' ELSE users.nickname END, email = COALESCE(NULLIF('" + em + "', ''), users.email)" });
+      return json(200, { ok: true });
+    }
     // ---- 管理员 ----
     if(action === 'adminCheck'){
-      return json(200, { ok: true, isAdmin: ADMIN_UIDS.indexOf(uid) >= 0 });
+      const admins = await getAdminUids();
+      return json(200, { ok: true, isAdmin: admins.indexOf(uid) >= 0 });
     }
     if(action === 'adminAction'){
-      if(ADMIN_UIDS.indexOf(uid) < 0) return json(403, { ok: false, error: '需要管理员权限' });
+      if((await getAdminUids()).indexOf(uid) < 0) return json(403, { ok: false, error: '需要管理员权限' });
       const op = String((body || {}).op || '');
+      // 用户在线情况（管理员）
+      if(op === 'users'){
+        const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT uid, email, nickname, to_char(last_seen, 'YYYY-MM-DD HH24:MI:SS'), COALESCE(EXTRACT(EPOCH FROM (now() - last_seen)), -1) FROM users ORDER BY COALESCE(last_seen, to_timestamp(0)) DESC LIMIT 200" });
+        const list = ((r && r.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { uidTail: String(a[0] || '').slice(-6), email: a[1] || '', nickname: a[2] || '', lastSeen: a[3] || '', agoSec: Number(a[4]) }; }catch(e){ return null; } }).filter(Boolean);
+        return json(200, { ok: true, list });
+      }
       if(op === 'hidePost' || op === 'unhidePost'){
         const id = String((body || {}).id || '').slice(0, 40);
         await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE posts SET hidden = " + (op === 'hidePost' ? 'true' : 'false') + " WHERE id = '" + esc(id) + "'" });
@@ -340,7 +386,7 @@ exports.main = async (event) => {
 const HIDE_THRESHOLD = 3;
 // ---- 治理配置 ----
 const COMMENT_HIDE_THRESHOLD = 3;
-const ADMIN_UIDS = ['2097125839932256258'];   // 管理员白名单（uid）
+// 管理员名单已迁移到 admins 表（uid 白名单），由 getAdminUids() 读取
 const BAD_WORDS = ['加微信','加V','加v','＋V','赌博','博彩','下注','代开发票','色情','约炮','刷单','点赞返现','兼职日结','高利贷','办证','外挂','代练','转账返','资金盘','裸聊','枪支'];
 function hasBadWord(s){
   const t = String(s || '');

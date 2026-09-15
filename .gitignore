@@ -58,3 +58,5 @@ miniprogram/cloudfunctions/*/secret.json
 e2e_profile_test.js
 shot-*.png
 tools/mingit/
+
+cloud_secrets.json

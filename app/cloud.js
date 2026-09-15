@@ -301,10 +301,21 @@
 
   // ---------- 会话保鲜：回前台立即续期 + 前台每 5 分钟静默续期 ----------
   function hasLocalSession(){ return !!(loadStoredSession() && !__refreshDead); }
+
+  // ---------- 在线心跳：前台时上报 last_seen，供管理员查看用户在线情况 ----------
+  function currentNickname(){
+    try{ const u = JSON.parse(localStorage.getItem('shiguang_user') || 'null'); return (u && u.nickname) || ''; }catch(e){ return ''; }
+  }
+  async function heartbeat(){
+    if(!(__session && __active && document.visibilityState === 'visible')) return;
+    try{ await profileApiCall('heartbeat', { nickname: currentNickname() }); }catch(e){}
+  }
+
   if(typeof document !== 'undefined' && document.addEventListener){
     document.addEventListener('visibilitychange', () => {
       if(document.visibilityState === 'visible' && __session && __active){
         ensureFreshToken().catch(() => {});
+        heartbeat();
       }
     });
   }
@@ -312,6 +323,7 @@
     setInterval(() => {
       if(__session && __active && document.visibilityState === 'visible'){
         ensureFreshToken().catch(() => {});
+        heartbeat();
       }
     }, 5 * 60 * 1000);
   }
