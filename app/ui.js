@@ -169,14 +169,16 @@ function renderHome(){
   list.innerHTML = todays.map(e => {
     const done = isDoneOn(e, t);
     const sel = multiSelOn && multiSelPage === 'home';
+    const nowHM = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
+    const overdue = !done && e.time <= nowHM;
     return `
     <div class="event ${done?'done':''} ${sel && multiSelIds.indexOf(e.id) >= 0 ? 'multi-on' : ''}" data-eid="${e.id}" onclick="${sel ? `toggleMultiSel('${e.id}')` : `openDetail('${e.id}')`}">
       ${sel ? `<div class="multi-check ${multiSelIds.indexOf(e.id) >= 0 ? 'on' : ''}">✓</div>` : ''}
       <div class="event-time"><span>${esc(e.time)}</span><small>${periodOf(e.time)}</small></div>
       <div class="event-body"><strong>${esc(e.name)}</strong><p>${esc(e.note)||'无备注'}</p>
-        <div class="tags"><span class="tag">${emojiTag(e.emoji,20)}</span><span class="tag">${e.voice==='自定义录音'&&e.voiceData?'● 已录音':'♫ '+esc(e.voice)}</span>${repeatLabel(e)?`<span class="tag">↻ ${esc(repeatLabel(e))}</span>`:''}</div>
+        <div class="tags"><span class="tag">${emojiTag(e.emoji,20)}</span><span class="tag">${e.voice==='自定义录音'&&e.voiceData?'● 已录音':'♫ '+esc(e.voice)}</span>${repeatLabel(e)?`<span class="tag">↻ ${esc(repeatLabel(e))}</span>`:''}${overdue?`<span class="tag tag-overdue">⏰ 已到点</span>`:''}</div>
       </div>
-      ${sel ? '' : `<button class="event-check" onclick="toggleDone(event,'${e.id}')">✓</button>`}
+      ${done && !sel ? `<div class="done-pill">已完成</div>` : ''}
     </div>`;
   }).join('');
   bindMultiLongPress('todayList', 'home');
@@ -199,8 +201,8 @@ function renderUpcoming(){
     else {
       ds = nextOccur(e, t);
       if(!ds) return null;
-      // 今天已发生且时间已过（非重复）
-      if(ds === t && e.time <= nowHHMM && !e.weekdays.length) return null;
+      // 预告只显示未来时间：今天的时间点已过（含重复事件）就不进预告
+      if(ds === t && e.time <= nowHHMM) return null;
       // 今天已完成
       if(ds === t && isDoneOn(e, t)) return null;
     }
@@ -444,24 +446,7 @@ function openDetail(id){
   showPage('page-detail');
 }
 
-function toggleDone(ev, id){
-  ev.stopPropagation();
-  const e = findEvent(id);
-  if(!e) return;
-  const t = todayStr();
-  const i = (e.doneOn||[]).indexOf(t);
-  if(i >= 0) e.doneOn.splice(i, 1); else e.doneOn.push(t);
-  persist(); renderAll();
-  toast(i >= 0 ? '已恢复为待办' : '已标记完成');
-}
-function completeCurrentEvent(){
-  const e = findEvent(currentDetailId);
-  if(!e) return;
-  const t = todayStr();
-  if(occursOn(e, t) && !(e.doneOn||[]).includes(t)) e.doneOn.push(t);
-  persist(); renderAll();
-  toast('已标记完成'); goBack();
-}
+// 完成仅来自响铃弹层的「完成」按钮（只记当天），不再提供人工勾选
 function snoozeCurrentEvent(){
   const e = findEvent(currentDetailId);
   if(!e) return;

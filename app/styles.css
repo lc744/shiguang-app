@@ -62,7 +62,6 @@
     .empty{padding:24px 18px;text-align:center;color:var(--sub);font-size:13px;line-height:1.7}
     .event{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:20px;background:var(--surface);border:1px solid var(--line);margin-bottom:10px;cursor:pointer}
     .event.done{opacity:.55}
-    .event.done .event-body strong{text-decoration:line-through}
     .event-time{width:60px;text-align:center;padding-top:2px;font-weight:800;color:var(--main);flex-shrink:0}
     .event-time span{display:block;font-size:17px;line-height:1}
     .event-time small{display:block;font-size:10px;color:var(--sub);margin-top:4px;white-space:nowrap}
@@ -73,6 +72,9 @@
     .tag{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:var(--surface2);color:var(--main);font-size:11px;border:1px solid #e1ece5}
     .event-check{width:30px;height:30px;border-radius:999px;border:1.5px solid var(--line);background:#fff;flex-shrink:0;cursor:pointer;font-size:14px;color:transparent;line-height:1}
     .event.done .event-check{background:var(--main);border-color:var(--main);color:#fff}
+    /* 完成徽章（响铃后自动标记，不可点击）：绿色胶囊 */
+    .done-pill{flex-shrink:0;padding:5px 12px;border-radius:999px;background:var(--main,#3f7d64);color:#fff;font-size:12px;font-weight:600;align-self:center;white-space:nowrap}
+    .tag-overdue{background:#fdecea !important;color:#c0564a !important;border-color:#f3c8c2 !important}
     .calendar-wrap{padding:0 18px 12px}
     .month-card{padding:16px;border-radius:24px;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 22px rgba(17,45,36,.04)}
     .month-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
