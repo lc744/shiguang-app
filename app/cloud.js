@@ -79,6 +79,21 @@
   async function refreshSession(){
     if(__refreshing) return __refreshing;
     __refreshing = (async () => {
+      // 微信自签会话：refresh 走 profileApi wxRefresh
+      if(__session && __session.wx){
+        try{
+          const j = await profileApiCall('wxRefresh', { refresh_token: __session.refresh });
+          __session.access = j.access_token;
+          __session.refresh = j.refresh_token || __session.refresh;
+          __session.expiresAt = Date.now() + ((j.expires_in || 7200) * 1000) - 60000;
+          saveSession();
+          __refreshDead = false;
+          return true;
+        }catch(e){
+          __refreshDead = true;
+          return false;
+        }
+      }
       if(!__session || !__session.refresh) return false;
       const tryOnce = async () => {
         try{
@@ -117,6 +132,28 @@
     if(!__session) return false;
     if(__session.expiresAt && Date.now() < __session.expiresAt) return true;
     return refreshSession();
+  }
+
+  // ---------- 微信登录（绑定码 + 轮询，自签会话） ----------
+  async function wxLoginCreate(){
+    if(!__active) throw new Error('云服务不可用');
+    try{ return await profileApiCall('wxLoginCreate', {}); }
+    catch(e){ throw new Error(friendly(e)); }
+  }
+  async function wxLoginPoll(loginId){
+    if(!__active) throw new Error('云服务不可用');
+    try{ return await profileApiCall('wxLoginPoll', { loginId }); }
+    catch(e){ throw new Error(friendly(e)); }
+  }
+  function isWxSession(){ return !!(__session && __session.wx); }
+  function wxApplySession(sess){
+    __session = {
+      access: sess.access_token, refresh: sess.refresh_token,
+      expiresAt: Date.now() + ((sess.expires_in || 7200) * 1000) - 60000,
+      sub: sess.uid || sess.sub || '', email: '', wx: true,
+    };
+    saveSession();
+    return __session;
   }
 
   // ---------- 头像：经 profileApi 云函数（函数未部署时静默降级为本机头像） ----------
@@ -235,6 +272,71 @@
     }catch(e){ throw new Error(friendly(e)); }
   }
 
+  // ---------- 手机号登录（短信验证码注册 + 密码登录） ----------
+  function normalizePhone(p){
+    const d = String(p || '').replace(/\D/g, '');
+    if(!/^1[3-9]\d{9}$/.test(d)) return null;
+    return '+86 ' + d;
+  }
+  async function sendPhoneCode(phone){
+    if(!__active) throw new Error('云服务不可用');
+    const full = normalizePhone(phone);
+    if(!full) throw new Error('请输入有效的 11 位手机号');
+    try{
+      await authFetch('/verification', { body: { phone_number: full, usage: 'phone' } });
+      return { ok: true };
+    }catch(e){
+      const msg = String(e && e.error_description || e.message || '');
+      if(/per minute/.test(msg)) throw new Error('发送太频繁，请 1 分钟后再试');
+      throw new Error(friendly(e));
+    }
+  }
+  async function phoneRegister(phone, code, password){
+    if(!__active) throw new Error('云服务不可用');
+    const full = normalizePhone(phone);
+    if(!full) throw new Error('请输入有效的 11 位手机号');
+    if(!code) throw new Error('请输入短信验证码');
+    if(!password || password.length < 6) throw new Error('密码至少 6 位');
+    try{
+      const j = await authFetch('/signup', { body: { phone_number: full, verification_code: code, password } });
+      if(j && j.access_token){
+        __session = {
+          access: j.access_token, refresh: j.refresh_token,
+          expiresAt: Date.now() + ((j.expires_in || 3600) * 1000) - 60000,
+          sub: j.sub || '', email: '', phone: full,
+        };
+        saveSession();
+      }
+      return { ok: true, uid: j.sub || '', phone: full, signedIn: !!(j && j.access_token) };
+    }catch(e){
+      const msg = String(e && e.error_description || e.message || '');
+      if(/already_exists/.test(msg)) throw new Error('该手机号已注册，请用密码登录');
+      if(/verification|code/i.test(msg) && /invalid|错误/.test(msg)) throw new Error('验证码错误或已过期');
+      throw new Error(friendly(e));
+    }
+  }
+  async function phoneLogin(phone, password){
+    if(!__active) throw new Error('云服务不可用');
+    const full = normalizePhone(phone);
+    if(!full) throw new Error('请输入有效的 11 位手机号');
+    if(!password) throw new Error('请输入密码');
+    try{
+      const j = await authFetch('/signin', { body: { username: full, password } });
+      __session = {
+        access: j.access_token, refresh: j.refresh_token,
+        expiresAt: Date.now() + ((j.expires_in || 3600) * 1000) - 60000,
+        sub: j.sub || '', email: j.email || '', phone: full,
+      };
+      saveSession();
+      return { ok: true, uid: j.sub || '', email: j.email || '', phone: full };
+    }catch(e){
+      const msg = String(e && e.error_description || e.message || '');
+      if(/password_not_set|PASSWORD_NOT_SET/i.test(msg)) throw new Error('该手机号未设置密码，请用验证码注册');
+      if(/invalid|密码错误/i.test(msg)) throw new Error('手机号或密码错误');
+      throw new Error(friendly(e));
+    }
+  }
+
   // 第二步：凭验证码完成注册（成功即返回会话）
   async function completeRegister(email, password, code){
     if(!__active) throw new Error('云服务不可用');
@@ -350,6 +452,13 @@
     completeRegister,
     login,
     logout,
+    sendPhoneCode,
+    phoneRegister,
+    phoneLogin,
+    wxLoginCreate,
+    wxLoginPoll,
+    wxApplySession,
+    isWxSession,
     currentUser,
     loadProfile,
     saveProfile,

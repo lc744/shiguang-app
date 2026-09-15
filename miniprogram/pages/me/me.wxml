@@ -63,6 +63,11 @@
         <text class="me-item-label">我的发布</text>
         <text class="me-arrow">›</text>
       </view>
+      <view class="me-item" bindtap="onWxBind">
+        <text class="me-item-emoji">🔗</text>
+        <text class="me-item-label">绑定码登录 App</text>
+        <text class="me-arrow">›</text>
+      </view>
       <view class="me-item" bindtap="goSettings">
         <text class="me-item-emoji">⚙️</text>
         <text class="me-item-label">设置</text>

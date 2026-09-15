@@ -99,6 +99,32 @@ Page({
     wx.switchTab({ url: '/pages/share/share' });
   },
 
+  // 绑定码登录 App：输入 app 端「微信登录」显示的 6 位码，云函数用 openid 确认
+  onWxBind(){
+    const id = readLocal() || {};
+    wx.showModal({
+      title: '绑定码登录 App',
+      editable: true,
+      placeholderText: '输入 App 上显示的 6 位登录码',
+      confirmText: '确认绑定',
+      success: (res) => {
+        if(!res.confirm) return;
+        const loginId = String(res.content || '').replace(/\D/g, '').slice(0, 6);
+        if(loginId.length !== 6){ wx.showToast({ title: '请输入 6 位数字码', icon: 'none' }); return; }
+        wx.showLoading({ title: '绑定中…' });
+        wx.cloud.callFunction({
+          name: 'profileApi',
+          data: { action: 'wxBindToApp', loginId, nickname: id.nickname || '', avatar: id.avatarUrl || '' },
+        }).then(r => {
+          wx.hideLoading();
+          const b = r.result || {};
+          if(b.statusCode === 200){ wx.showToast({ title: '绑定成功，回 App 查看结果', icon: 'none', duration: 2500 }); }
+          else{ wx.showToast({ title: (b.body && JSON.parse(b.body).error) || '绑定失败', icon: 'none', duration: 2500 }); }
+        }).catch(() => { wx.hideLoading(); wx.showToast({ title: '网络异常，请重试', icon: 'none' }); });
+      },
+    });
+  },
+
   goSettings(){ wx.navigateTo({ url: '/pages/settings/settings' }); },
 
   logout(){

@@ -448,15 +448,30 @@ function showPhoneLogin(){
 }
 function showWechatLogin(){ loginPanel('wechat'); }
 
-/* ---- 手机号 + 验证码（需短信备案，暂未开放；代码保留待启用） ---- */
-function sendLoginCode(){
+/* ---- 手机号登录（云端真实版：验证码注册 + 密码登录） ---- */
+function showPhoneLogin(){
+  loginPanel('phone');
+  document.getElementById('loginPhoneInput').value = '';
+  document.getElementById('loginPhonePassInput').value = '';
+  document.getElementById('loginCodeInput').value = '';
+  showPhoneError('');
+}
+function showPhoneError(msg){
+  const el = document.getElementById('errPhone');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+async function sendLoginCode(){
   const phone = (document.getElementById('loginPhoneInput').value || '').trim();
-  if(!/^1\d{10}$/.test(phone)){ toast('请输入正确的 11 位手机号'); return; }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  smsSession = { phone, code, expireAt: Date.now() + 5*60000 };
-  // 演示模式：验证码直接展示。真实环境：此函数改为请求后端下发短信。
-  toast(`演示验证码：${code}（5 分钟内有效）`);
-  startCodeCountdown();
+  if(!/^1\d{10}$/.test(phone)){ showPhoneError('请输入正确的 11 位手机号'); return; }
+  if(!(window.CloudAuth && CloudAuth.active())){ showPhoneError('云服务不可用'); return; }
+  const btn = document.getElementById('sendCodeBtn');
+  try{
+    btn.disabled = true;
+    await CloudAuth.sendPhoneCode(phone);
+    toast('验证码已发送，请查收短信');
+    startCodeCountdown();
+  }catch(e){ showPhoneError(e.message); btn.disabled = false; }
 }
 function startCodeCountdown(){
   clearInterval(codeTimer);
@@ -472,51 +487,87 @@ function startCodeCountdown(){
   tick();
   codeTimer = setInterval(tick, 1000);
 }
-function doPhoneLogin(){
+async function finishPhoneAuth(res){
+  let p = {};
+  try{ p = (await CloudAuth.loadProfile(res.uid)) || {}; }catch(e){}
+  setCurrentUser({
+    id: res.uid, type: 'phone', phone: res.phone, email: res.email || '',
+    nickname: p.nickname || ('用户' + (res.phone || '').slice(-4)),
+    gender: p.gender || '', birth: p.birth || '',
+    avatar: p.avatar || null, createdAt: p.createdAt || new Date().toISOString(),
+    cloud: true,
+  });
+}
+async function doPhoneLogin(usePassword){
   const phone = (document.getElementById('loginPhoneInput').value || '').trim();
+  const pass = document.getElementById('loginPhonePassInput').value || '';
   const code = (document.getElementById('loginCodeInput').value || '').trim();
-  if(!/^1\d{10}$/.test(phone)){ toast('请输入正确的 11 位手机号'); return; }
-  if(!smsSession.phone || smsSession.phone !== phone){ toast('请先获取验证码'); return; }
-  if(Date.now() > smsSession.expireAt){ toast('验证码已过期，请重新获取'); return; }
-  if(code !== smsSession.code){ toast('验证码不正确'); return; }
-  // 注册 / 登录一体：手机号没有账号则自动注册
-  const reg = loadRegistry();
-  const existId = Object.keys(reg).find(id => reg[id].type === 'phone' && reg[id].phone === phone);
-  let account;
-  if(existId){
-    account = reg[existId];
-    toast(`欢迎回来，${account.nickname || '用户'}`);
-  }else{
-    account = { id: 'u_' + uid(), type: 'phone', phone, nickname: '用户' + phone.slice(-4), avatar: null, createdAt: new Date().toISOString() };
-    toast('注册成功，已自动登录');
-  }
-  setCurrentUser(account);
-  closeLogin();
+  if(!/^1\d{10}$/.test(phone)){ showPhoneError('请输入正确的 11 位手机号'); return; }
+  if(!(window.CloudAuth && CloudAuth.active())){ showPhoneError('云服务不可用'); return; }
+  const btn = usePassword ? document.getElementById('phoneLoginBtn') : document.getElementById('phoneRegBtn');
+  try{
+    btn.disabled = true;
+    if(usePassword){
+      if(!pass){ showPhoneError('请输入密码'); return; }
+      const r = await CloudAuth.phoneLogin(phone, pass);
+      await finishPhoneAuth(r);
+      toast('登录成功');
+    }else{
+      if(!code){ showPhoneError('请先获取并输入短信验证码'); return; }
+      if(pass.length < 6){ showPhoneError('请设置至少 6 位的登录密码'); return; }
+      const r = await CloudAuth.phoneRegister(phone, code, pass);
+      if(!r.signedIn) throw new Error('注册未完成，请重试');
+      await finishPhoneAuth(r);
+      toast('注册成功，已登录');
+    }
+    showPhoneError('');
+    closeLogin();
+  }catch(e){ showPhoneError(e.message); }
+  finally{ btn.disabled = false; }
 }
 
 /* ---- 微信登录（需开放平台备案，暂未开放；代码保留待启用） ---- */
-// 模拟微信 SDK 返回的 openId：同一台设备上保持稳定，保证退出后再次授权能找回同一账号
-function mockWechatOpenId(){
-  try{
-    let oid = localStorage.getItem('shiguang_wechat_openid');
-    if(!oid){ oid = 'wx' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); localStorage.setItem('shiguang_wechat_openid', oid); }
-    return oid;
-  }catch(e){ return 'wx' + Date.now().toString(36); }
+/* ---- 微信登录（真实版：登录码 + 小程序确认 + 云端自签会话） ---- */
+let wxWaitTimer = null, wxWaitTries = 0;
+function showWechatLogin(){
+  loginPanel('wechat');
+  startWxLogin();
 }
-function doWechatLogin(){
-  const openId = mockWechatOpenId();
-  const reg = loadRegistry();
-  const existId = Object.keys(reg).find(id => reg[id].type === 'wechat' && reg[id].phone === openId);
-  let account;
-  if(existId){
-    account = reg[existId];
-    toast(`欢迎回来，${account.nickname || '用户'}`);
-  }else{
-    account = { id: 'u_' + uid(), type: 'wechat', phone: openId, nickname: '微信用户' + openId.slice(-4).toUpperCase(), avatar: null, createdAt: new Date().toISOString() };
-    toast('微信授权成功，已自动登录');
-  }
-  setCurrentUser(account);
-  closeLogin();
+function startWxLogin(){
+  const box = document.getElementById('wxLoginBody');
+  if(!(window.CloudAuth && CloudAuth.active())){ box.innerHTML = '<small style="opacity:.6">云服务不可用</small>'; return; }
+  box.innerHTML = '<small style="opacity:.6">正在生成登录码…</small>';
+  clearInterval(wxWaitTimer);
+  CloudAuth.wxLoginCreate().then(r => {
+    if(!r || !r.loginId) throw new Error('生成失败');
+    box.innerHTML =
+      '<div style="text-align:center;margin:10px 0">' +
+      '<div style="font-size:38px;font-weight:700;letter-spacing:8px;color:var(--main,#3f7d64)">' + esc(r.loginId) + '</div>' +
+      '<p class="mini" style="margin:10px 0 0;line-height:1.8">打开微信 → 搜索并进入「绸缪」小程序<br>在「我的」页输入上方登录码确认</p>' +
+      '<p class="mini" style="opacity:.5">5 分钟内有效 · 等待确认中…</p></div>';
+    wxWaitTries = 0;
+    wxWaitTimer = setInterval(() => {
+      wxWaitTries++;
+      if(wxWaitTries > 40){ clearInterval(wxWaitTimer); box.innerHTML += '<p class="mini" style="color:#c0564a">已超时，请重新发起</p>'; return; }
+      CloudAuth.wxLoginPoll(r.loginId).then(p => {
+        if(p && p.status === 'confirmed'){
+          clearInterval(wxWaitTimer);
+          CloudAuth.wxApplySession(p);
+          const finish = () => {
+            setCurrentUser({
+              id: p.uid, type: 'wechat', email: '',
+              nickname: p.nickname || ('微信用户' + String(p.uid).slice(-4)),
+              gender: '', birth: '', avatar: p.avatar || null,
+              createdAt: new Date().toISOString(), cloud: true,
+            });
+            toast('微信登录成功');
+            closeLogin();
+          };
+          finish();
+        }
+      }).catch(() => {});
+    }, 2500);
+  }).catch(e => { box.innerHTML = '<small style="color:#c0564a">' + esc(e.message || '生成失败') + '</small>'; });
 }
 
 /* ---- 邮箱注册 / 登录（当前可用，无需备案） ---- */

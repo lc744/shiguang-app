@@ -12,6 +12,32 @@ const API_VER = '2018-06-08';
 function sha256hex(s){ return crypto.createHash('sha256').update(s).digest('hex'); }
 function hmacBuf(key, s){ return crypto.createHmac('sha256', key).update(s).digest(); }
 
+// ---- 微信登录（双轨自签会话）----
+// 密钥：环境变量 WX_JWT_SECRET（由 deploy_tcb_fn.js 注入）；缺省时微信登录自动禁用
+const WX_SECRET = process.env.WX_JWT_SECRET || '';
+function b64url(buf){ return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function wxUid(openid){ return 'wx_' + sha256hex('choumou-wx:' + openid).slice(0, 24); }
+function wxSign(payload){
+  const body = b64url(JSON.stringify(payload));
+  const sig = b64url(crypto.createHmac('sha256', WX_SECRET).update(body).digest());
+  return 'wx.' + body + '.' + sig;
+}
+function wxVerify(token){
+  // 返回 payload 或 null；格式 wx.<b64json>.<b64sig>
+  try{
+    if(!token.startsWith('wx.')) return null;
+    const parts = token.split('.');
+    if(parts.length !== 3) return null;
+    const body = parts[1], sig = parts[2];
+    const expect = b64url(crypto.createHmac('sha256', WX_SECRET).update(body).digest());
+    if(sig !== expect) return null;
+    const payload = JSON.parse(Buffer.from(body.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    if(!payload || !payload.sub || (payload.exp && Date.now() / 1000 > payload.exp)) return null;
+    return payload;
+  }catch(e){ return null; }
+}
+// 微信绑定登录码（PG 表 wx_logins；小程序云函数经服务间密钥转发写入 confirmed）
+
 // ---- LLM 兜底（双免费供应商故障转移：智谱 glm-4-flash 主 → 硅基流动 Qwen2.5-7B 备）----
 const ZHIPU_KEY = 'f0d4847de0494325aad271ef1c5ff74e.NBNkn34ZpXDSBIRM';
 const SILICON_KEY = 'sk-etwwwjyntfbarfkeunyqtyiicaetmhqnhwhxxabazmpmofvd';
@@ -179,6 +205,55 @@ exports.main = async (event) => {
     const token = String(authz).replace(/^Bearer\s+/i, '').trim();
     const action = body.action || 'get';
 
+    // ---- 微信登录（匿名区）：发起绑定码 / 轮询 / 刷新自签会话 / 服务间绑定确认 ----
+    if(action === 'wxLoginCreate' || action === 'wxLoginPoll' || action === 'wxRefresh' || action === 'wxBind'){
+      if(!WX_SECRET) return json(503, { error: '微信登录未启用' });
+      if(action === 'wxLoginCreate'){
+        const loginId = String(Math.floor(100000 + Math.random() * 900000));
+        try{
+          await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS wx_logins (login_id TEXT PRIMARY KEY, openid TEXT, status TEXT DEFAULT 'pending', nickname TEXT, avatar TEXT, exp BIGINT)" });
+          await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO wx_logins (login_id, status, exp) VALUES ('" + loginId + "', 'pending', " + (Date.now() + 5 * 60 * 1000) + ") ON CONFLICT (login_id) DO UPDATE SET status='pending', openid=NULL, exp=EXCLUDED.exp" });
+          return json(200, { ok: true, loginId, expiresIn: 300 });
+        }catch(e){ return json(500, { error: '登录码生成失败: ' + String((e && e.message) || e).slice(0, 80) }); }
+      }
+      if(action === 'wxBind'){
+        // 仅小程序云函数（持服务间密钥）可调
+        if(String((body || {}).bindSecret || '') !== WX_SECRET) return json(403, { error: 'forbidden' });
+        const loginId = String((body || {}).loginId || '').replace(/\D/g, '').slice(0, 6);
+        const openid = String((body || {}).openid || '').slice(0, 64);
+        if(loginId.length !== 6 || !openid) return json(400, { error: '参数缺失' });
+        const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE wx_logins SET openid='" + esc(openid) + "', status='confirmed', nickname='" + esc(String((body || {}).nickname || '').slice(0, 12)) + "', avatar='" + esc(String((body || {}).avatar || '').slice(0, 400000)) + "' WHERE login_id='" + loginId + "' AND (exp IS NULL OR exp > " + Date.now() + ")" });
+        const ok = Number((r && r.AffectedRows) || 0) > 0;
+        return json(ok ? 200 : 404, ok ? { ok: true } : { error: '登录码不存在或已过期' });
+      }
+      if(action === 'wxLoginPoll'){
+        const loginId = String((body || {}).loginId || '').replace(/\D/g, '').slice(0, 6);
+        if(loginId.length !== 6) return json(400, { ok: false, error: '参数缺失' });
+        const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT login_id, openid, status, nickname, avatar, exp FROM wx_logins WHERE login_id='" + loginId + "'" });
+        let a = null;
+        try{ a = JSON.parse(r.Rows[0]); }catch(e){}
+        if(!a) return json(200, { ok: true, status: 'not_found' });
+        const openid = a[1], status = a[2], nickname = a[3], avatar = a[4], exp = Number(a[5]) || 0;
+        if(exp && exp < Date.now()) return json(200, { ok: true, status: 'expired' });
+        if(status !== 'confirmed' || !openid) return json(200, { ok: true, status: status || 'pending' });
+        const uid = wxUid(openid);
+        try{
+          await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO users (uid, email) VALUES ('" + uid + "', '" + esc(String(openid).slice(0, 12)) + "@wx') ON CONFLICT (uid) DO NOTHING" });
+        }catch(e){}
+        const now = Math.floor(Date.now() / 1000);
+        const access = wxSign({ sub: uid, typ: 'access', exp: now + 7200 });
+        const refresh = wxSign({ sub: uid, typ: 'refresh', exp: now + 30 * 86400 });
+        try{ await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM wx_logins WHERE login_id='" + loginId + "'" }); }catch(e){}
+        return json(200, { ok: true, status: 'confirmed', uid, access_token: access, refresh_token: refresh, nickname: nickname || '', avatar: avatar || '' });
+      }
+      // wxRefresh
+      const rt = String((body || {}).refresh_token || '');
+      const p = wxVerify(rt);
+      if(!p || p.typ !== 'refresh') return json(401, { error: '会话已过期，请重新登录' });
+      const now = Math.floor(Date.now() / 1000);
+      return json(200, { ok: true, uid: p.sub, access_token: wxSign({ sub: p.sub, typ: 'access', exp: now + 7200 }), refresh_token: rt, expires_in: 7200, sub: p.sub });
+    }
+
     // 匿名可读动作（公共信息流 / 取全图）：无 token 也可用
     const ANON_ACTIONS = ['feed', 'photo'];
     let uid = null;
@@ -189,7 +264,14 @@ exports.main = async (event) => {
     }
 
     if(!token) return json(401, { error: '缺少登录凭据' });
-    const me = await verifyToken(token);
+    // 双轨验证：微信自签会话优先，否则走认证网关
+    let me = null;
+    const wxPayload = wxVerify(token);
+    if(wxPayload && wxPayload.typ === 'access'){
+      me = { uid: wxPayload.sub, email: '' };
+    } else {
+      me = await verifyToken(token);
+    }
     if(!me) return json(401, { error: '登录状态无效或已过期' });
     uid = me.uid;
 

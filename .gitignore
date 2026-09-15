@@ -60,3 +60,4 @@ shot-*.png
 tools/mingit/
 
 cloud_secrets.json
+miniprogram/cloudfunctions/profileApi/config.json
