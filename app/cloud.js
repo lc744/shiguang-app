@@ -74,38 +74,43 @@
   }
 
   let __refreshDead = false; // refresh_token 被网关明确拒绝（会话真死）；网络失败不置位
+  let __refreshing = null;   // 单飞：并发请求共享同一次刷新（refresh_token 是一次性轮换，并发刷必撞车）
 
   async function refreshSession(){
-    if(!__session || !__session.refresh) return false;
-    const tryOnce = async () => {
-      try{
-        // token 刷新是匿名端点：不能带当前（可能已过期的）Bearer，否则网关先拒 Bearer 导致有效 refresh 也失败
-        const j = await authFetch('/token', { noAuth: true, body: { grant_type: 'refresh_token', refresh_token: __session.refresh } });
-        if(j.access_token){
-          __session.access = j.access_token;
-          __session.refresh = j.refresh_token || __session.refresh;
-          __session.expiresAt = Date.now() + ((j.expires_in || 3600) * 1000) - 60000;
-          saveSession();
-          __refreshDead = false;
-          return true;
-        }
-        __refreshDead = true;   // 网关明确拒绝：会话真死
-        return false;
-      }catch(e){
-        // 网关对"refresh_token 无效/过期"的拒绝：4xx，或 5xx+invalid token 文案（实测 500 unknown invalid token header）
-        const msg = String((e && e.error_description) || (e && e.message) || '');
-        if(e && e.__status && ((e.__status >= 400 && e.__status < 500) || /invalid\s*token/i.test(msg))){
-          __refreshDead = true;
+    if(__refreshing) return __refreshing;
+    __refreshing = (async () => {
+      if(!__session || !__session.refresh) return false;
+      const tryOnce = async () => {
+        try{
+          // token 刷新是匿名端点：不能带当前（可能已过期的）Bearer，否则网关先拒 Bearer 导致有效 refresh 也失败
+          const j = await authFetch('/token', { noAuth: true, body: { grant_type: 'refresh_token', refresh_token: __session.refresh } });
+          if(j.access_token){
+            __session.access = j.access_token;
+            __session.refresh = j.refresh_token || __session.refresh;
+            __session.expiresAt = Date.now() + ((j.expires_in || 3600) * 1000) - 60000;
+            saveSession();
+            __refreshDead = false;
+            return true;
+          }
+          __refreshDead = true;   // 网关明确拒绝：会话真死
           return false;
+        }catch(e){
+          // 网关对"refresh_token 无效/过期"的拒绝：4xx，或 5xx+invalid token 文案（实测 500 unknown invalid token header）
+          const msg = String((e && e.error_description) || (e && e.message) || '');
+          if(e && e.__status && ((e.__status >= 400 && e.__status < 500) || /invalid\s*token/i.test(msg))){
+            __refreshDead = true;
+            return false;
+          }
+          return false;           // 网络类失败：不判死
         }
-        return false;           // 网络类失败：不判死
-      }
-    };
-    const first = await tryOnce();
-    if(first || __refreshDead) return first;
-    // 网络抖动（回前台瞬间常见）：小退避后重试一次
-    await new Promise(r => setTimeout(r, 1200));
-    return tryOnce();
+      };
+      const first = await tryOnce();
+      if(first || __refreshDead) return first;
+      // 网络抖动（回前台瞬间常见）：小退避后重试一次
+      await new Promise(r => setTimeout(r, 1200));
+      return tryOnce();
+    })();
+    try{ return await __refreshing; } finally { __refreshing = null; }
   }
 
   async function ensureFreshToken(){
@@ -125,11 +130,16 @@
     }else{
       await ensureFreshToken();
     }
-    const resp = await fetch(PROFILE_URL, {
+    const doFetch = () => fetch(PROFILE_URL, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, __session ? { 'Authorization': 'Bearer ' + __session.access } : {}),
       body: JSON.stringify(data ? Object.assign({ action }, data) : { action }),
     });
+    let resp = await doFetch();
+    // 网关侧提前判过期（时钟偏差等）：强刷一次再重试，避免一枪毙命
+    if(resp.status === 401 && __session && __session.refresh){
+      if(await refreshSession()) resp = await doFetch();
+    }
     const j = await resp.json().catch(() => ({}));
     if(!resp.ok || j.error) throw new Error(j.error || ('HTTP ' + resp.status));
     return j;

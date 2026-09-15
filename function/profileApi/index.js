@@ -105,6 +105,7 @@ function callApi(action, payload){
 function esc(s){ return String(s).replace(/'/g, "''"); }
 
 // 管理员名单改为读 admins 表（可随时 INSERT/DELETE uid 换管理员，无需改代码）
+let __tablesReady = false;               // 自愈建表每实例只跑一次
 const __adminCache = { ts: 0, list: [] };
 async function getAdminUids(){
   // 注意：云函数内 callApi 已解包 Response（resolve j.Response），错误时 reject
@@ -192,19 +193,22 @@ exports.main = async (event) => {
     if(!me) return json(401, { error: '登录状态无效或已过期' });
     uid = me.uid;
 
-    // 自愈建表
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS profiles (uid TEXT PRIMARY KEY, avatar TEXT, updated_at TIMESTAMPTZ DEFAULT now())" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, post_id TEXT, uid TEXT, nickname TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS reports INT DEFAULT 0" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS report_by TEXT DEFAULT '[]'" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, uid TEXT, city TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, email TEXT DEFAULT '')" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT ''" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ" });
-    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY)" });
+    // 自愈建表（每函数实例只跑一次，避免每次请求十几条 SQL 触发云数据库限频）
+    if(!__tablesReady){
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS profiles (uid TEXT PRIMARY KEY, avatar TEXT, updated_at TIMESTAMPTZ DEFAULT now())" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, uid TEXT, nickname TEXT, type TEXT, name TEXT, descr TEXT, photos TEXT, likes INT DEFAULT 0, liked_by TEXT DEFAULT '[]', reports INT DEFAULT 0, report_by TEXT DEFAULT '[]', hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now())" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS addr TEXT" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, post_id TEXT, uid TEXT, nickname TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS reports INT DEFAULT 0" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS report_by TEXT DEFAULT '[]'" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, uid TEXT, city TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, email TEXT DEFAULT '')" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT ''" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY)" });
+      __tablesReady = true;
+    }
     await upsertUser(uid, me.email);   // 同步登记（函数可能随时冻结，不留给后台）
 
     // 分享相关动作（uid 已验证）

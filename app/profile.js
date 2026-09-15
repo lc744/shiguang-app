@@ -335,15 +335,7 @@ function saveBirth(){
 }
 
 /* ---------------- 设置入口（按钮 → 弹层） ---------------- */
-function openSettings(){
-  document.getElementById('settingsOverlay').style.display = 'flex';
-  // 管理员入口（登录态未就绪时自动重试）
-  const card = document.getElementById('adminEntryCard');
-  if(card && window.CloudAuth && CloudAuth.active() && typeof whenAdmin === 'function'){
-    card.style.display = 'none';
-    whenAdmin(() => { card.style.display = 'block'; });
-  }
-}
+function openSettings(){ document.getElementById('settingsOverlay').style.display = 'flex'; }
 function closeSettings(){ document.getElementById('settingsOverlay').style.display = 'none'; }
 function onAvatarClick(){
   if(!currentUser){ openLogin(); return; }
