@@ -274,9 +274,9 @@ function renderMeBody(){
         <text class="me-item-emoji">🛡</text><text class="me-item-label">内容管理（待审）</text><text class="me-arrow">›</text>
       </div>
     </div>` : ''}`;
-  // 管理员标记异步补渲染
-  if(logged && typeof isAdminUser === 'function'){
-    isAdminUser().then(am => { if(am && !adminMode){ adminMode = true; renderMeBody(); } }).catch(() => {});
+  // 管理员标记异步补渲染（登录态未就绪时自动重试）
+  if(logged && typeof whenAdmin === 'function'){
+    whenAdmin(() => { if(!adminMode){ adminMode = true; renderMeBody(); } });
   }
 }
 function requireLoginTip(){ toast('请先登录'); }
@@ -335,7 +335,15 @@ function saveBirth(){
 }
 
 /* ---------------- 设置入口（按钮 → 弹层） ---------------- */
-function openSettings(){ document.getElementById('settingsOverlay').style.display = 'flex'; }
+function openSettings(){
+  document.getElementById('settingsOverlay').style.display = 'flex';
+  // 管理员入口（登录态未就绪时自动重试）
+  const card = document.getElementById('adminEntryCard');
+  if(card && window.CloudAuth && CloudAuth.active() && typeof whenAdmin === 'function'){
+    card.style.display = 'none';
+    whenAdmin(() => { card.style.display = 'block'; });
+  }
+}
 function closeSettings(){ document.getElementById('settingsOverlay').style.display = 'none'; }
 function onAvatarClick(){
   if(!currentUser){ openLogin(); return; }

@@ -898,14 +898,24 @@ function closeAdminPanel(){ document.getElementById('adminOverlay').style.displa
 
 /* ---------------- 详情页评论区 ---------------- */
 async function myUid(){ try{ const u = CloudAuth.currentUser ? await CloudAuth.currentUser() : null; return u ? u.uid : ''; }catch(e){ return ''; } }
-let __adminFlag = null;   // null=未查询, true/false
+let __adminFlag = null;   // null=未查询, true/false（仅缓存成功结果，失败不缓存以便重试）
 async function isAdminUser(){
-  if(__adminFlag !== null) return __adminFlag;
   try{
     const r = await shareApi('adminCheck', {});
     if(r && r.ok !== false){ __adminFlag = !!(r && r.isAdmin); return __adminFlag; }
   }catch(e){ /* 登录态未就绪：不缓存，下次再查 */ }
   return false;
+}
+/* 管理入口助手：登录态未就绪时自动重试（最多 4 次 × 2.5s），就绪后回调 */
+function whenAdmin(cb){
+  let tries = 0;
+  const go = () => {
+    isAdminUser().then(am => {
+      if(am) cb();
+      else if(tries < 4){ tries++; setTimeout(go, 2500); }
+    }).catch(() => { if(tries < 4){ tries++; setTimeout(go, 2500); } });
+  };
+  go();
 }
 async function loadPostComments(idx){
   const p = shareList[idx]; if(!p) return;
