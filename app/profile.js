@@ -225,11 +225,12 @@ async function saveMeEdit(){
   toast('资料已保存');
 }
 
+let adminMode = false;   // 管理员标记（whenAdmin 异步更新，模块级可写）
+
 function renderMeBody(){
   const box = document.getElementById('meBody');
   if(!box) return;
   const logged = !!currentUser;
-  const adminMode = logged && typeof __adminFlag === 'boolean' ? __adminFlag : false;
   const birth = logged ? formatBirth(currentUser.birth) : '';
   const emailText = logged ? (currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle())) : '无';
   const genderText = logged ? (GENDER_LABEL[currentUser.gender] || '未设置') : '无';

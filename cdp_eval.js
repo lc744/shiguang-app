@@ -1,6 +1,7 @@
 const http = require('http');
 const expression = process.argv.slice(2).join(' ');
-http.get('http://127.0.0.1:9222/json', res => {
+const CDP_PORT = process.env.CDP_PORT || '9222';   // 默认模拟器 9222；真机设 CDP_PORT=9223
+http.get('http://127.0.0.1:' + CDP_PORT + '/json', res => {
   let data = '';
   res.on('data', chunk => data += chunk);
   res.on('end', () => {
