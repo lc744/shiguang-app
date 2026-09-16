@@ -728,3 +728,42 @@ function logoutUser(){
   renderUserCard();
   toast('已退出登录');
 }
+
+/* ---------------- 隐私政策（首启弹窗 + 设置页查看） ---------------- */
+const PRIVACY_KEY = 'shiguang_privacy_ok';
+function checkPrivacyOnBoot(){
+  try{
+    if(localStorage.getItem(PRIVACY_KEY) === '1') return;
+    const ov = document.getElementById('privacyOverlay');
+    if(!ov) return;
+    ov.style.display = 'flex';
+    const btns = document.getElementById('privacyBtns');
+    btns.innerHTML = '<button class="secondary" onclick="declinePrivacy()">不同意</button>' +
+      '<button class="primary" onclick="agreePrivacy()">同意并继续</button>';
+    btns.style.display = 'flex';
+  }catch(e){}
+}
+function agreePrivacy(){
+  try{ localStorage.setItem(PRIVACY_KEY, '1'); }catch(e){}
+  const ov = document.getElementById('privacyOverlay');
+  if(ov) ov.style.display = 'none';
+  toast('已同意隐私政策');
+}
+function declinePrivacy(){
+  toast('需同意隐私政策后才能使用本应用');
+}
+function showPrivacyViewer(){
+  const ov = document.getElementById('privacyOverlay');
+  if(!ov) return;
+  ov.style.display = 'flex';
+  const btns = document.getElementById('privacyBtns');
+  btns.innerHTML = '<button class="primary" style="width:100%" onclick="closePrivacyViewer()">关闭</button>';
+  btns.style.display = 'flex';
+}
+function closePrivacyViewer(){
+  try{
+    if(localStorage.getItem(PRIVACY_KEY) !== '1'){ toast('需同意隐私政策后才能使用本应用'); return; }
+  }catch(e){}
+  const ov = document.getElementById('privacyOverlay');
+  if(ov) ov.style.display = 'none';
+}

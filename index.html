@@ -380,6 +380,14 @@
           <button class="secondary" onclick="showLoginHome()">返回</button>
         </div>
       </div>
+      <!-- 关于（版本 / 隐私政策） -->
+      <div class="detail-card" style="margin-top:10px">
+        <h4 style="margin:0 0 8px">关于</h4>
+        <div class="action-row" style="margin-top:0">
+          <button class="secondary" style="width:100%" onclick="showPrivacyViewer()">📄 隐私政策</button>
+        </div>
+        <p class="mini" style="text-align:center;margin:8px 0 0">绸缪 v1.6.0</p>
+      </div>
     </div>
   </div>
 
@@ -398,6 +406,20 @@
   </div>
 
   <!-- 设置弹层（从「我的」页设置按钮进入） -->
+  <!-- 隐私政策弹层（首次启动必弹；设置页可再次查看） -->
+  <div class="remind-fullscreen" id="privacyOverlay" style="display:none;z-index:9999">
+    <div class="remind-card card" style="max-width:400px;width:92%;padding:18px 16px;height:82vh;display:flex;flex-direction:column">
+      <h2 style="font-size:17px;margin:0 0 8px;text-align:center">隐私政策</h2>
+      <div style="flex:1;border-radius:10px;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08)">
+        <iframe id="privacyFrame" src="privacy.html" style="width:100%;height:100%;border:0"></iframe>
+      </div>
+      <div class="action-row" id="privacyBtns" style="margin-top:12px">
+        <button class="secondary" onclick="declinePrivacy()">不同意</button>
+        <button class="primary" onclick="agreePrivacy()">同意并继续</button>
+      </div>
+    </div>
+  </div>
+
   <div class="remind-fullscreen" id="settingsOverlay" style="display:none" onclick="if(event.target===this)closeSettings()">
     <div class="remind-card card" style="max-width:360px;padding:20px 18px;max-height:84vh;overflow-y:auto">
       <h2 style="font-size:17px;margin:0 0 14px;text-align:center">设置</h2>

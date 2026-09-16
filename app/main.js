@@ -105,6 +105,7 @@ initCalendar();
 renderAll();
 renderBackupList();
 renderNativePerms();
+checkPrivacyOnBoot();
 // 大对象迁移（base64 → IndexedDB）：完成后刷新视图与表单 chips
 window.__mediaReady = migrateMediaAsync().then((migrated) => {
   if(migrated){ buildChips(); renderAll(); }
