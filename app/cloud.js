@@ -1,4 +1,4 @@
-﻿// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关：认证+资料档案一体）
+// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关：认证+资料档案一体）
 // - 注册：邮箱+密码 → 发送验证码到邮箱 → 提交验证码完成注册（自动登录）
 // - 登录：邮箱+密码 → token 会话（本地持久化，自动续期）
 // - 资料：认证系统自带用户档案（昵称/性别/生日真云同步；头像暂存本机）
@@ -24,7 +24,7 @@
     const msg = String((e && e.error_description) || e && e.message || e || '');
     if(/verification_token or verification_code|verification_code required/i.test(msg)) return '请输入邮件中的验证码';
     if(/INVALID_USERNAME_OR_PASSWORD|用户名或密码/.test(msg)) return '邮箱或密码不正确';
-    if(/USER_ALREADY_EXIST|already exist|已存在/i.test(msg)) return '该邮箱已注册，请直接登录';
+    if(/USER_ALREADY_EXIST|already exist|已存在/i.test(msg)) return '该账号已注册，请直接登录';
     if(/INVALID_VERIFICATION_CODE|invalid_verification_code|验证码/.test(msg)) return '验证码不正确或已过期';
     if(/USER_NOT_FOUND|不存在/.test(msg)) return '该邮箱尚未注册，请先注册';
     if(/EMAIL_NOT_VERIFIED|not verified/i.test(msg)) return '邮箱尚未验证';
@@ -310,7 +310,7 @@
       return { ok: true, uid: j.sub || '', phone: full, signedIn: !!(j && j.access_token) };
     }catch(e){
       const msg = String(e && e.error_description || e.message || '');
-      if(/already_exists/.test(msg)) throw new Error('该手机号已注册，请用密码登录');
+      if(/already_exists|已注册|已存在/i.test(msg)) throw new Error('该手机号已注册，请用密码登录');
       if(/verification|code/i.test(msg) && /invalid|错误/.test(msg)) throw new Error('验证码错误或已过期');
       if(/password/i.test(msg) && /weak|strong|rule|policy|complex|强度|least|至少/i.test(msg)) throw new Error('密码需至少 8 位，且包含字母和数字');
       throw new Error(friendly(e));
