@@ -1,4 +1,4 @@
-﻿// 绸缪 · 我的页（用户登录、头像上传、昵称修改）
+// 绸缪 · 我的页（用户登录、头像上传、昵称修改）
 // 当前可用：邮箱注册/登录（邮箱+密码，无需备案资质）。
 // 保留未启用：手机号短信登录、微信授权登录 —— 短信签名与网页授权均需 ICP 备案/开放平台资质，
 // 代码完整保留，待资质具备后在 index.html 登录面板恢复入口即可。
@@ -232,7 +232,7 @@ function renderMeBody(){
   if(!box) return;
   const logged = !!currentUser;
   const birth = logged ? formatBirth(currentUser.birth) : '';
-  const emailText = logged ? (currentUser.type === 'email' ? esc(currentUser.email) : esc(accountTitle())) : '无';
+  const emailText = logged ? (currentUser.type === 'email' ? esc(currentUser.email) : '未添加') : '无';
   const genderText = logged ? (GENDER_LABEL[currentUser.gender] || '未设置') : '无';
   const birthText = logged ? (birth || '未设置') : '无';
   const unset = v => (!v || v === '无' || v === '未设置') ? 'info-unset' : '';
