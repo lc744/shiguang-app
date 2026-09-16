@@ -1,4 +1,4 @@
-// 绸缪 · 我的页（用户登录、头像上传、昵称修改）
+﻿// 绸缪 · 我的页（用户登录、头像上传、昵称修改）
 // 当前可用：邮箱注册/登录（邮箱+密码，无需备案资质）。
 // 保留未启用：手机号短信登录、微信授权登录 —— 短信签名与网页授权均需 ICP 备案/开放平台资质，
 // 代码完整保留，待资质具备后在 index.html 登录面板恢复入口即可。
@@ -441,20 +441,34 @@ function showEmailLogin(){
   document.getElementById('loginPassInput').value = '';
   document.getElementById('loginPass2Input').value = '';
 }
-function showPhoneLogin(){
-  loginPanel('phone');
-  document.getElementById('loginPhoneInput').value = (currentUser && currentUser.type === 'phone') ? currentUser.phone : '';
-  document.getElementById('loginCodeInput').value = '';
-}
 function showWechatLogin(){ loginPanel('wechat'); }
 
-/* ---- 手机号登录（云端真实版：验证码注册 + 密码登录） ---- */
+/* ---- 手机号登录（云端真实版：双 tab 登录/注册 + 密码眼睛） ---- */
+let phoneMode = 'login';   // 'login' | 'register'
+const PHONE_PW_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,64}$/;
+function setPhoneMode(mode){
+  phoneMode = mode;
+  document.querySelectorAll('#phoneModeChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.mode === mode));
+  document.getElementById('phoneCodeField').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('phoneSubmitBtn').textContent = mode === 'register' ? '注册' : '登录';
+  showPhoneError('');
+}
 function showPhoneLogin(){
   loginPanel('phone');
+  setPhoneMode('login');
   document.getElementById('loginPhoneInput').value = '';
-  document.getElementById('loginPhonePassInput').value = '';
+  const passInput = document.getElementById('loginPhonePassInput');
+  passInput.value = '';
+  passInput.type = 'password';
+  passInput.placeholder = '登录密码';
+  document.getElementById('pwEyeBtn').style.opacity = '.55';
   document.getElementById('loginCodeInput').value = '';
   showPhoneError('');
+}
+function togglePwEye(){
+  const passInput = document.getElementById('loginPhonePassInput');
+  passInput.type = passInput.type === 'password' ? 'text' : 'password';
+  document.getElementById('pwEyeBtn').style.opacity = passInput.type === 'text' ? '1' : '.55';
 }
 function showPhoneError(msg){
   const el = document.getElementById('errPhone');
@@ -498,31 +512,41 @@ async function finishPhoneAuth(res){
     cloud: true,
   });
 }
-async function doPhoneLogin(usePassword){
+async function doPhoneSubmit(){
   const phone = (document.getElementById('loginPhoneInput').value || '').trim();
   const pass = document.getElementById('loginPhonePassInput').value || '';
   const code = (document.getElementById('loginCodeInput').value || '').trim();
   if(!/^1\d{10}$/.test(phone)){ showPhoneError('请输入正确的 11 位手机号'); return; }
   if(!(window.CloudAuth && CloudAuth.active())){ showPhoneError('云服务不可用'); return; }
-  const btn = usePassword ? document.getElementById('phoneLoginBtn') : document.getElementById('phoneRegBtn');
+  const btn = document.getElementById('phoneSubmitBtn');
   try{
     btn.disabled = true;
-    if(usePassword){
+    if(phoneMode === 'login'){
       if(!pass){ showPhoneError('请输入密码'); return; }
       const r = await CloudAuth.phoneLogin(phone, pass);
       await finishPhoneAuth(r);
       toast('登录成功');
+      closeLogin();
     }else{
+      if(!PHONE_PW_RE.test(pass)){ showPhoneError('密码需至少 8 位，且包含字母和数字'); return; }
       if(!code){ showPhoneError('请先获取并输入短信验证码'); return; }
-      if(pass.length < 6){ showPhoneError('请设置至少 6 位的登录密码'); return; }
       const r = await CloudAuth.phoneRegister(phone, code, pass);
       if(!r.signedIn) throw new Error('注册未完成，请重试');
-      await finishPhoneAuth(r);
-      toast('注册成功，已登录');
+      // 注册成功 → 返回登录态（清会话，回登录 tab，按产品流程用密码登录）
+      try{ if(window.CloudAuth) CloudAuth.logout(); }catch(e){}
+      setPhoneMode('login');
+      document.getElementById('loginPhoneInput').value = phone;
+      document.getElementById('loginPhonePassInput').value = '';
+      document.getElementById('loginPhonePassInput').placeholder = '请输入刚设置的密码';
+      document.getElementById('loginCodeInput').value = '';
+      showPhoneError('');
+      toast('注册成功，请用密码登录');
     }
-    showPhoneError('');
-    closeLogin();
-  }catch(e){ showPhoneError(e.message); }
+  }catch(e){
+    let msg = (e && e.message) || '操作失败';
+    if(/password/i.test(msg) && /weak|strong|rule|policy|complex|强度|至少|least/i.test(msg)) msg = '密码需至少 8 位，且包含字母和数字';
+    showPhoneError(msg);
+  }
   finally{ btn.disabled = false; }
 }
 

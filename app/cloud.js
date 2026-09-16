@@ -1,4 +1,4 @@
-// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关：认证+资料档案一体）
+﻿// 绸缪 · 云接入层（REST 直连腾讯云开发生认证网关：认证+资料档案一体）
 // - 注册：邮箱+密码 → 发送验证码到邮箱 → 提交验证码完成注册（自动登录）
 // - 登录：邮箱+密码 → token 会话（本地持久化，自动续期）
 // - 资料：认证系统自带用户档案（昵称/性别/生日真云同步；头像暂存本机）
@@ -296,7 +296,7 @@
     const full = normalizePhone(phone);
     if(!full) throw new Error('请输入有效的 11 位手机号');
     if(!code) throw new Error('请输入短信验证码');
-    if(!password || password.length < 6) throw new Error('密码至少 6 位');
+    if(!password || password.length < 8) throw new Error('密码需至少 8 位，且包含字母和数字');
     try{
       const j = await authFetch('/signup', { body: { phone_number: full, verification_code: code, password } });
       if(j && j.access_token){
@@ -312,6 +312,7 @@
       const msg = String(e && e.error_description || e.message || '');
       if(/already_exists/.test(msg)) throw new Error('该手机号已注册，请用密码登录');
       if(/verification|code/i.test(msg) && /invalid|错误/.test(msg)) throw new Error('验证码错误或已过期');
+      if(/password/i.test(msg) && /weak|strong|rule|policy|complex|强度|least|至少/i.test(msg)) throw new Error('密码需至少 8 位，且包含字母和数字');
       throw new Error(friendly(e));
     }
   }
