@@ -82,30 +82,35 @@ async function llmChat(messages){
   }
 }
 
-// TC3-HMAC-SHA256 直签（JSON 载荷）
-function callApi(action, payload){
+// TC3-HMAC-SHA256 直签（JSON 载荷；opts 可指定 host/service/version 以调用不同云产品，默认 TCB）
+function callApi(action, payload, opts){
+  opts = opts || {};
+  const HOSTN = opts.host || HOST;
+  const SVC = opts.service || 'tcb';
+  const VER = opts.version || API_VER;
+  const REG = opts.region || REGION;
   return new Promise((resolve, reject) => {
     const ts = Math.floor(Date.now() / 1000);
     const date = new Date(ts * 1000).toISOString().slice(0, 10);
     const body = JSON.stringify(payload || {});
-    const canonicalHeaders = 'content-type:application/json; charset=utf-8\nhost:' + HOST + '\nx-tc-action:' + action.toLowerCase() + '\n';
+    const canonicalHeaders = 'content-type:application/json; charset=utf-8\nhost:' + HOSTN + '\nx-tc-action:' + action.toLowerCase() + '\n';
     const signedHeaders = 'content-type;host;x-tc-action';
     const canonicalRequest = 'POST' + '\n' + '/' + '\n' + '' + '\n' + canonicalHeaders + '\n' + signedHeaders + '\n' + sha256hex(body);
-    const stringToSign = 'TC3-HMAC-SHA256\n' + ts + '\n' + date + '/tcb/tc3_request\n' + sha256hex(canonicalRequest);
+    const stringToSign = 'TC3-HMAC-SHA256\n' + ts + '\n' + date + '/' + SVC + '/tc3_request\n' + sha256hex(canonicalRequest);
     const kDate = hmacBuf('TC3' + process.env.TCB_SECRET_KEY, date);
-    const kService = hmacBuf(kDate, 'tcb');
+    const kService = hmacBuf(kDate, SVC);
     const kSigning = hmacBuf(kService, 'tc3_request');
     const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
-    const auth = 'TC3-HMAC-SHA256 Credential=' + process.env.TCB_SECRET_ID + '/' + date + '/tcb/tc3_request, SignedHeaders=' + signedHeaders + ', Signature=' + signature;
+    const auth = 'TC3-HMAC-SHA256 Credential=' + process.env.TCB_SECRET_ID + '/' + date + '/' + SVC + '/tc3_request, SignedHeaders=' + signedHeaders + ', Signature=' + signature;
     const req = https.request({
-      hostname: HOST, path: '/', method: 'POST',
+      hostname: HOSTN, path: '/', method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Host': HOST,
+        'Host': HOSTN,
         'X-TC-Action': action,
-        'X-TC-Region': REGION,
+        'X-TC-Region': REG,
         'X-TC-Timestamp': String(ts),
-        'X-TC-Version': API_VER,
+        'X-TC-Version': VER,
         'Authorization': auth,
         'Content-Length': Buffer.byteLength(body),
       },
@@ -284,6 +289,8 @@ exports.main = async (event) => {
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS reports INT DEFAULT 0" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS report_by TEXT DEFAULT '[]'" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE comments ADD COLUMN IF NOT EXISTS review_source TEXT DEFAULT ''" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE posts ADD COLUMN IF NOT EXISTS review_source TEXT DEFAULT ''" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, uid TEXT, city TEXT, content TEXT, created TIMESTAMPTZ DEFAULT now())" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, email TEXT DEFAULT '')" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT ''" });
@@ -305,8 +312,11 @@ exports.main = async (event) => {
       const nickname = sanitizeText(String((body || {}).nickname || '路过的朋友').slice(0, 20));
       if(hasBadWord(nickname)) return json(400, { ok: false, error: '昵称含违规内容，请修改后再发' });
       if(!rateOk('cm' + uid)) return json(429, { ok: false, error: '发送太频繁，请稍后再试' });
+      const tmsC = await tmsTextCheck(content);
+      if(tmsC === 'block') return json(400, { ok: false, error: '评论含违规内容，请修改后再发' });
+      const hideOnReview = tmsC === 'review';
       const cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO comments (id, post_id, uid, nickname, content) VALUES ('" + esc(cid) + "', '" + esc(postId) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(content) + "')" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO comments (id, post_id, uid, nickname, content, hidden, review_source) VALUES ('" + esc(cid) + "', '" + esc(postId) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(content) + "', " + (hideOnReview ? 'true' : 'false') + ", '" + (hideOnReview ? 'tms' : '') + "')" });
       return json(200, { ok: true, cid });
     }
     if(action === 'commentList'){
@@ -377,7 +387,7 @@ exports.main = async (event) => {
       }
       if(op === 'hidePost' || op === 'unhidePost'){
         const id = String((body || {}).id || '').slice(0, 40);
-        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE posts SET hidden = " + (op === 'hidePost' ? 'true' : 'false') + " WHERE id = '" + esc(id) + "'" });
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE posts SET hidden = " + (op === 'hidePost' ? 'true' : 'false') + (op === 'unhidePost' ? ", review_source = ''" : '') + " WHERE id = '" + esc(id) + "'" });
         return json(200, { ok: true });
       }
       if(op === 'delPost'){
@@ -393,14 +403,14 @@ exports.main = async (event) => {
       }
       if(op === 'unhideComment'){
         const cid = String((body || {}).cid || '').slice(0, 40);
-        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE comments SET hidden = false, reports = 0, report_by = '[]' WHERE id = '" + esc(cid) + "'" });
+        await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE comments SET hidden = false, reports = 0, report_by = '[]', review_source = '' WHERE id = '" + esc(cid) + "'" });
         return json(200, { ok: true });
       }
       if(op === 'pending'){
-        const rp = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, nickname, type, name, addr, reports, to_char(created_at, 'MM-DD HH24:MI') FROM posts WHERE hidden = true AND reports > 0 ORDER BY reports DESC LIMIT 50" });
-        const rc = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.nickname, c.content, c.reports, c.post_id, p.name FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.hidden = true ORDER BY c.reports DESC LIMIT 50" });
-        const posts = ((rp && rp.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { id: a[0], nickname: a[1], type: a[2], name: a[3], addr: a[4], reports: Number(a[5]) || 0, time: a[6] }; }catch(e){ return null; } }).filter(Boolean);
-        const comments = ((rc && rc.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], nickname: a[1], content: a[2], reports: Number(a[3]) || 0, pid: a[4], pname: a[5] || '' }; }catch(e){ return null; } }).filter(Boolean);
+        const rp = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT id, nickname, type, name, addr, reports, to_char(created_at, 'MM-DD HH24:MI'), COALESCE(review_source, '') FROM posts WHERE hidden = true ORDER BY reports DESC, created_at DESC LIMIT 50" });
+        const rc = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT c.id, c.nickname, c.content, c.reports, c.post_id, p.name, COALESCE(c.review_source, '') FROM comments c LEFT JOIN posts p ON p.id = c.post_id WHERE c.hidden = true ORDER BY c.reports DESC, c.created DESC LIMIT 50" });
+        const posts = ((rp && rp.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { id: a[0], nickname: a[1], type: a[2], name: a[3], addr: a[4], reports: Number(a[5]) || 0, time: a[6], src: a[7] || 'report' }; }catch(e){ return null; } }).filter(Boolean);
+        const comments = ((rc && rc.Rows) || []).map(x => { try{ const a = JSON.parse(x); return { cid: a[0], nickname: a[1], content: a[2], reports: Number(a[3]) || 0, pid: a[4], pname: a[5] || '', src: a[6] || 'report' }; }catch(e){ return null; } }).filter(Boolean);
         return json(200, { ok: true, posts, comments });
       }
       return json(400, { ok: false, error: '未知管理操作' });
@@ -481,6 +491,18 @@ function badAddr(s){
 }
 
 /* ---- 内容安全增强 ---- */
+// 腾讯云 TMS 文本内容安全（机器审核）：pass 通过 / review 疑似人工 / block 违规 / off 未开通或失败（降级词库）
+async function tmsTextCheck(content){
+  try{
+    if(!process.env.TCB_SECRET_ID || !process.env.TCB_SECRET_KEY) return 'off';
+    const r = await callApi('TextModeration', { Content: String(content || '').slice(0, 4000) },
+      { host: 'tms.tencentcloudapi.com', service: 'tms', version: '2020-12-29' });
+    const sug = ((r || {}).Response && r.Response.Suggestion) || '';
+    if(sug === 'Block') return 'block';
+    if(sug === 'Review') return 'review';
+    return 'pass';
+  }catch(e){ return 'off'; }   // 未开通/限频/网络失败 → 降级为仅词库，不阻塞发布
+}
 // 昵称等短文本清洗：去零宽字符与首尾空白
 function sanitizeText(s){
   return String(s || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
@@ -566,15 +588,18 @@ async function handlePostAction(action, body, uid){
     if(!addr) return json(400, { ok: false, error: '请填写地址' });
     if(badAddr(addr)) return json(400, { ok: false, error: '地址格式不合规，请填写真实地址' });
     if(hasBadWord(name) || hasBadWord(addr) || hasBadWord(desc)) return json(400, { ok: false, error: '内容含违规词，请修改后发布' });
+    const tmsP = await tmsTextCheck((name || '') + '\n' + (addr || '') + '\n' + (desc || ''));
+    if(tmsP === 'block') return json(400, { ok: false, error: '内容含违规信息，请修改后发布' });
+    const hideOnReview = tmsP === 'review';
     for(const ph of photos){
       if(typeof ph.f === 'string') ph.f = ph.f.slice(0, 400000);
       if(typeof ph.t === 'string') ph.t = ph.t.slice(0, 60000);
     }
     const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     await callApi('ExecutePGSql', { EnvId: ENV, Sql:
-      "INSERT INTO posts (id, uid, nickname, type, name, addr, descr, photos, created_at) VALUES ('" +
+      "INSERT INTO posts (id, uid, nickname, type, name, addr, descr, photos, hidden, review_source, created_at) VALUES ('" +
       esc(id) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(type) + "', '" + esc(name) + "', '" + esc(addr) + "', '" + esc(desc) + "', '" +
-      esc(JSON.stringify(photos)) + "', now())" });
+      esc(JSON.stringify(photos)) + "', " + (hideOnReview ? 'true' : 'false') + ", '" + (hideOnReview ? 'tms' : '') + "', now())" });
     // 头像自愈：发布时顺带补写/更新资料头像，保证信息流联表能取到
     const avatar = (typeof p.avatar === 'string' && p.avatar.indexOf('data:image/') === 0) ? p.avatar.slice(0, 400000) : null;
     if(avatar){

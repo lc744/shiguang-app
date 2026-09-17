@@ -887,16 +887,20 @@ async function openAdminPanel(silent){
       return;
     }
     box.innerHTML = usersHtml + '<div style="margin-top:10px"></div>' +
-      (posts.length ? '<b style="font-size:13px">被隐藏的帖子</b>' + posts.map(p => `
+      (posts.length ? '<b style="font-size:13px">被隐藏的帖子</b>' + posts.map(p => {
+        const srcTag = p.src === 'tms' ? '<small style="color:#b58900">🤖 机器标记疑似</small>' : (p.reports > 0 ? `<small>举报${p.reports}次</small>` : '<small>已隐藏</small>');
+        return `
         <div class="adm-item">
-          <div class="adm-txt"><b>${esc(p.name || p.addr || '（无标题）')}</b><small>${esc(p.type || '')} · 举报${p.reports}次 · ${esc(p.time || '')}</small></div>
-          <div class="adm-ops"><button class="secondary" onclick="adminOp('unhidePost','${esc(p.id)}')">恢复</button><button class="secondary danger-text" onclick="adminOp('delPost','${esc(p.id)}')">删除</button></div>
-        </div>`).join('') : '') +
-      (comments.length ? '<b style="font-size:13px;display:block;margin-top:10px">被隐藏的评论</b>' + comments.map(c => `
+          <div class="adm-txt"><b>${esc(p.name || p.addr || '（无标题）')}</b><small>${esc(p.type || '')} · ${srcTag} · ${esc(p.time || '')}</small></div>
+          <div class="adm-ops"><button class="secondary" onclick="adminOp('unhidePost','${esc(p.id)}')">通过</button><button class="secondary danger-text" onclick="adminOp('delPost','${esc(p.id)}')">删除</button></div>
+        </div>`; }).join('') : '') +
+      (comments.length ? '<b style="font-size:13px;display:block;margin-top:10px">被隐藏的评论</b>' + comments.map(c => {
+        const srcTag = c.src === 'tms' ? '<small style="color:#b58900">🤖 机器标记疑似</small>' : (c.reports > 0 ? `<small>举报${c.reports}次</small>` : '<small>已隐藏</small>');
+        return `
         <div class="adm-item">
-          <div class="adm-txt"><b>${esc(c.content).slice(0, 40)}</b><small>${esc(c.nickname || '')} · 举报${c.reports}次 · 帖：${esc(c.pname || '').slice(0, 10)}</small></div>
-          <div class="adm-ops"><button class="secondary" onclick="adminRestoreComment('${esc(c.cid)}')">恢复</button><button class="secondary danger-text" onclick="adminDelComment('${esc(c.cid)}')">删除</button></div>
-        </div>`).join('') : '');
+          <div class="adm-txt"><b>${esc(c.content).slice(0, 40)}</b><small>${esc(c.nickname || '')} · ${srcTag} · 帖：${esc(c.pname || '').slice(0, 10)}</small></div>
+          <div class="adm-ops"><button class="secondary" onclick="adminRestoreComment('${esc(c.cid)}')">通过</button><button class="secondary danger-text" onclick="adminDelComment('${esc(c.cid)}')">删除</button></div>
+        </div>`; }).join('') : '');
   }catch(e){
     box.innerHTML = '<small style="opacity:.6">加载失败：' + esc(e.message || '') + '</small>';
   }
