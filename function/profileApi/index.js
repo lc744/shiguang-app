@@ -495,7 +495,7 @@ function badAddr(s){
 async function tmsTextCheck(content){
   try{
     if(!process.env.TCB_SECRET_ID || !process.env.TCB_SECRET_KEY) return 'off';
-    const r = await callApi('TextModeration', { Content: String(content || '').slice(0, 4000) },
+    const r = await callApi('TextModeration', { Content: Buffer.from(String(content || '').slice(0, 4000), 'utf8').toString('base64') },
       { host: 'tms.tencentcloudapi.com', service: 'tms', version: '2020-12-29' });
     const sug = ((r || {}).Response && r.Response.Suggestion) || '';
     if(sug === 'Block') return 'block';
