@@ -5,28 +5,8 @@ let selectedWeekdays = [];        // 自定义重复时选中的星期（1..7，
 let isBirthdayMode = false;       // 生日事件模式
 let isLunarBirthday = false;      // 农历生日
 
-/* ---------------- 生日开关 ---------------- */
-function toggleBirthday(btn){
-  isBirthdayMode = !isBirthdayMode;
-  refreshBirthdayUI();
-}
-function toggleLunarBirthday(btn){
-  isLunarBirthday = !isLunarBirthday;
-  refreshBirthdayUI();
-}
-function refreshBirthdayUI(){
-  const bChip = document.getElementById('birthdayChip');
-  const lChip = document.getElementById('lunarBirthdayChip');
-  if(bChip){
-    bChip.textContent = isBirthdayMode ? '已开启' : '关闭';
-    bChip.classList.toggle('selected', isBirthdayMode);
-  }
-  if(lChip){
-    lChip.style.display = isBirthdayMode ? '' : 'none';
-    lChip.textContent = isLunarBirthday ? '农历生日' : '公历生日';
-    lChip.classList.toggle('selected', isLunarBirthday);
-  }
-}
+/* 生日提醒：不再手动开启——由“我的”页出生日期自动生成（isBirthday 事件）。
+   编辑已存在的生日事件时保持其生日属性，不可转普通事件。 */
 
 function buildChips(){
   document.getElementById('emojiChips').innerHTML = allEmojiValues().map(x =>
@@ -204,10 +184,9 @@ async function openEditor(id){
   document.querySelectorAll('#emojiChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.emoji === selectedEmoji));
   document.querySelectorAll('#voiceChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.voice === selectedVoice));
   syncRepeatUI(e);
-  // 生日状态回填
+  // 生日状态回填（无 UI 开关；仅保持已有生日事件的属性不被改掉）
   isBirthdayMode = !!(e && e.isBirthday);
   isLunarBirthday = !!(e && e.lunarBirthday);
-  refreshBirthdayUI();
   document.getElementById('errName').style.display = 'none';
   document.getElementById('errTime').style.display = 'none';
   showPage('page-create');
@@ -249,7 +228,7 @@ async function saveEvent(){
     document.getElementById('fDate').value = date;
     isFuture = true;
   }
-  if(!validTime || !isFuture) {
+  if(!validTime || (!isFuture && !isBirthdayMode)) {
     errTimeEl.style.display = 'block';
     toast(isBirthdayMode ? '请选择今年接下来的生日日期' : '请选择将来的日期和时间');
     ok = false;

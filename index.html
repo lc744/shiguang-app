@@ -39,6 +39,7 @@
     <div class="stats">
       <div class="card stat"><b id="statTodo">0</b><span>今日待办</span></div>
       <div class="card stat"><b id="statDone">0</b><span>已完成</span></div>
+      <div class="card stat stat-clear" onclick="clearAll()"><b>🗑</b><span>清空事件</span></div>
     </div>
 
     <main class="pages">
@@ -122,14 +123,6 @@
               </div>
               <div class="chips" id="weekdayChips" style="margin-top:8px;display:none"></div>
             </div>
-            <div class="field">
-              <label>🎂 生日提醒</label>
-              <div class="chips">
-                <button type="button" class="chip" id="birthdayChip" onclick="toggleBirthday(this)">关闭</button>
-                <button type="button" class="chip" id="lunarBirthdayChip" onclick="toggleLunarBirthday(this)" style="display:none">公历生日</button>
-              </div>
-              <p class="mini" style="margin:8px 0 0">开启后每年当天提醒并送上生日祝福（支持公历或农历生日）</p>
-            </div>
             <div class="err" id="errTime" style="margin:0 0 8px">请选择有效的未来日期和时间</div>
             <div class="field">
               <label>提醒表情包</label>
@@ -141,6 +134,7 @@
               <label>语音播报音色</label>
               <div class="chips" id="voiceChips"></div>
               <p class="mini" style="margin:8px 0 0">到点后会使用 Android 中文语音朗读事件名称和备注；实际音质取决于手机中安装的语音引擎。</p>
+              <button type="button" class="secondary" style="margin-top:8px;width:100%" onclick="openVoicePacks()">🎙 离线语音包管理</button>
               <div class="recorder" id="recorderBox">
                 <div class="rec-head"><small id="recTip">录一段自己的声音作为提示音（最长 30 秒）</small><span class="rec-time" id="recTime">00:00</span></div>
                 <div class="rec-actions">
@@ -392,7 +386,7 @@
         <div class="action-row" style="margin-top:0">
           <button class="secondary" style="width:100%" onclick="showPrivacyViewer()">📄 隐私政策</button>
         </div>
-        <p class="mini" style="text-align:center;margin:8px 0 0">绸缪 v1.6.0</p>
+        <p class="mini" style="text-align:center;margin:8px 0 0" onclick="versionDiagTap()">绸缪 v1.6.0</p>
       </div>
     </div>
   </div>
@@ -451,24 +445,7 @@
           </label>
         </div>
       </div>
-      <!-- 原生提醒权限卡片（仅 Android App 内显示） -->
-      <div class="detail-card" id="nativePermCard" style="margin-top:10px;display:none">
-        <h4 style="margin:0 0 8px">原生提醒权限</h4>
-        <p class="mini">保证后台闹钟可靠触发所需的系统权限。</p>
-        <div id="nativePermRows"><small class="mini">正在读取权限状态…</small></div>
-        <div id="aiEnhanceRow" style="margin-top:6px"></div>
-        <div class="action-row">
-          <button class="secondary" onclick="renderNativePerms()">刷新状态</button>
-        </div>
-      </div>
-      <div class="detail-card" style="margin-top:10px">
-        <h4 style="margin:0 0 8px">离线语音包</h4>
-        <p class="mini">内置校园少女组合可直接使用；高清自然音色可以按需下载，下载后断网也能播报。</p>
-        <div id="voicePackList"><small>正在读取语音包…</small></div>
-        <div class="action-row">
-          <button class="secondary" onclick="loadVoicePacks()">刷新语音包</button>
-        </div>
-      </div>
+      <!-- 离线语音包已移至「添加事件」页 -->
       <div class="detail-card" style="margin-top:10px">
         <h4 style="margin:0 0 8px">自动备份</h4>
         <p class="mini">每次保存事件都会自动生成快照（最多保留 10 条），误删后可一键恢复。</p>
@@ -479,11 +456,30 @@
         </div>
         <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importData(event)" />
       </div>
-      <div class="action-row">
-        <button class="danger-btn" onclick="clearAll()">清空全部事件</button>
+      <div class="detail-card" style="margin-top:10px">
+        <h4 style="margin:0 0 8px">关于</h4>
+        <div class="action-row" style="margin-top:0">
+          <button class="secondary" style="width:100%" onclick="showPrivacyViewer()">📄 隐私政策</button>
+        </div>
+        <p class="mini" style="text-align:center;margin:8px 0 0" onclick="versionDiagTap()">绸缪 v1.6.0</p>
       </div>
       <div class="action-row" style="margin-top:10px">
         <button class="secondary" style="width:100%" onclick="closeSettings()">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 离线语音包弹层（从添加事件页进入） -->
+  <div class="remind-fullscreen" id="voicePackOverlay" style="display:none" onclick="if(event.target===this)closeVoicePacks()">
+    <div class="remind-card card" style="max-width:360px;padding:20px 18px;max-height:84vh;overflow-y:auto">
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">离线语音包</h2>
+      <p class="mini">内置校园少女组合可直接使用；高清自然音色可以按需下载，下载后断网也能播报。</p>
+      <div id="voicePackList"><small>正在读取语音包…</small></div>
+      <div class="action-row">
+        <button class="secondary" onclick="loadVoicePacks()">刷新语音包</button>
+      </div>
+      <div class="action-row" style="margin-top:10px">
+        <button class="secondary" style="width:100%" onclick="closeVoicePacks()">完成</button>
       </div>
     </div>
   </div>
@@ -509,12 +505,12 @@
   <!-- 修改出生年月弹层 -->
   <div class="remind-fullscreen" id="birthOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
     <div class="remind-card card" style="max-width:320px;padding:20px 18px">
-      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">修改出生年月</h2>
+      <h2 style="font-size:17px;margin:0 0 14px;text-align:center">修改出生日期</h2>
       <div class="field" style="text-align:left">
-        <label>出生年月</label>
-        <input id="birthInput" type="month" />
+        <label>出生日期（公历）</label>
+        <input id="birthInput" type="date" />
         <div id="birthClearRow" style="margin-top:6px;display:none">
-          <small class="mini" style="cursor:pointer;color:var(--danger,#c65c52)" onclick="clearBirth()">清除出生年月</small>
+          <small class="mini" style="cursor:pointer;color:var(--danger,#c65c52)" onclick="clearBirth()">清除出生日期</small>
         </div>
       </div>
       <div class="action-row" style="margin-top:16px">

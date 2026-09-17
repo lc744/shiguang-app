@@ -127,8 +127,10 @@ function maskEmail(email){
 }
 const GENDER_LABEL = { '': '未设置', male: '男', female: '女' };
 function formatBirth(v){
-  const m = String(v || '').match(/^(\d{4})-(\d{2})$/);
-  return m ? m[1] + '年' + m[2] + '月' : '';
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return m[1] + '年' + m[2] + '月' + m[3] + '日';
+  const m2 = String(v || '').match(/^(\d{4})-(\d{2})$/);
+  return m2 ? m2[1] + '年' + m2[2] + '月' : '';
 }
 function accountTitle(){
   if(!currentUser) return '';
@@ -328,14 +330,41 @@ function saveGender(){
 function saveBirth(){
   if(!currentUser) return;
   const birth = (document.getElementById('birthInput').value || '').trim();
-  if(birth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(birth)){ toast('出生年月格式不正确'); return; }
+  if(birth && !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(birth)){ toast('出生日期格式不正确'); return; }
   currentUser.birth = birth;
   persistUser();
   saveAccountToRegistry();
   syncCloudProfile({ birth: currentUser.birth });
+  syncAutoBirthdayEvent();
   renderMeBody();
   closeInfoEditor();
-  toast('出生年月已保存');
+  toast(birth ? '出生日期已保存，每年当天会送上生日祝福' : '出生日期已清除');
+}
+
+/* 出生年月 ↔ 自动生日提醒事件：填了就自动生成/更新，清除就自动删除 */
+function syncAutoBirthdayEvent(){
+  try{
+    if(typeof events === 'undefined' || !Array.isArray(events)) return;
+    const date = currentUser.birth || '';
+    const nick = (currentUser.nickname || '我').slice(0, 12);
+    const name = nick + '的生日';
+    const idx = events.findIndex(e => e && e.autoBirthday);
+    if(!date){
+      if(idx >= 0){ events.splice(idx, 1); if(typeof persist === 'function') persist(); if(typeof renderAll === 'function') renderAll(); }
+      return;
+    }
+    if(idx >= 0){
+      const ev = events[idx];
+      if(ev.date !== date){ ev.date = date; ev.doneOn = []; ev.firedOn = []; }
+      ev.name = name;
+    } else {
+      events.push({ id: 'auto-bday', name, note: '来自个人资料的出生日期', date, time: '09:00',
+        emoji: '🎂 生日快乐', voice: '', voiceData: null, weekdays: [],
+        isBirthday: true, lunarBirthday: false, autoBirthday: true, doneOn: [], firedOn: [] });
+    }
+    if(typeof persist === 'function') persist();
+    if(typeof renderAll === 'function') renderAll();
+  }catch(e){}
 }
 
 /* ---------------- 设置入口（按钮 → 弹层） ---------------- */
@@ -790,4 +819,24 @@ function closePrivacyViewer(){
   }catch(e){}
   const ov = document.getElementById('privacyOverlay');
   if(ov) ov.style.display = 'none';
+}
+
+/* ---- 管理员诊断（设置页连点版本号 5 次触发） ---- */
+let __diagTaps = 0, __diagTimer = null;
+function versionDiagTap(){
+  __diagTaps++;
+  if(__diagTimer) clearTimeout(__diagTimer);
+  __diagTimer = setTimeout(() => { __diagTaps = 0; }, 2500);
+  if(__diagTaps >= 5){
+    __diagTaps = 0;
+    runAdminDiag();
+  }
+}
+async function runAdminDiag(){
+  const uid = (currentUser && currentUser.id) || '';
+  const utype = (currentUser && currentUser.type) || '';
+  let resp = '';
+  try{ const r = await shareApi('adminCheck', {}); resp = JSON.stringify(r); }
+  catch(e){ resp = 'ERR ' + (e && e.message || e); }
+  alert('[MgmtDiag]\nuid=' + uid + '\ntype=' + utype + '\nadminCheck=' + resp + '\nadminMode=' + adminMode);
 }

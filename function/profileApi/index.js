@@ -138,7 +138,7 @@ async function getAdminUids(){
   if(Date.now() - __adminCache.ts < 30000) return __adminCache.list;   // 30s 内存缓存
   try{
     const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT uid FROM admins" });
-    const list = ((r && r.Rows) || []).map(x => { try{ return JSON.parse(x)[0]; }catch(e){ return x; } }).filter(Boolean);
+    const list = ((r && r.Rows) || []).map(x => { try{ return String(JSON.parse(x)[0] || '').replace(/[\s\u200B-\u200D\uFEFF]/g, ''); }catch(e){ return String(x).replace(/[\s\u200B-\u200D\uFEFF]/g, ''); } }).filter(Boolean);
     __adminCache.ts = Date.now(); __adminCache.list = list;
     return list;
   }catch(e){ return []; }

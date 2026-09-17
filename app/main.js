@@ -104,7 +104,7 @@ buildChips();
 initCalendar();
 renderAll();
 renderBackupList();
-renderNativePerms();
+requestInitialPerms();   // 首启自动联动权限（通知弹窗 + 精确闹钟跳转，仅一次）
 checkPrivacyOnBoot();
 // 大对象迁移（base64 → IndexedDB）：完成后刷新视图与表单 chips
 window.__mediaReady = migrateMediaAsync().then((migrated) => {

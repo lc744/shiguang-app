@@ -50,6 +50,11 @@
     .slide-prev{left:10px}
     .slide-next{right:10px}
     .card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px;box-shadow:0 8px 22px rgba(17,45,36,.04)}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 18px 14px}
+    .stat{text-align:center;cursor:default}
+    .stat.stat-clear{cursor:pointer;user-select:none}
+    .stat.stat-clear b{font-size:20px}
+    .stat.stat-clear span{color:var(--danger,#c65c52)}
     .stat b{display:block;font-size:22px;line-height:1}
     .stat span{font-size:12px;color:var(--sub)}
     .subhead{display:flex;justify-content:space-between;align-items:center;padding:18px 18px 10px}
@@ -168,8 +173,9 @@
     .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(18px);padding:12px 16px;border-radius:14px;background:#1c2a26;color:#fff;font-size:12px;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 14px 24px rgba(0,0,0,.18);z-index:50}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;background:rgba(255,255,255,.94);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:8px 0 calc(10px + env(safe-area-inset-bottom,0px));z-index:10}
-    .tab{border:0;background:none;color:var(--sub);display:flex;flex-direction:column;gap:4px;align-items:center;font-size:11px;cursor:pointer}
-    .tab.active{color:var(--main);font-weight:700}
+    .tab{position:relative;border:0;background:none;color:var(--sub);display:flex;flex-direction:column;gap:4px;align-items:center;font-size:11px;cursor:pointer;border-radius:14px;padding:5px 0 3px;margin:0 6px;transition:background .18s,color .18s}
+    .tab.active{color:var(--main);font-weight:700;background:rgba(46,125,90,.13)}
+    .tab.active::before{content:'';position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:26px;height:3px;border-radius:0 0 3px 3px;background:var(--main)}
     .tab i{font-style:normal;font-size:18px;line-height:1}
     /* 精灵 tab：纯 logo 占满整格（含原文字空间），垂直居中 */
     .tab.genie-tab{justify-content:center}
@@ -248,6 +254,8 @@
     html[data-theme="dark"] .day.selected small,html[data-theme="dark"] .day.selected span{color:#0c1512}
     html[data-theme="dark"] .chip.selected{background:var(--main);color:#0c1512;border-color:var(--main)}
     html[data-theme="dark"] .tabs{background:rgba(20,30,26,.94)}
+    html[data-theme="dark"] .tab.active{background:rgba(84,178,133,.22);color:#7fd4ab}
+    html[data-theme="dark"] .tab.active::before{background:#7fd4ab}
     html[data-theme="dark"] .remind-fullscreen{background:rgba(15,23,20,.97)}
     html[data-theme="dark"] .toast{background:#e7f0ec;color:#12201b}
     html[data-theme="dark"] .missed-banner{background:linear-gradient(135deg,#2b2414 0%,#241f12 100%);border-color:#4a3f22}

@@ -140,62 +140,32 @@ function restoreBackupEntry(at){
 }
 function removeBackupEntry(at){ if(!confirm('删除这条备份快照？')) return; deleteBackup(at); renderBackupList(); toast('已删除备份快照'); }
 
-/* ---------------- 原生权限引导（仅 Android App） ---------------- */
-async function renderNativePerms(){
-  const card = document.getElementById('nativePermCard');
-  if(!card) return;
-  if(!window.__NATIVE__ || !window.__getPermStatus){ card.style.display = 'none'; return; }
-  card.style.display = 'block';
-  const rows = document.getElementById('nativePermRows');
-  if(!rows) return;
-  const s = await window.__getPermStatus();
-  const row = (label, ok, action, desc) => `<div class="backup-item"><div class="backup-info"><b>${ok ? '✅' : '⚠️'} ${label}</b><small>${desc}</small></div>
-    <div class="backup-actions">${ok ? '' : `<button class="secondary" onclick="${action}">去开启</button>`}</div></div>`;
-  if(window.__IS_IOS__){
-    // iOS：只有通知权限一项，其余由系统保证
-    rows.innerHTML = [
-      row('通知权限', !!s.notifications, '__permNotif()', '锁屏/通知中心提醒'),
-      row('通知精确度', true, '', 'iOS 系统通知准时触发'),
-      row('锁屏横幅', true, '', 'iOS 锁屏自动展示提醒'),
-    ].join('');
-  } else {
-    rows.innerHTML = [
-      row('通知权限', !!s.notifications, '__permNotif()', '到点展示系统通知'),
-      row('精确闹钟', !!s.exactAlarms, '__permExact()', '保证准时触发'),
-      row('全屏通知', !!s.fullScreenIntent, '__permFullScreen()', '锁屏时全屏提醒'),
-      row('电池优化豁免', !s.batteryRestricted, '__permBattery()', '后台不被系统限制'),
-    ].join('') + __brandTips();
-  }
-  // AI 增强开关（精灵大模型兜底）
-  const aiOn = window.genieAiEnabled ? genieAiEnabled() : true;
-  const aiRow = document.getElementById('aiEnhanceRow');
-  if(aiRow) aiRow.innerHTML = '<div class="backup-item"><div class="backup-info"><b>' + (aiOn ? '🤖 AI 增强已开启' : '🤖 AI 增强已关闭') + '</b><small>精灵听不懂时走云端大模型解析（规则优先，不额外消耗）</small></div><div class="backup-actions"><button class="secondary" onclick="__toggleAiEnhance()">' + (aiOn ? '关闭' : '开启') + '</button></div></div>';
+/* ---------------- 原生权限（首启自动联动，无设置页卡片） ---------------- */
+/* 首次进入 APP：自动请求通知权限（系统弹窗）；精确闹钟未授权时联动跳系统设置页一次。
+   全屏通知随通知权限自动授予；电池优化/品牌私有权限不再在 APP 内引导。 */
+async function requestInitialPerms(){
+  try{
+    if(!window.__NATIVE__ || !window.__getPermStatus) return;
+    if(localStorage.getItem('shiguang_perms_asked') === '1') return;
+    localStorage.setItem('shiguang_perms_asked', '1');
+    const s = await window.__getPermStatus();
+    if(!s.notifications && window.__requestNotifPerm){ try{ await window.__requestNotifPerm(); }catch(e){} }
+    try{
+      const s2 = await window.__getPermStatus();
+      if(!s2.exactAlarms && window.__openExactAlarmSettings){ toast('请在接下来页面允许「闹钟提醒」以保证准时触发'); try{ await window.__openExactAlarmSettings(); }catch(e){} }
+    }catch(e){}
+  }catch(e){}
 }
-async function __toggleAiEnhance(){ if(window.setGenieAiEnabled) setGenieAiEnabled(!(window.genieAiEnabled ? genieAiEnabled() : true)); renderNativePerms(); toast('已' + ((window.genieAiEnabled && genieAiEnabled()) ? '开启' : '关闭') + ' AI 增强'); }
-async function __permNotif(){ try{ await window.__requestNotifPerm(); }catch(e){} renderNativePerms(); }
-async function __permExact(){ try{ await window.__openExactAlarmSettings(); }catch(e){} renderNativePerms(); }
-async function __permFullScreen(){ try{ await window.__openFullScreenSettings(); }catch(e){} renderNativePerms(); }
-async function __permBattery(){ try{ await window.__openBatterySettings(); }catch(e){} renderNativePerms(); }
 
-/* 各品牌后台管控差异提示（系统 API 查不到自启动等私有权限，只能给指引） */
-function __brandTips(){
-  const ua = navigator.userAgent || '';
-  let brand = '';
-  if(/HarmonyOS|HUAWEI/i.test(ua) || /HONOR/i.test(ua)) brand = '荣耀/华为';
-  else if(/vivo|IQOO|OriginOS/i.test(ua)) brand = 'vivo/iQOO';
-  else if(/OPPO|ColorOS|OnePlus|一加/i.test(ua)) brand = 'OPPO/一加';
-  else if(/MI\s?\d|MIUI|Xiaomi|Redmi|Redmi/i.test(ua)) brand = '小米/红米';
-  else if(/samsung/i.test(ua)) brand = '三星';
-  const common = '<div class="backup-item"><div class="backup-info"><b>💡 品牌后台设置</b><small>以上权限之外，各品牌还需在<b style="font-weight:600">系统设置 → 应用管理 → 绸缪</b> 里开启：</small></div></div>';
-  const tips = {
-    'vivo/iQOO': '① 自启动 → 允许 ② 后台弹出界面 → 允许 ③ 锁屏显示 → 允许 ④ 电池 → 允许后台高耗电',
-    'OPPO/一加': '① 自启动 → 允许 ② 允许完全后台行为/关联启动 ③ 锁屏显示通知 ④ 电池 → 不限制后台',
-    '荣耀/华为': '① 自启动管理 → 允许 ② 锁屏显示 → 允许 ③ 电池 → 启动管理改为手动（三向全开）',
-    '小米/红米': '① 自启动 → 允许 ② 省电策略 → 无限制 ③ 锁屏后断开网络 → 关（如需云提醒）',
-    '三星': '① 电池 → 后台使用限制 → 取消休眠 ② 通知类别全部开启',
-    '': '在系统设置中允许本应用自启动与后台运行，可提升提醒可靠性',
-  };
-  return common + `<div class="backup-item"><div class="backup-info"><small>${brand ? '<b style="font-weight:600">检测到 ' + brand + '</b>：' : ''}${esc(tips[brand] || tips[''])}</small></div></div>`;
+/* ---------------- 离线语音包弹层（添加事件页入口） ---------------- */
+function openVoicePacks(){
+  const ov = document.getElementById('voicePackOverlay');
+  if(ov) ov.style.display = 'flex';
+  loadVoicePacks();
+}
+function closeVoicePacks(){
+  const ov = document.getElementById('voicePackOverlay');
+  if(ov) ov.style.display = 'none';
 }
 
 let voicePackCatalog = [];
