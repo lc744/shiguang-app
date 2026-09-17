@@ -302,7 +302,9 @@ exports.main = async (event) => {
       const content = String((body || {}).content || '').trim().slice(0, 200);
       if(!postId || !content) return json(400, { ok: false, error: '评论内容不能为空' });
       if(hasBadWord(content)) return json(400, { ok: false, error: '评论含违规内容，请修改后再发' });
-      const nickname = String((body || {}).nickname || '路过的朋友').slice(0, 20);
+      const nickname = sanitizeText(String((body || {}).nickname || '路过的朋友').slice(0, 20));
+      if(hasBadWord(nickname)) return json(400, { ok: false, error: '昵称含违规内容，请修改后再发' });
+      if(!rateOk('cm' + uid)) return json(429, { ok: false, error: '发送太频繁，请稍后再试' });
       const cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO comments (id, post_id, uid, nickname, content) VALUES ('" + esc(cid) + "', '" + esc(postId) + "', '" + esc(uid) + "', '" + esc(nickname) + "', '" + esc(content) + "')" });
       return json(200, { ok: true, cid });
@@ -473,15 +475,60 @@ const HIDE_THRESHOLD = 3;
 // ---- 治理配置 ----
 const COMMENT_HIDE_THRESHOLD = 3;
 // 管理员名单已迁移到 admins 表（uid 白名单），由 getAdminUids() 读取
-const BAD_WORDS = ['加微信','加V','加v','＋V','赌博','博彩','下注','代开发票','色情','约炮','刷单','点赞返现','兼职日结','高利贷','办证','外挂','代练','转账返','资金盘','裸聊','枪支'];
-function hasBadWord(s){
-  const t = String(s || '');
-  for(const w of BAD_WORDS){ if(t.indexOf(w) >= 0) return true; }
-  return false;
-}
 function badAddr(s){
   const t = String(s || '');
   return /https?:\/\/|www\./i.test(t) || /^\d+$/.test(t.trim());
+}
+
+/* ---- 内容安全增强 ---- */
+// 昵称等短文本清洗：去零宽字符与首尾空白
+function sanitizeText(s){
+  return String(s || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+}
+// 发频率限制：内存滑动窗口（实例级），同一 uid 每 60 秒内最多 3 次
+const __rateMap = new Map();
+function rateOk(key){
+  try{
+    const now = Date.now();
+    let arr = __rateMap.get(key) || [];
+    arr = arr.filter(x => now - x < 60000);
+    if(arr.length >= 3){ __rateMap.set(key, arr); return false; }
+    arr.push(now);
+    __rateMap.set(key, arr);
+    if(__rateMap.size > 5000) __rateMap.clear();   // 防内存膨胀
+    return true;
+  }catch(e){ return true; }
+}
+// 文本规范化 + 谐音变体还原：全角→半角、去零宽字符、常见符号夹杂剔除、拼音谐音映射，再交给词库匹配
+function normalizeText(s){
+  let t = String(s || '');
+  t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  t = t.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  t = t.replace(/[·•|!！,，。.\s*#＃^～~_\-]/g, '');
+  t = t.replace(/微|威|薇|危/g, 'V').replace(/[qＱ]/gi, 'Q');
+  t = t.replace(/[^a-z0-9\u4e00-\u9fa5]/gi, '');   // 只保留中英文与数字，emoji/符号夹杂混淆全部失效
+  return t;
+}
+const BAD_WORDS = ['加微信','加V','加v','＋V','赌博','博彩','下注','代开发票','色情','约炮','刷单','点赞返现','兼职日结','高利贷','办证','外挂','代练','转账返','资金盘','裸聊','枪支',
+  '加Q','企鹅',' leds',' prostitute','援交','一夜情','包养','代孕','卖淫','嫖娼','毒品','冰毒','摇头丸',' K粉','迷奸','迷药','安眠药','自杀','自残',
+  '加weixin','加V信','加w信','刷钻','刷枪','外币','汇率优惠','赃物','销赃','收购银行卡','四件套','对公账户','跑分','洗钱','放贷','砍头息','网贷','逾期处理','征信修复',
+  '信用卡套现','养卡','提额','赌博网站','六合彩','北京赛车','幸运飞艇','时时彩','百家乐','德扑','棋牌娱乐','代理招商','加盟返利','宠物活体','违禁品',
+  '真枪','弹药','炸药','雷管','管制刀具','监听','窃听','定位他人','查开房','查住址','查身份','黑客','入侵','数据恢复',' dump','接单','接单日结',
+  '推广引流','广告投放','粉丝买卖','刷粉','刷量','刷阅读','刷关注','代点赞','点赞一族','互粉','互赞群','僵尸粉',
+  '威信同号','Q我','Q聊','加我','联系我','私聊我','私我','滴滴我','扣我','敲我','戳我','+v','＋v','＋Q','+q','（+V）','（+Q）'];
+function hasBadWord(s){
+  const t = String(s || '');
+  const n = normalizeText(t);
+  for(const w of BAD_WORDS){
+    const wn = normalizeText(w);
+    if(t.indexOf(w) >= 0) return true;
+    if(wn && wn.length >= 2 && n.indexOf(wn) >= 0) return true;   // 规范化后至少 2 字符，防单字符误伤
+  }
+  // 引流模式：V/Q 开头 + 数字引导的 6-12 位账号形态（微信号/QQ号），且原文带社交语境词
+  const n2 = n.replace(/[^a-z0-9]/gi, '');
+  if(/[vVQq]{1,2}[0-9a-zA-Z]{6,12}/.test(n2) && /加|私|聊|联系|同号|君羊|薇|威/.test(t)) return true;
+  if(/君羊|條|艹|莪|迩|仩|牜|嫑|嘦|甭|氼/.test(t)) return true;   // 拆字/生僻替代字
+  return false;
 }
 const MAX_PHOTOS = 3;
 
@@ -511,7 +558,9 @@ async function handlePostAction(action, body, uid){
     const addr = String(p.addr || '').trim().slice(0, 80);
     const desc = String(p.desc || '').trim().slice(0, 500);
     const type = ['美食', '景点', '娱乐'].indexOf(p.type) >= 0 ? p.type : '娱乐';
-    const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
+    const nickname = sanitizeText(String(p.nickname || '路过的朋友').slice(0, 20));
+    if(hasBadWord(nickname)) return json(400, { ok: false, error: '昵称含违规内容，请修改后发布' });
+    if(!rateOk('pb' + uid)) return json(429, { ok: false, error: '发布太频繁，请稍后再试' });
     let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS) : [];
     photos = photos.map(x => (typeof x === 'string') ? { t: x, f: x } : x).filter(x => x && typeof x.t === 'string');
     if(!addr) return json(400, { ok: false, error: '请填写地址' });
