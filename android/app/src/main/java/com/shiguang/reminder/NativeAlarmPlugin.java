@@ -222,7 +222,10 @@ public class NativeAlarmPlugin extends Plugin {
                 cb.onProgress("done", 0, 0);
                 JSObject out = new JSObject(); out.put("downloaded", true); out.put("installed", true);
                 call.resolve(out);
-            } catch (Exception ex) { call.reject("downloadVoicePack failed", ex); }
+            } catch (Exception ex) {
+                android.util.Log.e("VoicePack", "downloadVoicePack failed id=" + id, ex);
+                call.reject("downloadVoicePack failed: " + (ex == null ? "null" : ex.getClass().getSimpleName() + ": " + ex.getMessage()), ex);
+            }
         }, "voice-pack-download").start();
     }
 

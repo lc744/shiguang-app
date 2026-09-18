@@ -87,11 +87,18 @@ public final class VoicePackManager {
 
     public static File download(Context context, String id, String url, String expectedSha256, ProgressCb cb) throws Exception {
         Exception last = null;
+        android.util.Log.i("VoicePack", "download start id=" + id + " url=" + url);
         for (String u : mirrorCandidates(url)) {
             try {
+                android.util.Log.i("VoicePack", "trying mirror: " + u);
                 if (cb != null) cb.onProgress("try", 0, 0);
-                return downloadOne(context, id, u, expectedSha256, cb);
-            } catch (Exception ex) { last = ex; }
+                File f = downloadOne(context, id, u, expectedSha256, cb);
+                android.util.Log.i("VoicePack", "download OK via " + u);
+                return f;
+            } catch (Exception ex) {
+                last = ex;
+                android.util.Log.w("VoicePack", "mirror failed: " + u + " -> " + ex);
+            }
         }
         throw (last != null) ? last : new IllegalStateException("download failed: no mirror");
     }
@@ -172,11 +179,26 @@ public final class VoicePackManager {
     }
 
     private static void extractTarBz2(File archive, File outDir) throws Exception {
-        Process process = new ProcessBuilder("/system/bin/toybox", "tar", "-xjf", archive.getAbsolutePath(), "-C", outDir.getAbsolutePath())
-                .redirectErrorStream(true).start();
-        try (InputStream in = process.getInputStream()) { byte[] b = new byte[8192]; while (in.read(b) >= 0) {} }
-        int code = process.waitFor();
-        if (code != 0) throw new IllegalStateException("Archive extraction failed: " + code);
+        // Java 原生解压：toybox tar 在部分设备上解 bz2 会挂起（实测模拟器/部分真机），commons-compress 全设备一致
+        String canonicalOut = outDir.getCanonicalPath() + File.separator;
+        try (java.io.InputStream fi = new java.io.BufferedInputStream(new java.io.FileInputStream(archive), 1024 * 1024);
+             java.io.InputStream bi = new org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream(fi);
+             org.apache.commons.compress.archivers.tar.TarArchiveInputStream ti =
+                     new org.apache.commons.compress.archivers.tar.TarArchiveInputStream(bi)) {
+            org.apache.commons.compress.archivers.tar.TarArchiveEntry e;
+            while ((e = ti.getNextTarEntry()) != null) {
+                File f = new File(outDir, e.getName());
+                if (!f.getCanonicalPath().startsWith(canonicalOut)) throw new IllegalStateException("Unsafe path in archive: " + e.getName());
+                if (e.isDirectory()) { f.mkdirs(); continue; }
+                File parent = f.getParentFile();
+                if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IllegalStateException("Cannot create dir for " + f.getName());
+                try (FileOutputStream o = new FileOutputStream(f)) {
+                    byte[] b = new byte[1024 * 1024];
+                    int n;
+                    while ((n = ti.read(b)) > 0) o.write(b, 0, n);
+                }
+            }
+        }
     }
 
     private static File findFile(File root, String name) {

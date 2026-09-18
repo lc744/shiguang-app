@@ -70,6 +70,8 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
     // 楂樺痉铻嶅悎瀹氫綅 SDK锛坢avenCentral锛?
     implementation 'com.amap.api:location:6.4.9'
+    // 语音包 tar.bz2 解压（替代 toybox tar：部分设备 toybox bz2 解压会挂起）
+    implementation 'org.apache.commons:commons-compress:1.26.1'
 }
 
 apply from: 'capacitor.build.gradle'
