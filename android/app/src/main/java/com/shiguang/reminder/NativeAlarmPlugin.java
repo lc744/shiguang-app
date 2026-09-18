@@ -192,6 +192,7 @@ public class NativeAlarmPlugin extends Plugin {
     public void downloadVoicePack(PluginCall call) {
         String id = call.getString("id");
         String url = call.getString("url");
+        String githubUrl = call.getString("githubUrl", "");
         String sha256 = call.getString("sha256", "");
         if (id == null || url == null) { call.reject("missing id/url"); return; }
         new Thread(() -> {
@@ -203,12 +204,12 @@ public class NativeAlarmPlugin extends Plugin {
                         notifyListeners("voiceProgress", d);
                     } catch (Exception ignore) {}
                 };
-                java.io.File archive = VoicePackManager.download(getContext(), id, url, sha256, cb);
+                java.io.File archive = VoicePackManager.download(getContext(), id, url, githubUrl, sha256, cb);
                 cb.onProgress("extract", 0, 0);
                 if ("matcha-baker-natural".equals(id)) {
                     String vocoderUrl = call.getString("vocoderUrl", "");
                     if (vocoderUrl.isEmpty()) throw new IllegalArgumentException("missing vocoderUrl");
-                    java.io.File vocoder = VoicePackManager.download(getContext(), id + "-vocoder", vocoderUrl, "", cb);
+                    java.io.File vocoder = VoicePackManager.download(getContext(), id + "-vocoder", vocoderUrl, "", "", cb);
                     VoicePackManager.installMatchaPack(getContext(), id, archive, vocoder);
                     VoicePackManager.delete(getContext(), id + "-vocoder");
                 } else if ("melo-zh-en".equals(id)) {

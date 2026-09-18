@@ -1,4 +1,4 @@
-﻿// 鏋勫缓 Capacitor web 璧勬簮锛氭妸 index.html 澶嶅埗鍒?www/ 骞舵敞鍏ュ師鐢熼€氱煡妗ユ帴
+// 鏋勫缓 Capacitor web 璧勬簮锛氭妸 index.html 澶嶅埗鍒?www/ 骞舵敞鍏ュ師鐢熼€氱煡妗ユ帴
 // 鐢ㄦ硶锛歯ode build-www.js
 const fs = require('fs');
 const path = require('path');
@@ -66,7 +66,7 @@ const bridge = `
     });
   }catch(e){}
   window.__downloadVoicePack = async function(pack){
-    return await NativeAlarm.downloadVoicePack({id:pack.id,url:pack.downloadUrl,vocoderUrl:pack.vocoderUrl||'',sha256:pack.sha256||''});
+    return await NativeAlarm.downloadVoicePack({id:pack.id,url:pack.downloadUrl,githubUrl:pack.githubUrl||'',vocoderUrl:pack.vocoderUrl||'',sha256:pack.sha256||''});
   };
   window.__deleteVoicePack = async function(id){ return await NativeAlarm.deleteVoicePack({id}); };
   window.__previewVoice = async function(voice,text){ return await NativeAlarm.previewVoice({voice,text}); };

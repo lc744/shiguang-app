@@ -60,35 +60,41 @@ public final class VoicePackManager {
     }
 
     public static File download(Context context, String id, String url, String expectedSha256) throws Exception {
-        return download(context, id, url, expectedSha256, null);
+        return download(context, id, url, null, expectedSha256, null);
     }
 
     public interface ProgressCb { void onProgress(String phase, long received, long total); }
 
-    // 主源失败自动换镜像（gh-proxy / 直连 github / ghfast / ghproxy.net）
-    public static java.util.List<String> mirrorCandidates(String url) {
+    // 候选下载源：主源（TCB CDN）→ 备源（github 直连 + 镜像）。github URL 才套镜像，自有源直接用
+    public static java.util.List<String> mirrorCandidates(String url, String backupUrl) {
         java.util.List<String> list = new java.util.ArrayList<>();
         if (url == null || url.isEmpty()) return list;
         list.add(url);
-        String gh = url;
-        String[] proxies = {"https://gh-proxy.com/", "https://ghfast.top/", "https://ghproxy.net/", "https://mirror.ghproxy.com/"};
-        for (String p : proxies) { if (url.startsWith(p)) { gh = url.substring(p.length()); break; } }
-        if (!gh.equals(url)) {
-            list.add(gh);
-            list.add("https://ghfast.top/" + gh);
-            list.add("https://ghproxy.net/" + gh);
-        } else {
-            list.add("https://gh-proxy.com/" + gh);
-            list.add("https://ghfast.top/" + gh);
-            list.add("https://ghproxy.net/" + gh);
+        if (backupUrl != null && !backupUrl.isEmpty()) {
+            list.add(backupUrl);
+            String[] proxies = {"https://gh-proxy.com/", "https://ghfast.top/", "https://ghproxy.net/", "https://mirror.ghproxy.com/"};
+            for (String p : proxies) { if (!backupUrl.startsWith(p)) list.add(p + backupUrl); }
+        } else if (url.contains("github.com")) {
+            String gh = url;
+            String[] proxies = {"https://gh-proxy.com/", "https://ghfast.top/", "https://ghproxy.net/", "https://mirror.ghproxy.com/"};
+            for (String p : proxies) { if (url.startsWith(p)) { gh = url.substring(p.length()); break; } }
+            if (!gh.equals(url)) {
+                list.add(gh);
+                list.add("https://ghfast.top/" + gh);
+                list.add("https://ghproxy.net/" + gh);
+            } else {
+                list.add("https://gh-proxy.com/" + gh);
+                list.add("https://ghfast.top/" + gh);
+                list.add("https://ghproxy.net/" + gh);
+            }
         }
         return list;
     }
 
-    public static File download(Context context, String id, String url, String expectedSha256, ProgressCb cb) throws Exception {
+    public static File download(Context context, String id, String url, String backupUrl, String expectedSha256, ProgressCb cb) throws Exception {
         Exception last = null;
         android.util.Log.i("VoicePack", "download start id=" + id + " url=" + url);
-        for (String u : mirrorCandidates(url)) {
+        for (String u : mirrorCandidates(url, backupUrl)) {
             try {
                 android.util.Log.i("VoicePack", "trying mirror: " + u);
                 if (cb != null) cb.onProgress("try", 0, 0);
