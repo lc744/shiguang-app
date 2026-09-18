@@ -1,4 +1,4 @@
-// 绸缪 v2 · 发布页：头像昵称填写能力 + 选图（压缩）+ 云存储上传 + postApi 发布
+// 绸缪 v2 · 发布页：头像昵称填写能力 + 选图（压缩）+ 云存储上传 + postApi 发布（微信云开发）
 const ID_KEY = 'shiguang_share_identity';
 const EXT_MAP = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 

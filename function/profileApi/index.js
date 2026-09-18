@@ -12,6 +12,23 @@ const API_VER = '2018-06-08';
 function sha256hex(s){ return crypto.createHash('sha256').update(s).digest('hex'); }
 function hmacBuf(key, s){ return crypto.createHmac('sha256', key).update(s).digest(); }
 
+// 小程序直登凭据（deploy_tcb_fn.js 注入；缺省时 wxLogin 返回未配置）
+const WX_APPID = process.env.WX_APPID || '';
+const WX_APPSECRET = process.env.WX_APPSECRET || '';
+function httpsGetJson(host, path){
+  return new Promise(resolve => {
+    try{
+      const req = https.get({ host, path, timeout: 8000 }, res => {
+        let d = '';
+        res.on('data', c => { d += c; });
+        res.on('end', () => { try{ resolve(JSON.parse(d)); }catch(e){ resolve(null); } });
+      });
+      req.on('error', () => resolve(null));
+      req.on('timeout', () => { req.destroy(); resolve(null); });
+    }catch(e){ resolve(null); }
+  });
+}
+
 // ---- 微信登录（双轨自签会话）----
 // 密钥：环境变量 WX_JWT_SECRET（由 deploy_tcb_fn.js 注入）；缺省时微信登录自动禁用
 const WX_SECRET = process.env.WX_JWT_SECRET || '';
@@ -209,6 +226,22 @@ exports.main = async (event) => {
     const authz = hdr.authorization || hdr.Authorization || body.token || '';
     const token = String(authz).replace(/^Bearer\s+/i, '').trim();
     const action = body.action || 'get';
+
+    // ---- 小程序直登：wx.login code → code2session → 自签会话（免 token 白名单） ----
+    if(action === 'wxLogin'){
+      if(!WX_APPID || !WX_APPSECRET) return json(503, { ok: false, error: '小程序直登未配置' });
+      const code = String((body || {}).code || '').slice(0, 128);
+      if(!code) return json(400, { ok: false, error: '参数缺失' });
+      const sess = await httpsGetJson('api.weixin.qq.com', '/sns/jscode2session?appid=' + WX_APPID + '&secret=' + WX_APPSECRET + '&js_code=' + encodeURIComponent(code) + '&grant_type=authorization_code');
+      if(!sess || !sess.openid) return json(200, { ok: false, error: '微信登录失败(' + ((sess && sess.errcode) || 'network') + ')' });
+      const openid = String(sess.openid).slice(0, 64);
+      const uid = wxUid(openid);
+      try{ await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO users (uid, email) VALUES ('" + uid + "', '" + esc(String(openid).slice(0, 12)) + "@wx') ON CONFLICT (uid) DO NOTHING" }); }catch(e){}
+      const now = Math.floor(Date.now() / 1000);
+      const access = wxSign({ sub: uid, typ: 'access', exp: now + 7200 });
+      const refresh = wxSign({ sub: uid, typ: 'refresh', exp: now + 30 * 86400 });
+      return json(200, { ok: true, uid, access_token: access, refresh_token: refresh });
+    }
 
     // ---- 微信登录（匿名区）：发起绑定码 / 轮询 / 刷新自签会话 / 服务间绑定确认 ----
     if(action === 'wxLoginCreate' || action === 'wxLoginPoll' || action === 'wxRefresh' || action === 'wxBind'){

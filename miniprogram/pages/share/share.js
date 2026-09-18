@@ -1,10 +1,22 @@
-// 绸缪 v2 · 分享页：信息流 / 我的发布 双 tab，点赞、举报、下拉刷新、触底加载
+// 绸缪 v2 · 分享页：信息流 / 我的发布 双 tab，点赞、举报、下拉刷新、触底加载（微信云开发）
 const callPost = (data) => new Promise((resolve, reject) => {
   if(!wx.cloud || !wx.cloud.callFunction){ reject(new Error('云开发未开通')); return; }
   wx.cloud.callFunction({ name: 'postApi', data })
     .then(r => resolve(r.result))
     .catch(e => reject(new Error(e.errMsg || e.message || '网络异常')));
 });
+
+// cloud:// fileID → 临时展示链接（带缓存；回调里做 setData 更新）
+function resolvePhotoUrls(photos, cb){
+  const arr = (photos || []).map(String);
+  const ids = arr.filter(s => s.indexOf('cloud://') === 0 && !(_fileMap[s]));
+  const done = () => cb(arr.map(s => (_fileMap[s]) || s));
+  if(!ids.length || !wx.cloud || !wx.cloud.getTempFileURL){ done(); return; }
+  wx.cloud.getTempFileURL({ fileList: ids })
+    .then(res => { (res.fileList || []).forEach(f => { if(f.tempFileURL) _fileMap[f.fileID] = f.tempFileURL; }); done(); })
+    .catch(done);
+}
+const _fileMap = {};
 
 Page({
   data: {
@@ -62,13 +74,22 @@ Page({
     return callPost({ action, page })
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '加载失败');
-        const list = reset ? r.list : this.data.list.concat(r.list);
-        this.setData({
-          list,
-          page: page + 1,
-          hasMore: r.hasMore !== false && action === 'feed',
-          empty: list.length === 0
-        });
+        const raw = reset ? r.list : this.data.list.concat(r.list);
+        const apply = (list) => {
+          this.setData({
+            list,
+            page: page + 1,
+            hasMore: r.hasMore !== false && action === 'feed',
+            empty: list.length === 0
+          });
+        };
+        // 先按现有缓存/直链立即渲染，cloud:// 引用异步换链接后刷新
+        const list0 = raw.map(p => ({ ...p, photoUrls: (p.photos || []).map(String) }));
+        apply(list0);
+        raw.forEach(p => resolvePhotoUrls(p.photos, urls => {
+          const idx = this.data.list.findIndex(x => x._id === p._id);
+          if(idx >= 0) this.setData({ ['list[' + idx + '].photoUrls']: urls });
+        }));
       })
       .catch(e => { wx.showToast({ title: e.message || '加载失败', icon: 'none' }); })
       .then(() => this.setData({ loading: false }));

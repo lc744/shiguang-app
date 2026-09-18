@@ -1,10 +1,22 @@
-// 绸缪小程序 · 推荐详情页（帖子大图 + 点赞/举报 + 评论区：发表/删除/举报）
+// 绸缪小程序 · 推荐详情页（帖子大图 + 点赞/举报 + 评论区：发表/删除/举报）——微信云开发
 const callPost = (data) => new Promise((resolve, reject) => {
   if(!wx.cloud || !wx.cloud.callFunction){ reject(new Error('云开发未开通')); return; }
   wx.cloud.callFunction({ name: 'postApi', data })
     .then(r => resolve(r.result))
     .catch(e => reject(new Error(e.errMsg || e.message || '网络异常')));
 });
+
+// cloud:// fileID → 临时展示链接（带缓存）
+const _fileMap = {};
+function resolvePhotoUrls(post, cb){
+  const arr = (post.photos || []).map(String);
+  const ids = arr.filter(s => s.indexOf('cloud://') === 0 && !(_fileMap[s]));
+  const done = () => cb(arr.map(s => (_fileMap[s]) || s));
+  if(!ids.length || !wx.cloud || !wx.cloud.getTempFileURL){ done(); return; }
+  wx.cloud.getTempFileURL({ fileList: ids })
+    .then(res => { (res.fileList || []).forEach(f => { if(f.tempFileURL) _fileMap[f.fileID] = f.tempFileURL; }); done(); })
+    .catch(done);
+}
 
 function fmtTime(ms){
   const diff = Date.now() - ms;
@@ -41,6 +53,10 @@ Page({
         comments: (c && c.list || []).map(x => ({ ...x, timeText: fmtTime(x.createdAt) })),
         commentCount: post.commentCount || (c && c.list || []).length,
         loading: false
+      });
+      // cloud:// → 临时链接后刷新展示
+      resolvePhotoUrls(post, urls => {
+        if(this.data.post && this.data.post._id === post._id) this.setData({ 'post.photoUrls': urls });
       });
     }).catch(e => {
       this.setData({ loading: false });

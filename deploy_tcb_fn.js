@@ -26,6 +26,8 @@ const ENV = 'gerenceshi-d0gguq5u39b4b86b2';
           TCB_SECRET_ID: sec.secretId,
           TCB_SECRET_KEY: sec.secretKey,
           WX_JWT_SECRET: sec.wxJwtSecret || '',
+          WX_APPID: sec.wxAppId || '',
+          WX_APPSECRET: sec.wxAppSecret || '',
         },
       },
       functionRootPath: path.join(__dirname, 'function'),

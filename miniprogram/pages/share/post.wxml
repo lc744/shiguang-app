@@ -1,12 +1,12 @@
 <view class="shell">
   <view wx:if="{{post}}" class="wrap">
     <view class="post-card card">
-      <swiper wx:if="{{post.photos.length > 1}}" class="post-swiper" indicator-dots circular>
-        <swiper-item wx:for="{{post.photos}}" wx:key="*this">
-          <image class="post-img" src="{{item}}" mode="widthFix" data-urls="{{post.photos}}" data-current="{{item}}" bindtap="onImageTap" />
+      <swiper wx:if="{{post.photoUrls.length > 1}}" class="post-swiper" indicator-dots circular>
+        <swiper-item wx:for="{{post.photoUrls}}" wx:key="*this">
+          <image class="post-img" src="{{item}}" mode="widthFix" data-urls="{{post.photoUrls}}" data-current="{{item}}" bindtap="onImageTap" />
         </swiper-item>
       </swiper>
-      <image wx:elif="{{post.photos.length === 1}}" class="post-img" src="{{post.photos[0]}}" mode="widthFix" data-urls="{{post.photos}}" data-current="{{post.photos[0]}}" bindtap="onImageTap" />
+      <image wx:elif="{{post.photoUrls.length === 1}}" class="post-img" src="{{post.photoUrls[0]}}" mode="widthFix" data-urls="{{post.photoUrls}}" data-current="{{post.photoUrls[0]}}" bindtap="onImageTap" />
 
       <view class="post-body">
         <view class="post-head">

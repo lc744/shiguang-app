@@ -27,17 +27,17 @@
 
   <view class="post-list">
     <view class="post-card card" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="goPost">
-      <view class="post-photos" wx:if="{{item.photos.length}}">
+      <view class="post-photos" wx:if="{{item.photoUrls.length}}">
         <image
-          wx:for="{{item.photos}}"
+          wx:for="{{item.photoUrls}}"
           wx:for-item="ph"
           wx:for-index="pi"
           wx:key="*this"
-          class="post-photo {{item.photos.length === 1 ? 'single' : ''}}"
+          class="post-photo {{item.photoUrls.length === 1 ? 'single' : ''}}"
           src="{{ph}}"
           mode="aspectFill"
           lazy-load
-          data-urls="{{item.photos}}"
+          data-urls="{{item.photoUrls}}"
           data-current="{{ph}}"
           catchtap="onImageTap"
         />
