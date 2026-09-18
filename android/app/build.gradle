@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// 正式签名（keystore.properties 不进 git；keystore 文件本身也不进 git）
+def keystoreProps = new Properties()
+def ksPropsFile = rootProject.file('keystore.properties')
+if (ksPropsFile.exists()) {
+    ksPropsFile.withInputStream { keystoreProps.load(it) }
+}
+
 android {
     namespace = "com.shiguang.reminder"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +23,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (ksPropsFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     // ABI 鎷嗗垎锛氱湡鏈鸿 arm64-v8a 鍖咃紙绾︾渷 40% 浣撶Н锛夛紝妯℃嫙鍣ㄨ x86_64 鍖咃紝

@@ -61,3 +61,5 @@ tools/mingit/
 
 cloud_secrets.json
 miniprogram/cloudfunctions/profileApi/config.json
+android/app/release.keystore
+android/keystore.properties
