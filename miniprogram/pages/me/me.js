@@ -1,5 +1,7 @@
-// 绸缪 v2 · 我的 —— 账户中心：微信登录、头像昵称（填写能力）、个人信息云同步、我的发布/设置入口
+// 绸缪 v2 · 我的 —— 账户中心：微信登录、头像昵称（填写能力）、个人信息云同步、统计、我的发布/设置入口
 const ID_KEY = 'shiguang_share_identity';
+const store = require('../../utils/store');
+const core = require('../../utils/core');
 
 function readLocal(){ try{ return wx.getStorageSync(ID_KEY) || null; }catch(e){ return null; } }
 
@@ -12,12 +14,21 @@ Page({
     editing: false,
     draftNickname: '',
     draftAvatar: '',
-    saving: false
+    saving: false,
+    statEvents: 0,
+    statDone: 0,
+    statPosts: '—'
   },
 
   onShow(){ this.refresh(); },
 
   refresh(){
+    // 本地统计（提醒/完成次数）
+    try{
+      const events = store.getEvents();
+      const doneCount = events.reduce((s, e) => s + ((e.doneOn || []).length || (e.done ? 1 : 0)), 0);
+      this.setData({ statEvents: events.length, statDone: doneCount });
+    }catch(e){}
     const local = readLocal();
     if(!local || !local.nickname){
       this.setData({ loading: false, loggedIn: false, editing: false });
@@ -33,6 +44,12 @@ Page({
             wx.setStorageSync(ID_KEY, { nickname: p.nickname, avatarUrl: p.avatarUrl || '', updatedAt: p.updatedAt });
             this.setData({ nickname: p.nickname, avatarUrl: p.avatarUrl || '' });
           }
+        }).catch(() => {});
+      // 我的发布数
+      wx.cloud.callFunction({ name: 'postApi', data: { action: 'mine', page: 0 } })
+        .then(r => {
+          const d = r.result || {};
+          if(d.ok) this.setData({ statPosts: d.hasMore ? (d.list || []).length + '+' : (d.list || []).length });
         }).catch(() => {});
     }
   },

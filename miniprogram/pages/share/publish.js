@@ -88,6 +88,50 @@ Page({
     }).then(r => r.fileID);
   },
 
+  // 对齐 App：无照片时按类型 canvas 生成默认图并缓存 fileID（首次生成，之后秒取）
+  _ensureDefaultPhoto(type){
+    const kind = type === '景点' ? '景点' : type === '美食' ? '美食' : '娱乐';
+    const key = 'shiguang_defphoto_' + kind;
+    try{ const cached = wx.getStorageSync(key); if(cached) return Promise.resolve(cached); }catch(e){}
+    return new Promise(resolve => {
+      const q = wx.createSelectorQuery();
+      q.select('#defcanvas').fields({ node: true, size: true }).exec(res => {
+        if(!res || !res[0] || !res[0].node){ resolve(''); return; }
+        const canvas = res[0].node;
+        const w = 960, h = 720;
+        canvas.width = w; canvas.height = h;
+        const x = canvas.getContext('2d');
+        let g;
+        if(kind === '景点'){ g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#8ed8f8'); g.addColorStop(.6, '#cdeffd'); g.addColorStop(1, '#e8f8e0'); }
+        else if(kind === '美食'){ g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#ffe29a'); g.addColorStop(1, '#ff9a62'); }
+        else { g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#f6a2ff'); g.addColorStop(1, '#7c5cff'); }
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+        x.textAlign = 'center';
+        if(kind === '景点'){
+          x.fillStyle = 'rgba(255,214,102,.95)';
+          x.beginPath(); x.arc(w * .78, h * .22, 62, 0, Math.PI * 2); x.fill();
+          x.fillStyle = '#7fb8a4';
+          x.beginPath(); x.moveTo(0, h); x.lineTo(w * .3, h * .45); x.lineTo(w * .58, h); x.closePath(); x.fill();
+          x.beginPath(); x.moveTo(w * .42, h); x.lineTo(w * .72, h * .55); x.lineTo(w, h); x.closePath(); x.fill();
+        }
+        x.font = '300px sans-serif';
+        x.fillText(kind === '美食' ? '🍜' : (kind === '景点' ? '🏞' : '🎡'), w / 2, h / 2 + 105);
+        x.fillStyle = 'rgba(0,0,0,.32)';
+        x.font = 'bold 44px sans-serif';
+        x.fillText('绸缪 · ' + kind + '推荐', w / 2, h - 60);
+        wx.canvasToTempFilePath({
+          canvas,
+          success: r => {
+            wx.cloud.uploadFile({ cloudPath: 'defaults/def_' + kind + '_' + Date.now() + '.jpg', filePath: r.tempFilePath })
+              .then(up => { try{ wx.setStorageSync(key, up.fileID); }catch(e){} resolve(up.fileID); })
+              .catch(() => resolve(''));
+          },
+          fail: () => resolve('')
+        });
+      });
+    });
+  },
+
   doPublish(){
     if(this.data.uploading) return;
     if(!this.data.hasProfile){ wx.showToast({ title: '先到「我的」登录并完善资料', icon: 'none', duration: 2200 }); return; }
@@ -104,12 +148,17 @@ Page({
     if(this.data.avatarUrl && !/^cloud:\/\//.test(this.data.avatarUrl)){
       jobs.push(this._upload(this.data.avatarUrl, 'avatars').then(id => { this.data.avatarUrl = id; }).catch(() => {}));
     }
-    this.data.photos.forEach(p => jobs.push(this._upload(p, 'posts')));
+    let photoList = this.data.photos;
+    if(!photoList.length){
+      // 对齐 App：没选照片自动配一张类型默认图（生成失败才发无图卡片）
+      jobs.push(this._ensureDefaultPhoto(this.data.type).then(def => { if(def) photoList = [def]; }));
+    } else {
+      photoList.forEach(p => jobs.push(this._upload(p, 'posts')));
+    }
     Promise.all(jobs)
-      .then(ids => {
-        // 对齐 App：照片选填（没图就是无图卡片），只有已传成功的才计入
-        const photos = ids.filter(x => /^cloud:\/\//.test(x));
-        if(this.data.photos.length && !photos.length){ throw new Error('照片上传失败，请重试'); }
+      .then(() => {
+        const photos = photoList.filter(p => /^cloud:\/\//.test(String(p)));
+        if(photoList.length && !photos.length){ throw new Error('照片上传失败，请重试'); }
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
         const finalName = name || this.data.addr.trim() || (this.data.type + '推荐');
         return wx.cloud.callFunction({

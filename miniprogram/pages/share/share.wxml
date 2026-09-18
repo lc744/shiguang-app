@@ -9,6 +9,15 @@
     <view class="seg {{tab === 'mine' ? 'seg-on' : ''}}" data-tab="mine" bindtap="switchTab">我的发布</view>
   </view>
 
+  <!-- 筛选行（类型 × 城市） -->
+  <view class="filter-row" wx:if="{{tab === 'feed'}}">
+    <view class="f-chip {{feedType === '' ? 'f-on' : ''}}" data-t="" bindtap="pickFeedType">全部</view>
+    <view class="f-chip {{feedType === item ? 'f-on' : ''}}" wx:for="{{feedTypes}}" wx:key="*this" data-t="{{item}}" bindtap="pickFeedType">{{item}}</view>
+    <picker mode="region" bindchange="onFeedRegion">
+      <view class="f-chip f-city">{{feedCity || '📍 全部城市'}}</view>
+    </picker>
+  </view>
+
   <!-- 攻略入口 -->
   <view class="plan-entry card" wx:if="{{tab === 'feed'}}" bindtap="openPlanMaker">
     <text class="plan-entry-emoji">🗺️</text>

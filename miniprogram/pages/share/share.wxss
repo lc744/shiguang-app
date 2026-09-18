@@ -65,3 +65,8 @@
 .plan-close{text-align:center;font-size:24rpx;color:var(--sub);padding:20rpx 0 0}
 .pp-btn{flex:1;font-size:28rpx;border-radius:999rpx;line-height:2.4;padding:0;margin:0}
 .pp-btn::after{border:none}
+/* 筛选行 */
+.filter-row{display:flex;align-items:center;gap:12rpx;margin:12px 18px 0;flex-wrap:wrap}
+.f-chip{font-size:24rpx;color:var(--sub);background:var(--card);border-radius:999rpx;padding:8rpx 22rpx}
+.f-chip.f-on{background:var(--accent);color:#fff;font-weight:600}
+.f-city{margin-left:auto}

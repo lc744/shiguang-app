@@ -26,6 +26,9 @@ Page({
     hasMore: true,
     loading: false,
     empty: false,
+    feedType: '',           // 筛选：'' 全部 | 美食 | 景点 | 娱乐
+    feedTypes: ['美食', '景点', '娱乐'],
+    feedCity: '',           // 筛选城市（空=不限）
     planForm: false,        // 攻略：选城市/日期弹层
     plan: null,             // 攻略结果 {city, dateIso, dateLabel, count, items}
     planCity: '',
@@ -53,6 +56,25 @@ Page({
     this.refresh();
   },
 
+  /* 筛选（对齐 App：类型 × 城市） */
+  pickFeedType(e){
+    const t = e.currentTarget.dataset.t || '';
+    if(t === this.data.feedType) return;
+    this.setData({ feedType: t, list: [], page: 0, hasMore: true, empty: false });
+    this.refresh();
+  },
+  onFeedRegion(e){
+    const v = (e.detail && e.detail.value) || [];
+    const city = (v[1] || '').replace(/市辖区|县/g, '') || (v[0] || '');
+    this.setData({ feedCity: city, list: [], page: 0, hasMore: true, empty: false });
+    this.refresh();
+  },
+  clearFeedCity(){
+    if(!this.data.feedCity) return;
+    this.setData({ feedCity: '', list: [], page: 0, hasMore: true, empty: false });
+    this.refresh();
+  },
+
   refresh(){
     this.setData({ page: 0, hasMore: true });
     return this.load(true);
@@ -71,7 +93,12 @@ Page({
     const page = reset ? 0 : this.data.page;
     this.setData({ loading: true });
     const action = this.data.tab === 'feed' ? 'feed' : 'mine';
-    return callPost({ action, page })
+    const payload = { action, page };
+    if(action === 'feed'){
+      if(this.data.feedType) payload.type = this.data.feedType;
+      if(this.data.feedCity) payload.city = this.data.feedCity;
+    }
+    return callPost(payload)
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '加载失败');
         const raw = reset ? r.list : this.data.list.concat(r.list);
