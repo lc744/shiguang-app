@@ -94,10 +94,8 @@ Page({
     const name = this.data.name.trim();
     const desc = this.data.desc.trim();
     const nickname = (this.data.nickname || '').trim() || '路过的朋友';
-    if(!name){ wx.showToast({ title: '给推荐起个名字', icon: 'none' }); return; }
     if(!this.data.city){ wx.showToast({ title: '选一下所在城市', icon: 'none' }); return; }
     if(!this.data.photos.length){ wx.showToast({ title: '至少放一张照片', icon: 'none' }); return; }
-    if(!wx.cloud || !wx.cloud.uploadFile){ wx.showToast({ title: '云开发未开通', icon: 'none' }); return; }
 
     this.setData({ uploading: true });
     wx.showLoading({ title: '发布中…', mask: true });
@@ -109,12 +107,14 @@ Page({
     this.data.photos.forEach(p => jobs.push(this._upload(p, 'posts')));
     Promise.all(jobs)
       .then(ids => {
+        // 对齐 App：照片选填（没图就是无图卡片），只有已传成功的才计入
         const photos = ids.filter(x => /^cloud:\/\//.test(x));
-        if(!photos.length){ throw new Error('照片上传失败，请重试'); }
+        if(this.data.photos.length && !photos.length){ throw new Error('照片上传失败，请重试'); }
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
+        const finalName = name || this.data.addr.trim() || (this.data.type + '推荐');
         return wx.cloud.callFunction({
           name: 'postApi',
-          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name, desc, city: this.data.city, addr: this.data.addr, photos } }
+          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name: finalName, desc, city: this.data.city, addr: this.data.addr, photos } }
         }).then(r => r.result);
       })
       .then(r => {

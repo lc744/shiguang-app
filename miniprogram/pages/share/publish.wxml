@@ -36,7 +36,7 @@
     <view class="type-row">
       <view wx:for="{{types}}" wx:key="*this" class="type-chip {{type === item ? 'on' : ''}}" data-t="{{item}}" bindtap="setType">{{item}}</view>
     </view>
-    <view class="p-label mt">名称</view>
+    <view class="p-label mt">名称<text class="p-optional">（选填，不填用位置代替）</text></view>
     <input class="p-input" placeholder="比如：巷口的抄手店" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="30" />
     <view class="p-label mt">所在城市<text class="p-optional">（用于攻略聚合推荐）</text></view>
     <picker mode="region" bindchange="onRegion" value="{{region}}">

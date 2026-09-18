@@ -116,8 +116,8 @@ exports.main = async (event) => {
       const photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
       const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
       const avatarUrl = String(p.avatarUrl || '').slice(0, 300);
-      if(!name) return { ok: false, error: '请填写名称' };
-      if(!photos.length) return { ok: false, error: '至少上传一张照片' };
+      // 对齐 App：名称与照片均选填（列表展示时回退 addr/类型），仅城市必填
+      if(!city) return { ok: false, error: '请选择所在城市' };
 
       const t = await checkText(name + ' ' + desc);
       if(!t.ok) return { ok: false, error: t.why };
