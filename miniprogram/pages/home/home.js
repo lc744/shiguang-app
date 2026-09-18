@@ -38,6 +38,9 @@ Page({
   },
 
   onShow(){
+    if(typeof this.getTabBar === 'function' && this.getTabBar()){
+      this.getTabBar().setData({ selected: 0 });
+    }
     const app = getApp();
     this.setData({
       themeClass: app.globalData.resolvedTheme === 'dark' ? 'theme-dark' : '',

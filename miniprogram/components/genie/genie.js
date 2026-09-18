@@ -10,6 +10,9 @@ const subscribe = require('../../utils/subscribe');
 let bubbleSeq = 0; // 气泡自增序号（滚动锚点 id 用）
 
 Component({
+  properties: {
+    auto: { type: Boolean, value: false }   // 宿主页面要求自动展开（精灵 tab 页用）
+  },
   data: {
     open: false,        // 面板展开态
     bubbles: [],        // 消息列表 [{id, role:'user'|'assistant', text}]
@@ -19,6 +22,9 @@ Component({
   },
 
   lifetimes: {
+    attached(){
+      if(this.properties.auto) this.setData({ open: true });
+    },
     detached(){
       this.stopVoice();
       this._manager = null;

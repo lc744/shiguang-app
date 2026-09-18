@@ -20,7 +20,12 @@ Page({
     statPosts: '—'
   },
 
-  onShow(){ this.refresh(); },
+  onShow(){
+    if(typeof this.getTabBar === 'function' && this.getTabBar()){
+      this.getTabBar().setData({ selected: 4 });
+    }
+    this.refresh();
+  },
 
   refresh(){
     // 本地统计（提醒/完成次数）

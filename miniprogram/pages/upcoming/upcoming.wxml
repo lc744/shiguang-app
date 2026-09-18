@@ -1,7 +1,10 @@
 <view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
   <view class="subhead">
     <text class="subhead-title">预告</text>
-    <text class="subhead-sub">接下来会发生什么</text>
+    <view class="up-head-row">
+      <text class="subhead-sub">接下来会发生什么</text>
+      <view class="cal-entry" bindtap="goCalendar">📅 日历</view>
+    </view>
   </view>
 
   <view class="today-list">

@@ -1,0 +1,10 @@
+/* 自定义 tabBar（复刻 Web 版 .tabs 样式：胶囊高亮 + 顶部指示条） */
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--surface);padding:8rpx 10rpx calc(8rpx + env(safe-area-inset-bottom));border-top:1rpx solid var(--line);box-shadow:0 -6rpx 24rpx rgba(18,48,39,.06)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:10rpx 0;border-radius:18rpx}
+.tab-icon{font-size:34rpx;line-height:1.2}
+.tab-label{font-size:20rpx;color:var(--sub);margin-top:2rpx}
+.tab-active .tab-label{color:var(--accent);font-weight:700}
+.tab-active::before{content:'';position:absolute;top:-8rpx;left:50%;transform:translateX(-50%);width:52rpx;height:6rpx;border-radius:0 0 6rpx 6rpx;background:var(--accent)}
+.tab-active{background:rgba(36,99,83,.13)}
+/* 中间精灵：头像风格 */
+.tab-genie-true .tab-icon{width:76rpx;height:76rpx;border-radius:50%;overflow:hidden;background:#e8f2ee;display:flex;align-items:center;justify-content:center;font-size:44rpx;box-shadow:0 4rpx 14rpx rgba(36,99,83,.25)}

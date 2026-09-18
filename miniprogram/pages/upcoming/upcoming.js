@@ -12,6 +12,9 @@ Page({
   },
 
   onShow(){
+    if(typeof this.getTabBar === 'function' && this.getTabBar()){
+      this.getTabBar().setData({ selected: 1 });
+    }
     const app = getApp();
     this.setData({
       themeClass: app.globalData.resolvedTheme === 'dark' ? 'theme-dark' : '',
@@ -66,6 +69,8 @@ Page({
   },
 
   onEventTap(e){ wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
+
+  goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
 
   onAddTap(){ wx.navigateTo({ url: '/pages/editor/editor' }); }
 });

@@ -38,6 +38,9 @@ Page({
   },
 
   onShow(){
+    if(typeof this.getTabBar === 'function' && this.getTabBar()){
+      this.getTabBar().setData({ selected: 3 });
+    }
     // 「我的」页跳转：指定打开哪个分段
     const app = getApp();
     let tab = this.data.tab;
