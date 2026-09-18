@@ -16,7 +16,7 @@
   </view>
 
   <view class="post-list">
-    <view class="post-card card" wx:for="{{list}}" wx:key="_id">
+    <view class="post-card card" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="goPost">
       <view class="post-photos" wx:if="{{item.photos.length}}">
         <image
           wx:for="{{item.photos}}"
@@ -29,7 +29,7 @@
           lazy-load
           data-urls="{{item.photos}}"
           data-current="{{ph}}"
-          bindtap="onImageTap"
+          catchtap="onImageTap"
         />
       </view>
       <view class="post-body">
@@ -43,9 +43,10 @@
           <view wx:else class="post-avatar post-avatar-ph">👤</view>
           <text class="post-author">{{item.nickname}}</text>
           <view class="post-tools">
-            <text class="post-tool" data-id="{{item._id}}" bindtap="onLike">{{item.selfLiked ? '❤️' : '🤍'}} {{item.likes}}</text>
-            <text wx:if="{{tab === 'feed'}}" class="post-tool" data-id="{{item._id}}" bindtap="onReport">举报</text>
-            <text wx:if="{{tab === 'mine'}}" class="post-tool danger" data-id="{{item._id}}" bindtap="onDel">删除</text>
+            <text class="post-tool">{{item.selfLiked ? '❤️' : '🤍'}} {{item.likes}}</text>
+            <text class="post-tool">💬 {{item.commentCount || 0}}</text>
+            <text wx:if="{{tab === 'feed'}}" class="post-tool" catchtap="onReport">举报</text>
+            <text wx:if="{{tab === 'mine'}}" class="post-tool danger" data-id="{{item._id}}" catchtap="onDel">删除</text>
           </view>
         </view>
       </view>

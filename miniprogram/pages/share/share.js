@@ -127,6 +127,8 @@ Page({
 
   goPublish(){ wx.navigateTo({ url: '/pages/share/publish' }); },
 
+  goPost(e){ wx.navigateTo({ url: '/pages/share/post?id=' + e.currentTarget.dataset.id }); },
+
   onImageTap(e){
     const { urls, current } = e.currentTarget.dataset;
     wx.previewImage({ urls, current });

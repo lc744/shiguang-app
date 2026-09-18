@@ -1,0 +1,40 @@
+/* 推荐详情页 */
+.shell{min-height:100vh;background:var(--bg);padding-bottom:40rpx}
+.wrap{padding:20rpx 24rpx 0}
+
+.post-card{overflow:hidden}
+.post-swiper{height:560rpx}
+.post-swiper .post-img,.post-img{width:100%;background:var(--bg)}
+.post-body{padding:22rpx 26rpx 18rpx}
+.post-head{display:flex;align-items:center;gap:14rpx}
+.post-type{flex:none;font-size:22rpx;color:var(--accent);background:rgba(36,99,83,.1);border-radius:10rpx;padding:4rpx 14rpx}
+.post-name{font-size:32rpx;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.post-desc{display:block;font-size:27rpx;color:var(--sub);margin-top:14rpx;line-height:1.6;white-space:pre-wrap}
+.post-meta{display:flex;align-items:center;gap:14rpx;margin-top:22rpx}
+.post-avatar{width:46rpx;height:46rpx;border-radius:50%;flex:none}
+.post-avatar-ph{display:flex;align-items:center;justify-content:center;font-size:24rpx;background:var(--bg)}
+.post-author{font-size:24rpx;color:var(--sub)}
+.post-tools{margin-left:auto;display:flex;gap:28rpx}
+.post-tool{font-size:25rpx;color:var(--sub)}
+
+.cmt-seg{margin:30rpx 6rpx 14rpx}
+.cmt-seg-title{font-size:27rpx;font-weight:700;color:var(--text)}
+
+.cmt-list{padding-bottom:30rpx}
+.cmt-item{background:var(--card);border-radius:20rpx;padding:20rpx 24rpx;margin-bottom:16rpx}
+.cmt-main{display:flex;align-items:baseline;gap:14rpx}
+.cmt-nick{font-size:24rpx;font-weight:600;color:var(--text)}
+.cmt-time{font-size:21rpx;color:var(--sub)}
+.cmt-text{display:block;font-size:27rpx;color:var(--text);margin-top:10rpx;line-height:1.55;word-break:break-all}
+.cmt-ops{display:flex;justify-content:flex-end;gap:26rpx;margin-top:10rpx}
+.cmt-op{font-size:22rpx;color:var(--sub)}
+.cmt-op.danger{color:#c65c52}
+.cmt-empty{text-align:center;font-size:24rpx;color:var(--sub);padding:50rpx 0}
+
+.cmt-bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:16rpx;padding:16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));background:var(--card);border-top:1rpx solid var(--line)}
+.cmt-input{flex:1;background:var(--bg);border-radius:999rpx;padding:14rpx 28rpx;font-size:27rpx;color:var(--text)}
+.cmt-send{flex:none;background:var(--accent);color:#fff;font-size:25rpx;border-radius:999rpx}
+.cmt-send-on{opacity:1}
+.cmt-send[disabled]{opacity:.5;color:#fff;background:var(--accent)}
+
+.share-loading{text-align:center;font-size:24rpx;color:var(--sub);padding:40rpx 0}

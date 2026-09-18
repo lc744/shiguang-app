@@ -5,6 +5,7 @@
     "pages/calendar/calendar",
     "pages/share/share",
     "pages/share/publish",
+    "pages/share/post",
     "pages/me/me",
     "pages/settings/settings",
     "pages/editor/editor",

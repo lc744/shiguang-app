@@ -1,0 +1,58 @@
+<view class="shell">
+  <view wx:if="{{post}}" class="wrap">
+    <view class="post-card card">
+      <swiper wx:if="{{post.photos.length > 1}}" class="post-swiper" indicator-dots circular>
+        <swiper-item wx:for="{{post.photos}}" wx:key="*this">
+          <image class="post-img" src="{{item}}" mode="widthFix" data-urls="{{post.photos}}" data-current="{{item}}" bindtap="onImageTap" />
+        </swiper-item>
+      </swiper>
+      <image wx:elif="{{post.photos.length === 1}}" class="post-img" src="{{post.photos[0]}}" mode="widthFix" data-urls="{{post.photos}}" data-current="{{post.photos[0]}}" bindtap="onImageTap" />
+
+      <view class="post-body">
+        <view class="post-head">
+          <text class="post-type">{{post.type}}</text>
+          <text class="post-name">{{post.name}}</text>
+        </view>
+        <text class="post-desc">{{post.desc}}</text>
+        <view class="post-meta">
+          <image wx:if="{{post.avatarUrl}}" class="post-avatar" src="{{post.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="post-avatar post-avatar-ph">👤</view>
+          <text class="post-author">{{post.nickname}}</text>
+          <view class="post-tools">
+            <text class="post-tool" bindtap="onLike">{{post.liked ? '❤️' : '🤍'}} {{post.likes}}</text>
+            <text class="post-tool" bindtap="onReport">举报</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="cmt-seg">
+      <text class="cmt-seg-title">评论 {{commentCount}}</text>
+    </view>
+
+    <view class="cmt-list">
+      <view class="cmt-item" wx:for="{{comments}}" wx:key="_id">
+        <view class="cmt-main">
+          <text class="cmt-nick">{{item.nickname}}</text>
+          <text class="cmt-time">{{item.timeText}}</text>
+        </view>
+        <text class="cmt-text">{{item.content}}</text>
+        <view class="cmt-ops">
+          <text wx:if="{{item.self}}" class="cmt-op danger" data-cid="{{item._id}}" bindtap="onCommentDel">删除</text>
+          <text wx:else class="cmt-op" data-cid="{{item._id}}" bindtap="onCommentReport">举报</text>
+        </view>
+      </view>
+      <view wx:if="{{!comments.length}}" class="cmt-empty">还没有评论，来抢沙发～</view>
+    </view>
+
+    <view style="height:120rpx"></view>
+  </view>
+
+  <view wx:if="{{loading}}" class="share-loading">加载中…</view>
+
+  <!-- 底部评论输入条 -->
+  <view class="cmt-bar">
+    <input class="cmt-input" value="{{draft}}" placeholder="友善评论，理性交流…" confirm-type="send" bindinput="onDraftInput" bindconfirm="onSend" maxlength="200" />
+    <button class="cmt-send {{draft ? 'cmt-send-on' : ''}}" size="mini" bindtap="onSend" disabled="{{sending}}">{{sending ? '…' : '发送'}}</button>
+  </view>
+</view>
