@@ -110,7 +110,9 @@ exports.main = async (event) => {
       const p = event.post || {};
       const name = String(p.name || '').trim().slice(0, 30);
       const desc = String(p.desc || '').trim().slice(0, 500);
-      const type = ['餐厅', '景点', '其他'].indexOf(p.type) >= 0 ? p.type : '其他';
+      const type = ['美食', '景点', '娱乐', '餐厅', '其他'].indexOf(p.type) >= 0 ? p.type : '其他';
+      const city = String(p.city || '').trim().slice(0, 20);   // 城市名（攻略按城市聚合推荐）
+      const addr = String(p.addr || '').trim().slice(0, 60);   // 具体位置（攻略行程引用）
       const photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
       const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
       const avatarUrl = String(p.avatarUrl || '').slice(0, 300);
@@ -125,7 +127,7 @@ exports.main = async (event) => {
       }
 
       await db.collection(COL).add({ data: {
-        openid: OPENID, nickname, avatarUrl, type, name, desc, photos,
+        openid: OPENID, nickname, avatarUrl, type, name, desc, photos, city, addr,
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
       return { ok: true, op: 'publish' };
@@ -135,8 +137,11 @@ exports.main = async (event) => {
     if(action === 'feed'){
       const pageSize = 20;
       const page = Math.max(0, Math.min(50, parseInt(event.page, 10) || 0));
+      const cond = { hidden: false };
+      if(event.city) cond.city = String(event.city).slice(0, 20);
+      if(event.type) cond.type = String(event.type).slice(0, 10);
       const r = await db.collection(COL)
-        .where({ hidden: false })
+        .where(cond)
         .orderBy('createdAt', 'desc')
         .skip(page * pageSize).limit(pageSize)
         .field({ openid: false })

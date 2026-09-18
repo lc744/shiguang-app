@@ -32,6 +32,9 @@
       { "pagePath": "pages/me/me", "text": "我的" }
     ]
   },
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/index"
+  },
   "darkmode": true,
   "themeLocation": "theme.json",
   "lazyCodeLoading": "requiredComponents",

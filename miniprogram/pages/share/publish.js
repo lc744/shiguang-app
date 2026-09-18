@@ -8,10 +8,13 @@ Page({
   data: {
     nickname: '',
     avatarUrl: '',
-    type: '餐厅',
-    types: ['餐厅', '景点', '其他'],
+    type: '美食',
+    types: ['美食', '景点', '娱乐'],
     name: '',
     desc: '',
+    city: '',
+    region: [],
+    addr: '',
     photos: [],
     uploading: false
   },
@@ -32,6 +35,15 @@ Page({
   },
 
   setType(e){ this.setData({ type: e.currentTarget.dataset.t }); },
+
+  // 省市区选择：取城市名（直辖市取市名；普通市取第二段"xx市"）
+  onRegion(e){
+    const v = (e.detail && e.detail.value) || [];
+    const city = (v[1] || '').replace(/市辖区|县/g, '') || (v[0] || '');
+    this.setData({ region: v, city });
+  },
+
+  onAddr(e){ this.setData({ addr: e.detail.value }); },
 
   onName(e){ this.setData({ name: e.detail.value }); },
   onDesc(e){ this.setData({ desc: e.detail.value }); },
@@ -83,6 +95,7 @@ Page({
     const desc = this.data.desc.trim();
     const nickname = (this.data.nickname || '').trim() || '路过的朋友';
     if(!name){ wx.showToast({ title: '给推荐起个名字', icon: 'none' }); return; }
+    if(!this.data.city){ wx.showToast({ title: '选一下所在城市', icon: 'none' }); return; }
     if(!this.data.photos.length){ wx.showToast({ title: '至少放一张照片', icon: 'none' }); return; }
     if(!wx.cloud || !wx.cloud.uploadFile){ wx.showToast({ title: '云开发未开通', icon: 'none' }); return; }
 
@@ -101,7 +114,7 @@ Page({
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
         return wx.cloud.callFunction({
           name: 'postApi',
-          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name, desc, photos } }
+          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name, desc, city: this.data.city, addr: this.data.addr, photos } }
         }).then(r => r.result);
       })
       .then(r => {

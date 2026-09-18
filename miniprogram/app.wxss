@@ -7,7 +7,7 @@ page {
   --surface:#ffffff;
   --surface2:#f6faf8;
   --line:#d7e3dc;
-  --main:#246353;
+  --main:#246353; --accent:#246353;
   --main2:#3b8d76;
   --text:#1c2a26;
   --sub:#6e7f79;
@@ -20,7 +20,7 @@ page{
       --surface:#ffffff;
       --surface2:#f6faf8;
       --line:#d7e3dc;
-      --main:#246353;
+      --main:#246353; --accent:#246353;
       --main2:#3b8d76;
       --text:#1c2a26;
       --sub:#6e7f79;

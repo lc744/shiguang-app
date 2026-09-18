@@ -38,6 +38,12 @@
     </view>
     <view class="p-label mt">名称</view>
     <input class="p-input" placeholder="比如：巷口的抄手店" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="30" />
+    <view class="p-label mt">所在城市<text class="p-optional">（用于攻略聚合推荐）</text></view>
+    <picker mode="region" bindchange="onRegion" value="{{region}}">
+      <view class="p-input picker-sim">{{city || '选择省 / 市（选到市级即可）'}}</view>
+    </picker>
+    <view class="p-label mt">具体位置<text class="p-optional">（选填）</text></view>
+    <input class="p-input" placeholder="比如：南禅寺步行街东侧" placeholder-class="ph" value="{{addr}}" bindinput="onAddr" maxlength="60" />
     <view class="p-label mt">推荐理由<text class="p-optional">（选填）</text></view>
     <textarea class="p-textarea" placeholder="说说好在哪：味道、位置、性价比……" placeholder-class="ph" value="{{desc}}" bindinput="onDesc" maxlength="500" />
   </view>
@@ -45,3 +51,4 @@
   <button class="primary publish-btn {{uploading ? 'disabled' : ''}}" bindtap="doPublish">{{uploading ? '发布中…' : '发布'}}</button>
   <view class="publish-tip">发布前会自动进行内容安全检测；违规内容无法发布</view>
 </view>
+<privacy-popup />

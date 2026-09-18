@@ -22,7 +22,8 @@ Page({
     ],
     defaultColors: [],
     bgColorValue: '',
-    backups: []
+    backups: [],
+    version: '1.6.0'
   },
 
   onShow() {

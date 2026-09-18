@@ -25,3 +25,6 @@
 .bi-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
 
 .clear-row { margin-top: 12px; }
+
+/* 关于区块 */
+.about-line{margin-top:8rpx;line-height:1.6}

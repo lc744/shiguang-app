@@ -9,6 +9,16 @@
     <view class="seg {{tab === 'mine' ? 'seg-on' : ''}}" data-tab="mine" bindtap="switchTab">我的发布</view>
   </view>
 
+  <!-- 攻略入口 -->
+  <view class="plan-entry card" wx:if="{{tab === 'feed'}}" bindtap="openPlanMaker">
+    <text class="plan-entry-emoji">🗺️</text>
+    <view class="plan-entry-text">
+      <text class="plan-entry-title">一键生成行程攻略</text>
+      <text class="plan-entry-sub">按城市聚合大家的推荐，排出一天吃喝玩乐</text>
+    </view>
+    <text class="id-arrow">›</text>
+  </view>
+
   <view wx:if="{{empty}}" class="share-empty">
     <text class="share-empty-emoji">{{tab === 'feed' ? '🌱' : '📭'}}</text>
     <text class="share-empty-text">{{tab === 'feed' ? '还没有人分享，来当第一个' : '你还没有发布过'}}</text>
@@ -58,4 +68,53 @@
 
   <!-- 悬浮发布按钮 -->
   <view class="share-fab" bindtap="goPublish">＋</view>
+
+  <!-- 攻略弹层：选城市/日期 -->
+  <view class="plan-mask" wx:if="{{planForm}}" catchtouchmove="noop">
+    <view class="plan-form card">
+      <view class="plan-form-title">生成行程攻略</view>
+      <view class="pf-row">
+        <text class="pf-label">城市</text>
+        <picker mode="region" bindchange="onPlanRegion" value="{{planRegion}}">
+          <view class="pf-value">{{planCity || '选择城市'}}</view>
+        </picker>
+      </view>
+      <view class="pf-row">
+        <text class="pf-label">出行日期</text>
+        <picker mode="date" start="{{today}}" value="{{planDate}}" bindchange="onPlanDate">
+          <view class="pf-value">{{planDate || '选择日期'}}</view>
+        </picker>
+      </view>
+      <view class="pp-btns">
+        <button class="pp-btn pf-cancel" bindtap="closePlanForm">取消</button>
+        <button class="pp-btn pf-ok" bindtap="makePlan">生成</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 攻略结果弹层 -->
+  <view class="plan-mask" wx:if="{{plan}}" catchtouchmove="noop">
+    <view class="plan-result card">
+      <view class="plan-form-title">{{plan.city}} · {{plan.dateLabel}}</view>
+      <view class="plan-sub">由大家的 {{plan.count}} 条推荐编排 · 加入提醒后到点自动弹出</view>
+      <view class="plan-list">
+        <view class="plan-item" wx:for="{{plan.items}}" wx:key="slot">
+          <text class="pi-emoji">{{item.emoji}}</text>
+          <view class="pi-main">
+            <view class="pi-head">
+              <text class="pi-slot">{{item.slot}}</text>
+              <text class="pi-time">{{item.time}}</text>
+            </view>
+            <text class="pi-name">{{item.name}}</text>
+            <text wx:if="{{item.addr}}" class="pi-addr">{{item.addr}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="pp-btns">
+        <button class="pp-btn pf-cancel" bindtap="regenPlan">换一换</button>
+        <button class="pp-btn pf-ok" bindtap="addPlanToEvents">加入提醒</button>
+      </view>
+      <view class="plan-close" bindtap="closePlan">收起</view>
+    </view>
+  </view>
 </view>

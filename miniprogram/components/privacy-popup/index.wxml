@@ -1,0 +1,14 @@
+<view wx:if="{{show}}" class="pp-mask" catchtouchmove="noop">
+  <view class="pp-card">
+    <view class="pp-title">用户隐私保护提示</view>
+    <view class="pp-body">
+      <text class="pp-text">在使用绸缪前，请阅读并同意</text>
+      <text class="pp-link" bindtap="openContract">《用户隐私保护指引》</text>
+      <text class="pp-text">。我们仅会在你使用对应功能时处理你的信息：录音与语音识别（麦克风）、发布推荐（相册选图/头像昵称）、数据导出（剪贴板）。信息不做对外共享。</text>
+    </view>
+    <view class="pp-btns">
+      <button class="pp-btn pp-no" bindtap="onDisagree">不同意</button>
+      <button class="pp-btn pp-yes" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgree" id="agree-btn">同意</button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,11 @@
+/* 隐私授权弹窗 */
+.pp-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center}
+.pp-card{width:600rpx;background:#fff;border-radius:28rpx;padding:40rpx 36rpx 30rpx}
+.pp-title{font-size:32rpx;font-weight:700;color:#26332e;text-align:center}
+.pp-body{margin-top:24rpx}
+.pp-text{display:inline;font-size:26rpx;color:#5b6a64;line-height:1.7}
+.pp-link{display:inline;font-size:26rpx;color:#246353;font-weight:600;text-decoration:underline}
+.pp-btns{display:flex;gap:20rpx;margin-top:36rpx}
+.pp-btn{flex:1;font-size:28rpx;border-radius:999rpx;line-height:2.4;padding:0}
+.pp-no{background:#eef2f0;color:#5b6a64}
+.pp-yes{background:#246353;color:#fff;font-weight:600}

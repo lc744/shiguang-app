@@ -35,3 +35,6 @@
 .publish-btn{margin-top:6px;height:48px;line-height:48px;border-radius:999px;font-size:15px}
 .publish-btn.disabled{opacity:.6}
 .publish-tip{text-align:center;font-size:11px;color:var(--sub);margin-top:10px}
+
+/* 城市选择器（模拟 input 样式） */
+.picker-sim{color:var(--text);line-height:1.4;padding:16rpx 20rpx}
