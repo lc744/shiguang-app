@@ -77,6 +77,5 @@
       <button class="danger-btn" bindtap="clearAll">清空全部事件</button>
     </view>
   </view>
-  <genie />
   </view>
 <privacy-popup />

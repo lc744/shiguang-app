@@ -121,6 +121,8 @@ Page({
     wx.switchTab({ url: '/pages/share/share' });
   },
 
+  goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
+
   // 绑定码登录 App：输入 app 端「微信登录」显示的 6 位码，云函数用 openid 确认
   onWxBind(){
     const id = readLocal() || {};

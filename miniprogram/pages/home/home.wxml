@@ -86,5 +86,4 @@
 
   <!-- 悬浮添加按钮 -->
   <button class="fab" bindtap="onAddTap">+</button>
-  <genie />
   </view>

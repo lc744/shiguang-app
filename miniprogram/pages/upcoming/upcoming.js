@@ -70,7 +70,5 @@ Page({
 
   onEventTap(e){ wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
 
-  goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
-
   onAddTap(){ wx.navigateTo({ url: '/pages/editor/editor' }); }
 });
