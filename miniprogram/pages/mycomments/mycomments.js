@@ -16,6 +16,10 @@ function fmtTime(ms){
   return (d.getMonth() + 1) + '月' + d.getDate() + '日';
 }
 
+// 帖子类型 emoji（对齐安卓 CMT_TYPE_EMOJI）
+const CMT_TYPE_EMOJI = { '美食': '🍜', '景点': '🏞', '娱乐': '🎡', '餐厅': '🍜' };
+const trunc = (s, n) => (String(s || '').length > n ? String(s).slice(0, n) + '…' : String(s || ''));
+
 Page({
   data: { list: [], loading: true },
 
@@ -25,12 +29,25 @@ Page({
     callPost({ action: 'myComments' })
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '加载失败');
-        this.setData({ list: (r.list || []).map(x => ({ ...x, timeText: fmtTime(x.createdAt) })), loading: false });
+        const list = (r.list || []).map(x => {
+          const gone = !!x.hidden || (!x.postId && !x.pname);
+          return {
+            ...x,
+            timeText: fmtTime(x.createdAt),
+            emoji: CMT_TYPE_EMOJI[x.ptype] || '📌',
+            postName: trunc(x.pname || x.paddr || '帖子', 16),
+            gone: gone
+          };
+        });
+        this.setData({ list, loading: false });
       })
       .catch(e => { this.setData({ loading: false }); wx.showToast({ title: e.message || '加载失败', icon: 'none' }); });
   },
 
-  goPost(e){ wx.navigateTo({ url: '/pages/share/post?id=' + e.currentTarget.dataset.pid }); },
+  goPost(e){
+    if(e.currentTarget.dataset.gone){ wx.showToast({ title: '原帖已删除或已下架', icon: 'none' }); return; }
+    wx.navigateTo({ url: '/pages/share/post?id=' + e.currentTarget.dataset.pid });
+  },
 
   onDel(e){
     const cid = e.currentTarget.dataset.cid;

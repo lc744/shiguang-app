@@ -212,7 +212,19 @@ exports.main = async (event) => {
         .where({ openid: OPENID, hidden: false })
         .orderBy('createdAt', 'desc').limit(50)
         .get();
-      return { ok: true, list: r.data.map(c => ({ cid: c._id, postId: c.postId, content: c.content, createdAt: c.createdAt })) };
+      // 批量取原帖信息（名称/类型/地址/隐藏态），对齐安卓 mc-item 条目结构
+      const cmts = r.data;
+      const pids = [...new Set(cmts.map(c => c.postId).filter(Boolean))];
+      const pmap = {};
+      for(const pid of pids){
+        const h = await db.collection(COL).doc(pid).get().catch(() => null);
+        if(h && h.data) pmap[pid] = { name: h.data.name || '', addr: h.data.addr || '', type: h.data.type || '', hidden: !!h.data.hidden };
+      }
+      return { ok: true, list: cmts.map(c => {
+        const p = pmap[c.postId] || null;
+        return { cid: c._id, postId: c.postId, content: c.content, createdAt: c.createdAt,
+          pname: p ? p.name : '', paddr: p ? p.addr : '', ptype: p ? p.type : '', hidden: p ? p.hidden : true };
+      }) };
     }
 
     // ---- 评论：发表（词库 + msgSecCheck + 频率限制） ----

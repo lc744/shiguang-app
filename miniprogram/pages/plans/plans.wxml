@@ -1,21 +1,25 @@
 <view class="shell">
   <view class="subhead">
-    <text class="subhead-title">🧳 旅游攻略</text>
+    <text class="subhead-title">🧳 我的旅游攻略</text>
     <text class="subhead-sub">点一份攻略恢复到分享页继续编辑</text>
   </view>
 
   <view wx:if="{{loading}}" class="pl-empty">加载中…</view>
-  <view wx:elif="{{!list.length}}" class="pl-empty">还没有攻略，去分享页点「🧳 攻略」生成一份吧</view>
+  <view wx:elif="{{!list.length}}" class="pl-empty">还没有攻略，去分享页点「🧳 攻略」生成一张吧</view>
   <view wx:else class="pl-list">
     <view class="pl-item card" wx:for="{{list}}" wx:key="id" bindtap="onOpen" data-id="{{item.id}}">
-      <view class="pl-head">
-        <text class="pl-city">{{item.city}} · 出行攻略</text>
-        <text class="pl-date">{{item.dateLabel}}</text>
-      </view>
-      <text class="pl-stops">{{item.count}} 站：{{item.stops}}</text>
-      <view class="pl-foot">
-        <text class="pl-open">点击恢复 ›</text>
-        <text class="pl-del" catchtap="onDel" data-id="{{item.id}}">删除</text>
+      <image wx:if="{{item.thumb}}" class="pl-thumb" src="{{item.thumb}}" mode="aspectFill" />
+      <view wx:else class="pl-thumb pl-thumb-ph">🧳</view>
+      <view class="pl-main">
+        <view class="pl-head">
+          <text class="pl-city">{{item.city}} · 一日游</text>
+          <text class="me-arrow">›</text>
+        </view>
+        <text class="pl-stops">{{item.stops}}</text>
+        <view class="pl-foot">
+          <text class="pl-date">{{item.dateLabel}}</text>
+          <text class="pl-del" catchtap="onDel" data-id="{{item.id}}">删除</text>
+        </view>
       </view>
     </view>
   </view>

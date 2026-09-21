@@ -281,7 +281,9 @@ Page({
     const mk = (slot, time, emoji, p, fbName) => ({
       slot, time, emoji,
       name: p ? (p.name || p.addr || fbName) : fbName,
-      addr: p ? (p.addr || '') : ''
+      addr: p ? (p.addr || '') : '',
+      pid: p ? p.id : '',
+      thumb: (p && p.photos && p.photos[0]) ? p.photos[0] : ''
     });
     const picks = (arr, n) => {
       const a = (arr || []).filter(x => x).slice();

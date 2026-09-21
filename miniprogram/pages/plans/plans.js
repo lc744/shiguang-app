@@ -20,12 +20,17 @@ Page({
     callPost({ action: 'planList' })
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '加载失败');
-        const list = (r.list || []).map(p => ({
-          ...p,
-          dateLabel: fmtDate(p.dateIso),
-          count: (p.items || []).length,
-          stops: (p.items || []).map(x => x.name).filter(Boolean).slice(0, 3).join(' · ')
-        }));
+        const list = (r.list || []).map(p => {
+          const items = p.items || [];
+          const th = items.find(x => x.thumb);
+          return {
+            ...p,
+            dateLabel: fmtDate(p.dateIso),
+            count: items.length,
+            thumb: th ? th.thumb : '',
+            stops: items.filter(x => x.pid).map(x => x.name).slice(0, 3).join(' · ') || '暂无具体点位'
+          };
+        });
         this.setData({ list, loading: false });
       })
       .catch(e => { this.setData({ loading: false }); wx.showToast({ title: e.message || '加载失败', icon: 'none' }); });
