@@ -20,7 +20,7 @@
 
   <!-- 照片 -->
   <view class="card p-block">
-    <view class="p-label">照片<text class="p-optional">（最多 3 张，第一张为封面）</text></view>
+    <view class="p-label">照片<text class="p-optional">（选填，最多 3 张；不传则按类型配官方美图）</text></view>
     <view class="photo-grid">
       <view class="photo-cell" wx:for="{{photos}}" wx:key="*this">
         <image class="photo-img" src="{{item}}" mode="aspectFill" data-i="{{index}}" bindtap="previewPhoto" />
@@ -36,7 +36,7 @@
     <view class="type-row">
       <view wx:for="{{types}}" wx:key="*this" class="type-chip {{type === item ? 'on' : ''}}" data-t="{{item}}" bindtap="setType">{{item}}</view>
     </view>
-    <view class="p-label mt">名称<text class="p-optional">（选填，不填用位置代替）</text></view>
+    <view class="p-label mt">名称<text class="p-optional">（选填）</text></view>
     <input class="p-input" placeholder="比如：巷口的抄手店" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="30" />
     <view class="p-label mt">所在城市<text class="p-optional">（用于攻略聚合推荐）</text></view>
     <picker mode="region" bindchange="onRegion" value="{{region}}">
@@ -49,7 +49,7 @@
   </view>
 
   <button class="primary publish-btn {{uploading ? 'disabled' : ''}}" bindtap="doPublish">{{uploading ? '发布中…' : '发布'}}</button>
-  <view class="publish-tip">发布前会自动进行内容安全检测；不传照片时会自动配一张默认图</view>
+  <view class="publish-tip">请文明发布：分享真实体验，尊重他人</view>
 </view>
 <canvas type="2d" id="defcanvas" style="position:fixed;left:-9999px;top:-9999px;width:480px;height:360px"></canvas>
 <privacy-popup />

@@ -248,7 +248,7 @@ Page({
   },
   noop(){},
   closePlanForm(){ if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false); this.setData({ planForm: false }); },
-  closePlan(){ if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false); this.setData({ plan: null }); },
+  closePlan(){ if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false); this.setData({ plan: null, planImg: '' }); },
   onPlanRegion(e){
     const v = (e.detail && e.detail.value) || [];
     this.setData({ planRegion: v, planCity: (v[1] || '').replace(/市辖区|县/g, '') || (v[0] || '') });
@@ -308,8 +308,11 @@ Page({
         dateLabel: dateIso.slice(5).replace('-', '月') + '日',
         count: used,
         items: items.map(it => ({ ...it, added: false }))
-      }
+      },
+      planImg: ''
     });
+    // 自动渲染海报图（对齐安卓：结果弹层以海报图为主体）
+    this._renderPlanImg();
   },
 
   regenPlan(){
@@ -338,69 +341,99 @@ Page({
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '保存失败', icon: 'none' }); });
   },
 
-  // 生成攻略海报（canvas 600x860：城市/日期/五时段 + 品牌脚注），保存到相册
-  makePlanPoster(){
-    const plan = this.data.plan;
-    if(!plan || !(plan.items || []).length) return;
-    const q = wx.createSelectorQuery();
-    q.select('#plancanvas').fields({ node: true }).exec(res => {
-      if(!res || !res[0] || !res[0].node){ wx.showToast({ title: '画布未就绪', icon: 'none' }); return; }
-      const canvas = res[0].node;
-      const W = 600, H = 860;
-      canvas.width = W; canvas.height = H;
-      const x = canvas.getContext('2d');
-      // 背景
-      let g = x.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#246353'); g.addColorStop(.55, '#3c8a70'); g.addColorStop(1, '#eaf6f0');
-      x.fillStyle = g; x.fillRect(0, 0, W, H);
-      // 标题
-      x.fillStyle = '#fff';
-      x.font = 'bold 40px sans-serif';
-      x.textAlign = 'center';
-      x.fillText(plan.city + ' · 出行攻略', W / 2, 96);
-      x.font = '24px sans-serif';
-      x.fillStyle = 'rgba(255,255,255,.85)';
-      x.fillText(plan.dateLabel + ' 由绸缪为你编排', W / 2, 138);
-      // 行程卡片
-      const rows = plan.items || [];
-      const top = 180, rh = 116, cw = 524, cx = (W - cw) / 2;
-      x.textAlign = 'left';
-      rows.forEach((it, i) => {
-        const y = top + i * rh;
-        x.fillStyle = 'rgba(255,255,255,.94)';
-        x.fillRect(cx, y, cw, rh - 18);
-        x.font = 'bold 30px sans-serif';
-        x.fillStyle = '#246353';
-        x.fillText((it.emoji || '📍') + ' ' + it.slot + ' ' + it.time, cx + 26, y + 44);
-        x.font = '26px sans-serif';
-        x.fillStyle = '#333';
-        const name = String(it.name || '').slice(0, 15);
-        x.fillText(name, cx + 26, y + 82);
-      });
-      // 脚注
-      x.textAlign = 'center';
-      x.fillStyle = 'rgba(36,99,83,.85)';
-      x.font = 'bold 26px sans-serif';
-      x.fillText('绸缪 · 未雨绸缪', W / 2, H - 28);
-      // 导出保存
-      wx.canvasToTempFilePath({
-        canvas,
-        success: r => {
-          wx.saveImageToPhotosAlbum({
-            filePath: r.tempFilePath,
-            success: () => wx.showToast({ title: '海报已保存到相册', icon: 'none' }),
-            fail: err => {
-              if(err.errMsg && err.errMsg.indexOf('auth') >= 0){
-                wx.showModal({ title: '需要相册权限', content: '请在设置中允许保存到相册', confirmText: '去设置', success: s => { if(s.confirm) wx.openSetting(); } });
-              } else {
-                wx.showToast({ title: '保存失败', icon: 'none' });
-              }
-            }
-          });
-        },
-        fail: () => wx.showToast({ title: '海报生成失败', icon: 'none' })
+  // 绘制攻略海报（canvas 600x860：城市/日期/五时段 + 品牌脚注）→ 临时文件路径
+  _drawPlanPoster(plan){
+    return new Promise((resolve, reject) => {
+      const q = wx.createSelectorQuery();
+      q.select('#plancanvas').fields({ node: true }).exec(res => {
+        if(!res || !res[0] || !res[0].node){ reject(new Error('画布未就绪')); return; }
+        const canvas = res[0].node;
+        const W = 600, H = 860;
+        canvas.width = W; canvas.height = H;
+        const x = canvas.getContext('2d');
+        // 背景
+        let g = x.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#246353'); g.addColorStop(.55, '#3c8a70'); g.addColorStop(1, '#eaf6f0');
+        x.fillStyle = g; x.fillRect(0, 0, W, H);
+        // 标题
+        x.fillStyle = '#fff';
+        x.font = 'bold 40px sans-serif';
+        x.textAlign = 'center';
+        x.fillText(plan.city + ' · 出行攻略', W / 2, 96);
+        x.font = '24px sans-serif';
+        x.fillStyle = 'rgba(255,255,255,.85)';
+        x.fillText(plan.dateLabel + ' 由绸缪为你编排', W / 2, 138);
+        // 行程卡片
+        const rows = plan.items || [];
+        const top = 180, rh = 116, cw = 524, cx = (W - cw) / 2;
+        x.textAlign = 'left';
+        rows.forEach((it, i) => {
+          const y = top + i * rh;
+          x.fillStyle = 'rgba(255,255,255,.94)';
+          x.fillRect(cx, y, cw, rh - 18);
+          x.font = 'bold 30px sans-serif';
+          x.fillStyle = '#246353';
+          x.fillText((it.emoji || '📍') + ' ' + it.slot + ' ' + it.time, cx + 26, y + 44);
+          x.font = '26px sans-serif';
+          x.fillStyle = '#333';
+          const name = String(it.name || '').slice(0, 15);
+          x.fillText(name, cx + 26, y + 82);
+        });
+        // 脚注
+        x.textAlign = 'center';
+        x.fillStyle = 'rgba(36,99,83,.85)';
+        x.font = 'bold 26px sans-serif';
+        x.fillText('绸缪 · 未雨绸缪', W / 2, H - 28);
+        // 导出临时文件
+        wx.canvasToTempFilePath({
+          canvas,
+          success: r => resolve(r.tempFilePath),
+          fail: () => reject(new Error('海报导出失败'))
+        });
       });
     });
+  },
+
+  // 生成攻略后自动渲染海报图进结果弹层（对齐安卓 planOverlay：海报图为主体）
+  _renderPlanImg(){
+    const plan = this.data.plan;
+    if(!plan || !(plan.items || []).length) return;
+    this._drawPlanPoster(plan)
+      .then(path => this.setData({ planImg: path }))
+      .catch(() => {});
+  },
+
+  // 保存海报到相册（海报已在结果弹层自动生成）
+  makePlanPoster(){
+    if(this.data.planImg){
+      wx.saveImageToPhotosAlbum({
+        filePath: this.data.planImg,
+        success: () => wx.showToast({ title: '海报已保存到相册', icon: 'none' }),
+        fail: err => {
+          if(err.errMsg && err.errMsg.indexOf('auth') >= 0){
+            wx.showModal({ title: '需要相册权限', content: '请在设置中允许保存到相册', confirmText: '去设置', success: s => { if(s.confirm) wx.openSetting(); } });
+          } else {
+            wx.showToast({ title: '保存失败', icon: 'none' });
+          }
+        }
+      });
+      return;
+    }
+    const plan = this.data.plan;
+    if(!plan || !(plan.items || []).length) return;
+    wx.showLoading({ title: '生成海报中…', mask: true });
+    this._drawPlanPoster(plan)
+      .then(path => {
+        wx.hideLoading();
+        this.setData({ planImg: path });
+        this.makePlanPoster();
+      })
+      .catch(() => { wx.hideLoading(); wx.showToast({ title: '海报生成失败', icon: 'none' }); });
+  },
+
+  // 预览海报大图
+  previewPlanImg(){
+    if(this.data.planImg) wx.previewImage({ urls: [this.data.planImg] });
   },
 
   /* ---------------- 国家名胜库（对齐 App scenicOverlay：省/等级/搜索筛选 + 一键攻略/筛feed） ---------------- */

@@ -34,7 +34,7 @@
             value="{{draftNickname}}"
             bindinput="onDraftNickname"
             bindblur="onDraftNickname"
-            maxlength="20"
+            maxlength="12"
           />
         </view>
         <view class="me-edit-tip">头像默认使用你的微信头像，也可以换</view>

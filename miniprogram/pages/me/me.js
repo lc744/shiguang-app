@@ -199,10 +199,11 @@ Page({
 
   /* 性别 / 出生年月（对齐 App 资料行，本地保存） */
   onPickGender(){
+    // 选项对齐安卓 genderOverlay：未设置 / 男 / 女
     wx.showActionSheet({
-      itemList: ['男', '女', '保密'],
+      itemList: ['男', '女', '未设置'],
       success: res => {
-        const g = ['男', '女', '保密'][res.tapIndex] || '';
+        const g = ['男', '女', ''][res.tapIndex];
         const id = readLocal() || {};
         try{ wx.setStorageSync(ID_KEY, { ...id, gender: g }); }catch(e){}
         this.setData({ gender: g });
