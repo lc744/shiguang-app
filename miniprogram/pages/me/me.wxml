@@ -1,4 +1,6 @@
 <view class="shell {{themeClass}}" style="padding-bottom:280rpx">
+  <!-- 测试条：确认代码热更（验证后删除） -->
+  <view style="height:60px;background:#ff3b30;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">测试条 1 — 能看到说明代码生效</view>
   <view class="subhead">
     <text class="subhead-title">我的</text>
     <text class="subhead-sub">账号、发布与提醒设置都在这里</text>
