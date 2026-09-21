@@ -31,7 +31,6 @@
       <view class="action-row">
         <button class="danger-btn" bindtap="onDelete">删除</button>
         <button class="secondary" bindtap="onSnooze">延后 10 分钟</button>
-        <button class="primary" bindtap="onComplete">完成</button>
       </view>
       <view class="action-row">
         <button class="secondary edit-btn" bindtap="onEdit">✎ 编辑此事件</button>

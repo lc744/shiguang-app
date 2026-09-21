@@ -47,8 +47,8 @@ Page({
     const due = new Date(e.date + 'T' + e.time + ':00');
     let status;
     if(core.isDoneOn(e, t)) status = '已完成';
-    else if(due < new Date()) status = '已错过';
-    else status = '待办';
+    else if(due < new Date()) status = '已到点';
+    else status = '待提醒';
     const repeat = core.repeatLabel(e);
     this.setData({
       name: e.name,
@@ -90,15 +90,6 @@ Page({
     if(!e) return;
     const snooze = notify.snoozeEvent(e, 10);
     wx.showToast({ title: '已延后到 ' + snooze.slice(11) + ' 再提醒', icon: 'none' });
-    this.goBack();
-  },
-
-  onComplete(){
-    const e = store.findEvent(this._id);
-    if(!e) return;
-    notify.completeToday(e);
-    subscribe.ensureSync(e);   // 完成状态同步到云端，到期不再推送
-    wx.showToast({ title: '已标记完成', icon: 'none' });
     this.goBack();
   }
 });
