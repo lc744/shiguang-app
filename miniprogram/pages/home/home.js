@@ -48,6 +48,14 @@ Page({
     const app = getApp();
     return !!(app && app.globalData && app.globalData.resolvedTheme === 'dark');
   },
+
+  // 滚动联动 tabBar：向下浏览自动隐藏、回到顶部恢复（内容不被 tab 遮挡）
+  onPageScroll(e){
+    const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
+    if(!tb || !tb.setHidden) return;
+    const hide = e.scrollTop > 80;
+    if(tb.data.hidden !== hide) tb.setHidden(hide);
+  },
   onShow(){
     if(typeof this.getTabBar === 'function' && this.getTabBar()){
       const tb = this.getTabBar();
