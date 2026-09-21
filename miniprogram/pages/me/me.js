@@ -20,6 +20,7 @@ Page({
     statPosts: '—',
     gender: '',
     birth: '',
+  birthFull: '',
     adminMode: false
   },
 
@@ -58,7 +59,13 @@ Page({
       this.setData({ statEvents: events.length, statDone: doneCount });
     }catch(e){}
     const local = readLocal();
-    this.setData({ gender: local.gender || '', birth: local.birth || '' });
+    const birthVal = local.birth || '';
+    this.setData({
+      gender: local.gender || '',
+      birth: birthVal,
+      birthFull: birthVal.length === 7 ? birthVal + '-01' : birthVal,
+      todayStr: core.todayStr()
+    });
     if(!local || !local.nickname){
       this.setData({ loading: false, loggedIn: false, editing: false });
       return;
@@ -202,23 +209,44 @@ Page({
       }
     });
   },
-  onPickBirth(){
-    const now = new Date();
-    const cur = this.data.birth || (now.getFullYear() - 10) + '-01';
-    wx.showModal({
-      title: '出生年月',
-      editable: true,
-      placeholderText: '格式：2000-06',
-      content: cur.length >= 7 ? cur : '',
-      success: res => {
-        if(!res.confirm) return;
-        const v = String(res.content || '').trim();
-        if(v && !/^\d{4}-\d{2}$/.test(v)){ wx.showToast({ title: '格式应为 2000-06', icon: 'none' }); return; }
-        const id = readLocal() || {};
-        try{ wx.setStorageSync(ID_KEY, { ...id, birth: v }); }catch(e){}
-        this.setData({ birth: v });
+  // 出生年月（picker 选完整日期，对齐安卓 date input）：保存后自动同步生日事件
+  onPickBirth(e){
+    const v = String(e.detail.value || '').trim();   // YYYY-MM-DD
+    if(!v) return;
+    const id = readLocal() || {};
+    try{ wx.setStorageSync(ID_KEY, { ...id, birth: v }); }catch(err){}
+    this.setData({ birth: v, birthFull: v });
+    this.syncAutoBirthdayEvent();
+    wx.showToast({ title: '出生日期已保存，每年当天会送上生日祝福', icon: 'none' });
+  },
+
+  // 生日事件自动同步（一比一移植安卓 profile.js syncAutoBirthdayEvent）：
+  // 有出生日期 → 创建/更新 autoBirthday 事件；清空 → 删除。日期变化时重置触发记录。
+  syncAutoBirthdayEvent(){
+    try{
+      const events = store.getEvents();
+      const birth = this.data.birthFull || this.data.birth || '';
+      const date = birth.length === 7 ? birth + '-01' : birth;   // 兼容旧 YYYY-MM 数据
+      const nick = (this.data.nickname || '我').slice(0, 12);
+      const name = nick + '的生日';
+      const idx = events.findIndex(ev => ev && ev.autoBirthday);
+      if(!date){
+        if(idx >= 0){ store.setEvents(events.filter((ev, i) => i !== idx)); }
+        return;
       }
-    });
+      if(idx >= 0){
+        const ev = events[idx];
+        if(ev.date !== date){ ev.date = date; ev.doneOn = []; ev.firedOn = []; }
+        ev.name = name;
+        store.setEvents(events);
+      } else {
+        store.setEvents(events.concat([{
+          id: 'auto-bday', name: name, note: '来自个人资料的出生日期', date: date, time: '09:00',
+          emoji: '🎂 生日快乐', voice: '', voiceData: null, weekdays: [],
+          isBirthday: true, lunarBirthday: false, autoBirthday: true, doneOn: [], firedOn: []
+        }]));
+      }
+    }catch(err){}
   },
 
   // 绑定码登录 App：输入 app 端「微信登录」显示的 6 位码，云函数用 openid 确认

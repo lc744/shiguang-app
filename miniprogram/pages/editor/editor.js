@@ -29,7 +29,10 @@ Page({
     repeatMode: 'none',   // none | daily | weekdays | custom
     weekdays: [],         // 自定义重复时选中的星期（1..7，1=周一）
     weekdayChips: [],
-    // 生日
+    // 字段级校验红字（对齐安卓 errName/errTime）
+    errName: false,
+    errTime: false,
+    // 生日（编辑已存在的生日事件时保留属性；表单无开关）
     isBirthday: false,
     lunarBirthday: false,
     // 表情 / 音色
@@ -75,7 +78,8 @@ Page({
       isEdit: !!e,
       editingId: editingId,
       today: today,
-      dateMin: today,
+      // 生日事件允许过去日期（每年触发）；普通事件只能选今天及以后
+      dateMin: (e && e.isBirthday) ? '1900-01-01' : today,
       form: {
         name: e ? e.name : '',
         note: e ? (e.note || '') : '',
@@ -120,7 +124,7 @@ Page({
   },
 
   /* ---------------- 表单输入 ---------------- */
-  onNameInput(e) { this.setData({ 'form.name': e.detail.value }); },
+  onNameInput(e) { this.setData({ 'form.name': e.detail.value, errName: false }); },
   onNoteInput(e) { this.setData({ 'form.note': e.detail.value }); },
   onDateChange(e) { this.setData({ 'form.date': e.detail.value }); },
   onTimeChange(e) { this.setData({ 'form.time': e.detail.value }); },
@@ -169,16 +173,8 @@ Page({
     this.setData({ weekdays: sel, weekdayChips: this.buildWdChips(sel) });
   },
 
-  /* ---------------- 生日开关 ---------------- */
-  toggleBirthday() {
-    const on = !this.data.isBirthday;
-    // 生日可选过去日期（每年触发，occursOn 已处理 ds >= e.date）
-    this.setData({ isBirthday: on, dateMin: on ? '1900-01-31' : this.data.today });
-  },
-
-  toggleLunarBirthday() {
-    this.setData({ lunarBirthday: !this.data.lunarBirthday });
-  },
+  /* 生日事件由「我的」页出生年月自动生成（对齐安卓）：表单不提供开关。
+     编辑已存在的生日事件时保持其生日属性（isBirthday/lunarBirthday 只随原事件），不可转普通事件。 */
 
   /* ---------------- 表情 chips ---------------- */
   buildEmojiList(selected) {
@@ -347,8 +343,10 @@ Page({
     const date = d.form.date;
     const time = d.form.time;
 
-    if (!name) { wx.showToast({ title: '请填写事件名称', icon: 'none' }); return; }
-    if (!date || !time) { wx.showToast({ title: '请选择提醒日期和时间', icon: 'none' }); return; }
+    if (!name) { this.setData({ errName: true }); return; }
+    this.setData({ errName: false });
+    if (!date || !time) { this.setData({ errTime: true }); return; }
+    this.setData({ errTime: false });
     // 格式校验：畸形日期会让 new Date() 返回 NaN 从而绕过未来时间检查（真机出现过）
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time) || isNaN(new Date(date + 'T' + time + ':00').getTime())) {
       wx.showToast({ title: '日期或时间格式异常，请重新选择', icon: 'none' });
@@ -356,7 +354,7 @@ Page({
     }
     // 普通事件要求未来时间；生日每年触发，允许过去日期
     if (!d.isBirthday && new Date(date + 'T' + time + ':00') <= new Date()) {
-      wx.showToast({ title: '请选择未来的日期和时间', icon: 'none' });
+      this.setData({ errTime: true });
       return;
     }
     if (d.repeatMode === 'custom' && !d.weekdays.length) {

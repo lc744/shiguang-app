@@ -10,6 +10,7 @@
       <view class="field">
         <label>事件名称（必填）</label>
         <input value="{{form.name}}" maxlength="30" placeholder="例如：下班、提交周报" bindinput="onNameInput" />
+        <view class="err" wx:if="{{errName}}">请填写事件名称</view>
       </view>
 
       <!-- 备注 -->
@@ -49,15 +50,8 @@
         </view>
       </view>
 
-      <!-- 生日提醒 -->
-      <view class="field">
-        <label>🎂 生日提醒</label>
-        <view class="chips">
-          <view class="{{isBirthday ? 'chip selected' : 'chip'}}" bindtap="toggleBirthday">{{isBirthday ? '已开启' : '关闭'}}</view>
-          <view wx:if="{{isBirthday}}" class="{{lunarBirthday ? 'chip selected' : 'chip'}}" bindtap="toggleLunarBirthday">{{lunarBirthday ? '农历生日' : '公历生日'}}</view>
-        </view>
-        <view class="f-tip">开启后每年当天提醒并送上生日祝福（支持公历或农历生日）</view>
-      </view>
+      <!-- 生日事件由「我的」页出生年月自动生成（对齐安卓），表单不再提供开关 -->
+      <view class="err err-time" wx:if="{{errTime}}">请选择有效的未来日期和时间</view>
 
       <!-- 提醒表情包 -->
       <view class="field">
@@ -84,7 +78,7 @@
             <view wx:if="{{item.phrase}}" class="voice-phrase">{{item.phrase}}</view>
           </view>
         </view>
-        <view class="f-tip">到点后使用“微信同声传译”插件在线合成语音播报（需联网）；选择“自定义录音”可改用你自己的声音。</view>
+        <view class="f-tip">到点后会使用云端语音合成朗读事件名称和备注（需联网）；选择"自定义录音"可改用你自己的声音。</view>
         <view class="recorder {{selectedVoice === '自定义录音' ? 'show' : ''}}">
           <view class="rec-head">
             <text class="rec-tip">{{recTip}}</text>

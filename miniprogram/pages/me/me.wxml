@@ -88,12 +88,14 @@
         <text class="me-info-value {{gender ? '' : 'info-unset'}}">{{gender || '未设置'}}</text>
         <text class="me-arrow">›</text>
       </view>
-      <view class="me-item" bindtap="onPickBirth">
-        <text class="me-item-emoji">🎂</text>
-        <text class="me-item-label">出生年月</text>
-        <text class="me-info-value {{birth ? '' : 'info-unset'}}">{{birth || '未设置'}}</text>
-        <text class="me-arrow">›</text>
-      </view>
+      <picker mode="date" value="{{birthFull}}" start="1900-01-01" end="{{todayStr}}" bindchange="onPickBirth">
+        <view class="me-item">
+          <text class="me-item-emoji">🎂</text>
+          <text class="me-item-label">出生年月</text>
+          <text class="me-info-value {{birth ? '' : 'info-unset'}}">{{birth || '未设置'}}</text>
+          <text class="me-arrow">›</text>
+        </view>
+      </picker>
       <view class="me-item" bindtap="goMyPosts">
         <text class="me-item-emoji">📮</text>
         <text class="me-item-label">我的发布</text>

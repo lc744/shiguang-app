@@ -24,3 +24,7 @@
 /* 录音块（.recorder/.rec-head/.rec-time/.rec-actions 复用全局；内部 text/button 补齐） */
 .rec-head .rec-tip { color: var(--sub); font-size: 12px; flex: 1; margin-right: 8px; }
 .rec-actions .rec-main { background: linear-gradient(135deg, var(--main) 0%, var(--main2) 100%); color: #fff; border: 0; }
+
+/* 字段级校验红字（对齐安卓 .err） */
+.err{color:#c65c52;font-size:11px;margin-top:4px}
+.err-time{margin:0 0 8px}
