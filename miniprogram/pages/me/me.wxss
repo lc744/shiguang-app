@@ -1,5 +1,5 @@
 /* 我的 */
-.shell{min-height:100vh;background:var(--bg);padding:0 18px 210rpx}
+.shell{min-height:100vh;background:var(--bg);padding:0 18px 260rpx}
 .subhead{padding:14px 0 4px}
 .subhead-title{font-size:21px;font-weight:800;color:var(--text)}
 .subhead-sub{display:block;font-size:12px;color:var(--sub);margin-top:3px}

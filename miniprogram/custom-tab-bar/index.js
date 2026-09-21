@@ -6,7 +6,7 @@ Component({
     list: [
       { pagePath: '/pages/home/home', icon: '⌂', label: '今天' },
       { pagePath: '/pages/upcoming/upcoming', icon: '⏳', label: '预告' },
-      { pagePath: '/pages/genie/genie', icon: '🧚', label: '精灵' },
+      { pagePath: '', icon: '', label: '' },   // 占位：中间精灵按钮（点击弹面板，不切页）
       { pagePath: '/pages/share/share', icon: '✦', label: '分享' },
       { pagePath: '/pages/me/me', icon: '👤', label: '我的' }
     ]
