@@ -6,13 +6,13 @@
       <text class="brand-sub">记事 · 闹钟 · 语音包 · 表情包</text>
     </view>
     <view class="header-actions">
-      <button class="icon-btn" bindtap="onSyncTap">↻</button>
+      <button class="icon-btn txt-btn" bindtap="goCalendar">日历</button>
     </view>
   </view>
 
-  <!-- hero 幻灯片 -->
+  <!-- hero 幻灯片（对齐 App：‹ › 手动切换 + 5 秒自动轮播） -->
   <view class="hero">
-    <swiper class="hero-swiper" autoplay="{{true}}" circular="{{true}}" interval="5000">
+    <swiper class="hero-swiper" current="{{slideIndex}}" autoplay="{{true}}" circular="{{true}}" interval="5000" bindchange="onSlideChange">
       <swiper-item wx:for="{{slides}}" wx:key="idx">
         <view class="hero-text">
           <text class="hero-cat">{{item.heroCat}}</text>
@@ -24,6 +24,8 @@
         </view>
       </swiper-item>
     </swiper>
+    <view class="slide-nav-btn slide-prev" bindtap="prevSlide">‹</view>
+    <view class="slide-nav-btn slide-next" bindtap="nextSlide">›</view>
   </view>
 
   <!-- 统计卡（对齐 App：待办/完成/清空事件） -->
@@ -44,13 +46,13 @@
     <view class="missed-banner">
       <view class="missed-head">
         <text class="missed-title">⏰ 有 {{missedCount}} 个提醒已错过</text>
-        <button class="missed-close" bindtap="onHideMissed">知道了</button>
+        <view class="missed-close" bindtap="onHideMissed">✕</view>
       </view>
       <view class="missed-item" wx:for="{{missedItems}}" wx:key="id" bindtap="onMissedTap" data-id="{{item.id}}">
+        <text class="mi-time">{{item.time}}</text>
+        <text class="mi-name">{{item.name}}</text>
         <image wx:if="{{item.emojiImg}}" class="mi-emoji-img" src="{{item.emojiImg}}" mode="aspectFit" />
         <text wx:else class="mi-emoji">{{item.emojiText}}</text>
-        <text class="mi-name">{{item.name}}</text>
-        <text class="mi-time">已错过 {{item.time}}</text>
       </view>
       <text class="missed-more" wx:if="{{missedMore > 0}}">还有 {{missedMore}} 个已错过…</text>
     </view>
@@ -78,9 +80,10 @@
             </view>
             <view class="tag"><text>{{item.voiceTag}}</text></view>
             <view class="tag" wx:if="{{item.repeatTag}}"><text>{{item.repeatTag}}</text></view>
+            <view class="tag tag-overdue" wx:if="{{item.overdue}}"><text>⏰ 已到点</text></view>
           </view>
         </view>
-        <button class="event-check" catchtap="onToggleDone" data-id="{{item.id}}">✓</button>
+        <view class="done-pill" wx:if="{{item.done}}">已完成</view>
       </view>
     </block>
   </view>

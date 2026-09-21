@@ -17,6 +17,7 @@ Page({
     statTodo: 0,
     statDone: 0,
     slides: [],
+    slideIndex: 0,
     missedVisible: false,
     missedCount: 0,
     missedItems: [],
@@ -113,6 +114,7 @@ Page({
 
     const list = todays.map(e => {
       const repeat = core.repeatLabel(e);
+      const nowHM = core.pad(new Date().getHours()) + ':' + core.pad(new Date().getMinutes());
       return {
         id: e.id,
         time: e.time,
@@ -120,6 +122,7 @@ Page({
         name: e.name,
         note: e.note || '无备注',
         done: core.isDoneOn(e, t),
+        overdue: !core.isDoneOn(e, t) && e.time <= nowHM,
         emojiImg: store.isCustomEmoji(e.emoji) ? store.emojiSrc(e.emoji) : '',
         emojiText: store.emojiIcon(e.emoji),
         voiceTag: (e.voice === '自定义录音' && e.voiceData) ? '● 已录音' : '♫ ' + (e.voice || ''),
@@ -140,7 +143,18 @@ Page({
     });
   },
 
-  onSyncTap(){ wx.showToast({ title: '数据已保存在本机', icon: 'none' }); },
+  goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
+
+  // hero 幻灯片手动切换（对齐 App prevSlide/nextSlide）
+  prevSlide(){
+    const n = this.data.slides.length;
+    this.setData({ slideIndex: ((this.data.slideIndex || 0) - 1 + n) % n });
+  },
+  nextSlide(){
+    const n = this.data.slides.length;
+    this.setData({ slideIndex: ((this.data.slideIndex || 0) + 1) % n });
+  },
+  onSlideChange(e){ this.setData({ slideIndex: e.detail.current }); },
 
   onAddTap(){ wx.navigateTo({ url: '/pages/editor/editor' }); },
 

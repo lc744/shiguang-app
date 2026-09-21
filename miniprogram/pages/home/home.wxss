@@ -27,11 +27,26 @@
 
 /* 错过横幅内文本 */
 .missed-title{font-size:13px;color:#9a6a00;font-weight:700}
-.mi-emoji{font-size:16px;line-height:1}
-.mi-emoji-img{width:16px;height:16px}
-.mi-name{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mi-time{font-size:11px;color:#9a6a00}
 .theme-dark .missed-title,.theme-dark .mi-time{color:#e3b95c}
 
 /* 自定义 tabBar 留白 */
 .shell{padding-bottom:260rpx}
+/* ===== 对齐 App 首页样式 ===== */
+/* hero 切换按钮（slide-nav-btn） */
+.slide-nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.75);color:var(--main);font-size:20px;line-height:34px;text-align:center;z-index:2;box-shadow:0 2px 8px rgba(18,48,39,.12)}
+.slide-prev{left:10px}
+.slide-next{right:10px}
+/* header 文字按钮（日历） */
+.txt-btn{width:auto;padding:0 14px;font-size:14px;border-radius:999px}
+/* 已完成徽章 */
+.done-pill{flex:none;align-self:center;font-size:11px;color:#fff;background:var(--main);border-radius:999px;padding:4px 10px;font-weight:600}
+/* 已到点 tag */
+.tag-overdue{background:rgba(198,92,82,.12)}
+.tag-overdue text{color:#c65c52 !important}
+/* 错过横幅条目：单行内联（time + name + emoji） */
+.missed-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bg)}
+.mi-time{font-size:13px;color:var(--sub);flex:none}
+.mi-name{flex:1;font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-emoji{font-size:16px}
+.mi-emoji-img{width:18px;height:18px}
+.missed-close{width:26px;height:26px;border-radius:50%;background:var(--bg);color:var(--sub);display:flex;align-items:center;justify-content:center;font-size:13px;padding:0}
