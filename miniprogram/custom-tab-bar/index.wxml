@@ -9,6 +9,6 @@
   >
     <image wx:if="{{index === 2}}" class="tab-genie-img" src="/images/genie.jpg" mode="aspectFill" />
     <text wx:else class="tab-icon">{{item.icon}}</text>
-    <text class="tab-label">{{item.label}}</text>
+    <text wx:if="{{index !== 2}}" class="tab-label">{{item.label}}</text>
   </view>
 </view>

@@ -88,3 +88,4 @@
   <!-- 悬浮添加按钮 -->
   <button class="fab" bindtap="onAddTap">+</button>
   </view>
+<genie id="geniecomp" showfab="{{false}}" />

@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "我的",
   "usingComponents": {}
+  ,"usingComponents": {
+    "genie": "../../components/genie/genie"
+  }
 }

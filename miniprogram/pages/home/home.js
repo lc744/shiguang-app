@@ -38,6 +38,12 @@ Page({
   },
 
 
+
+  // tabBar 精灵入口：弹出聊天小面板（对齐 App genie-panel）
+  openGeniePanel(){
+    const c = this.selectComponent('#geniecomp');
+    if(c && c.openPanel) c.openPanel();
+  },
   _isDarkTheme(){
     const app = getApp();
     return !!(app && app.globalData && app.globalData.resolvedTheme === 'dark');

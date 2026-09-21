@@ -1,6 +1,6 @@
 <!-- 绸缪精灵 · 悬浮聊天面板（结构照原版 index.html genie-fab / genie-panel） -->
-<!-- 关闭态：右下角圆形头像悬浮按钮 -->
-<view class="genie-fab" hover-class="genie-fab-hover" bindtap="onFabTap">
+<!-- 关闭态：右下角圆形头像悬浮按钮（showfab=false 时隐藏，入口走 tabBar） -->
+<view class="genie-fab" wx:if="{{showfab}}" hover-class="genie-fab-hover" bindtap="onFabTap">
   <image class="genie-fab-img" src="/images/genie.jpg" mode="aspectFill" />
 </view>
 

@@ -14,7 +14,15 @@ Component({
   methods: {
     switchTab(e){
       const { path, index } = e.currentTarget.dataset;
-      if(index === this.data.selected && path !== '/pages/genie/genie') return;
+      // 中间精灵（对齐 App）：不切页，在当前页弹出聊天小面板
+      if(Number(index) === 2){
+        const pages = getCurrentPages();
+        const page = pages[pages.length - 1];
+        if(page && page.openGeniePanel) page.openGeniePanel();
+        else wx.showToast({ title: '稍等一下再试', icon: 'none' });
+        return;
+      }
+      if(index === this.data.selected) return;
       wx.switchTab({ url: path });
     }
   }

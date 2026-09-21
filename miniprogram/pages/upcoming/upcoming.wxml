@@ -34,3 +34,4 @@
 
   <button class="fab" bindtap="onAddTap">+</button>
   </view>
+<genie id="geniecomp" showfab="{{false}}" />

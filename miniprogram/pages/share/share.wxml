@@ -175,5 +175,4 @@
     </scroll-view>
   </view>
 </view>
-
-
+<genie id="geniecomp" showfab="{{false}}" />

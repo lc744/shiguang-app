@@ -2,4 +2,7 @@
   "navigationBarTitleText": "分享",
   "enablePullDownRefresh": true,
   "usingComponents": {}
+  ,"usingComponents": {
+    "genie": "../../components/genie/genie"
+  }
 }

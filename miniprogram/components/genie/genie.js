@@ -11,7 +11,8 @@ let bubbleSeq = 0; // 气泡自增序号（滚动锚点 id 用）
 
 Component({
   properties: {
-    auto: { type: Boolean, value: false }   // 宿主页面要求自动展开（精灵 tab 页用）
+    auto: { type: Boolean, value: false },     // 宿主页面要求自动展开（精灵 tab 页用）
+    showfab: { type: Boolean, value: true }    // 是否显示悬浮球（tab 化后各 tab 页隐藏，入口走 tab）
   },
   data: {
     open: false,        // 面板展开态

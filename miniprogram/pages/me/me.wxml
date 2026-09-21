@@ -137,3 +137,4 @@
   </block>
 </view>
 <privacy-popup />
+<genie id="geniecomp" showfab="{{false}}" />
