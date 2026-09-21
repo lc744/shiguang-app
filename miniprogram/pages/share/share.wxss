@@ -72,3 +72,36 @@
 .f-city{margin-left:auto}
 /* seg 行右侧操作 pill（对齐 App pub-pill） */
 .pub-pill{flex:none;font-size:23rpx;color:var(--accent);background:rgba(36,99,83,.1);border-radius:999rpx;padding:8rpx 18rpx;font-weight:600;margin-left:8rpx}
+/* 国家名胜入口（对齐 App scenic-entry） */
+.scenic-entry{display:flex;align-items:center;gap:16rpx;margin:12px 18px 0;padding:20rpx 24rpx;background:linear-gradient(120deg,rgba(36,99,83,.12),rgba(142,216,248,.14));border:1rpx solid rgba(36,99,83,.18);border-radius:20rpx}
+.scenic-entry-emoji{font-size:44rpx}
+.scenic-entry-text{flex:1;display:flex;flex-direction:column}
+.scenic-entry-title{font-size:28rpx;font-weight:700;color:var(--text)}
+.scenic-entry-sub{font-size:22rpx;color:var(--sub);margin-top:4rpx}
+.scenic-entry-arrow{font-size:34rpx;color:var(--sub)}
+
+/* 名胜库全屏弹层（对齐 App scenicOverlay） */
+.scenic-mask{position:fixed;inset:0;background:rgba(18,48,39,.55);z-index:120;display:flex;align-items:flex-end}
+.scenic-lib{width:100%;max-height:86vh;background:var(--surface);border-radius:28rpx 28rpx 0 0;display:flex;flex-direction:column;padding:24rpx 24rpx 0;box-sizing:border-box}
+.scenic-lib-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16rpx}
+.scenic-lib-title{font-size:32rpx;font-weight:800;color:var(--text)}
+.scenic-lib-close{font-size:26rpx;color:var(--accent);background:rgba(36,99,83,.1);border-radius:999rpx;padding:8rpx 24rpx}
+.scenic-lib-filter{display:flex;align-items:center;justify-content:space-between;gap:16rpx;margin-bottom:14rpx}
+.scenic-prov-picker{font-size:24rpx;color:var(--text);background:var(--bg);border:1rpx solid var(--line);border-radius:12rpx;padding:10rpx 20rpx}
+.scenic-grades{display:flex;gap:10rpx}
+.scenic-search{background:var(--bg);border:1rpx solid var(--line);border-radius:14rpx;padding:14rpx 20rpx;font-size:26rpx;color:var(--text);margin-bottom:12rpx}
+.scenic-lib-sub{font-size:22rpx;color:var(--sub);margin-bottom:12rpx}
+.scenic-lib-list{flex:1;min-height:0}
+.scenic-empty{text-align:center;font-size:26rpx;color:var(--sub);padding:60rpx 0}
+.scenic-item{display:flex;gap:16rpx;padding:20rpx 24rpx;margin-bottom:14rpx}
+.scenic-emoji{font-size:44rpx;flex:none}
+.scenic-main{flex:1;min-width:0}
+.scenic-name-row{display:flex;align-items:center;gap:10rpx}
+.scenic-name{font-size:28rpx;font-weight:700;color:var(--text)}
+.scenic-lv{font-size:18rpx;font-weight:800;color:#fff;background:#246353;border-radius:8rpx;padding:2rpx 10rpx}
+.lv5{background:#c98a2b}
+.scenic-loc{display:block;font-size:22rpx;color:var(--accent);margin-top:4rpx}
+.scenic-desc{display:block;font-size:23rpx;color:var(--sub);line-height:1.5;margin-top:4rpx}
+.scenic-ops{display:flex;flex-direction:column;gap:10rpx;justify-content:center;flex:none}
+.scenic-op{font-size:21rpx;color:var(--accent);background:rgba(36,99,83,.1);border-radius:999rpx;padding:8rpx 16rpx;white-space:nowrap}
+.scenic-list-pad{height:30rpx}

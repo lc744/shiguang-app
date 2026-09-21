@@ -18,6 +18,8 @@ function resolvePhotoUrls(photos, cb){
 }
 const _fileMap = {};
 
+const SCENIC = require('../../utils/scenic');
+
 Page({
   data: {
     tab: 'feed',            // feed | mine
@@ -34,7 +36,16 @@ Page({
     planCity: '',
     planRegion: [],
     planDate: '',
-    today: ''
+    today: '',
+    // 国家名胜库（对齐 App scenicOverlay）
+    scenicOpen: false,
+    scenicList: [],
+    scenicCount: 0,
+    scenicProvs: [],
+    scenicProv: '',
+    scenicProvIdx: 0,
+    scenicGrade: '',        // '' | '5' | '4'
+    scenicKw: ''
   },
 
   onShow(){
@@ -336,10 +347,63 @@ Page({
     });
   },
 
+  /* ---------------- 国家名胜库（对齐 App scenicOverlay：省/等级/搜索筛选 + 一键攻略/筛feed） ---------------- */
+  openScenic(){
+    const provs = [];
+    SCENIC.SCENIC_SPOTS.forEach(s => { if(provs.indexOf(s.p) < 0) provs.push(s.p); });
+    this._scenicProvs = provs;
+    this.setData({ scenicOpen: true, scenicProvs: ['全部省份'].concat(provs), scenicProvIdx: 0, scenicProv: '', scenicGrade: '', scenicKw: '' });
+    this._filterScenic();
+  },
+  closeScenic(){ this.setData({ scenicOpen: false }); },
+  noop(){},
+
+  _filterScenic(){
+    const prov = this.data.scenicProv;
+    const grade = this.data.scenicGrade;
+    const kw = (this.data.scenicKw || '').trim();
+    let list = SCENIC.SCENIC_SPOTS;
+    if(prov) list = list.filter(s => s.p === prov);
+    if(grade) list = list.filter(s => String(s.a || 0) === grade);
+    if(kw) list = list.filter(s => (s.n + s.c + s.d).indexOf(kw) >= 0);
+    const lv = a => a === 5 ? '5A' : (a === 4 ? '4A' : '名胜');
+    this.setData({
+      scenicCount: list.length,
+      scenicList: list.map(s => ({ n: s.n, p: s.p, c: s.c, e: s.e, t: s.t, d: s.d, lv: lv(s.a) }))
+    });
+  },
+  onScenicProv(e){
+    const idx = Number(e.detail.value) || 0;
+    this.setData({ scenicProvIdx: idx, scenicProv: idx > 0 ? this._scenicProvs[idx - 1] : '' });
+    this._filterScenic();
+  },
+  pickScenicGrade(e){
+    this.setData({ scenicGrade: e.currentTarget.dataset.g || '' });
+    this._filterScenic();
+  },
+  onScenicKw(e){
+    this.setData({ scenicKw: e.detail.value });
+    this._filterScenic();
+  },
+  // 列表项主操作：按景区所在城市一键生成行程攻略（对齐 App scenicLibAction 'plan'）
+  onScenicPlan(e){
+    const city = e.currentTarget.dataset.city;
+    if(!city) return;
+    this.setData({ scenicOpen: false, planCity: city });
+    this.makePlan();
+  },
+  // 辅助操作：按城市筛选推荐流
+  onScenicFilter(e){
+    const city = e.currentTarget.dataset.city;
+    if(!city) return;
+    this.setData({ scenicOpen: false, feedCity: city });
+    wx.showToast({ title: '已按 ' + city + ' 筛选', icon: 'none' });
+    this.load();
+  },
+
   addPlanToEvents(){
     const plan = this.data.plan;
-    if(!plan || !(plan.items || []).length) return;
-    const store = require('../../utils/store');
+    if(!plan || !(plan.items || []).length) return;    const store = require('../../utils/store');
     const core = require('../../utils/core');
     const events = store.getEvents();
     let n = 0;

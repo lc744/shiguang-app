@@ -20,6 +20,16 @@
     </picker>
   </view>
 
+  <!-- 国家名胜入口（对齐 App scenic-entry） -->
+  <view class="scenic-entry" wx:if="{{tab === 'feed'}}" bindtap="openScenic">
+    <text class="scenic-entry-emoji">🏛️</text>
+    <view class="scenic-entry-text">
+      <text class="scenic-entry-title">国家名胜</text>
+      <text class="scenic-entry-sub">5A/4A 精选 · 一键成攻略</text>
+    </view>
+    <text class="scenic-entry-arrow">›</text>
+  </view>
+
   <view wx:if="{{empty}}" class="share-empty">
     <text class="share-empty-emoji">{{tab === 'feed' ? '🌱' : '📭'}}</text>
     <text class="share-empty-text">{{tab === 'feed' ? '还没有人分享，来当第一个' : '你还没有发布过'}}</text>
@@ -123,4 +133,46 @@
   </view>
 </view>
 <canvas type="2d" id="plancanvas" style="position:fixed;left:-9999px;top:-9999px;width:300px;height:430px"></canvas>
+
+<!-- 国家名胜库全屏弹层 -->
+<view class="scenic-mask" wx:if="{{scenicOpen}}" catchtouchmove="noop">
+  <view class="scenic-lib card">
+    <view class="scenic-lib-head">
+      <text class="scenic-lib-title">🏛️ 国家名胜</text>
+      <view class="scenic-lib-close" bindtap="closeScenic">关闭</view>
+    </view>
+    <view class="scenic-lib-filter">
+      <picker range="{{scenicProvs}}" value="{{scenicProvIdx}}" bindchange="onScenicProv">
+        <view class="scenic-prov-picker">{{scenicProv || '全部省份'}} ▾</view>
+      </picker>
+      <view class="scenic-grades">
+        <view class="f-chip {{scenicGrade === '' ? 'f-on' : ''}}" data-g="" bindtap="pickScenicGrade">全部</view>
+        <view class="f-chip {{scenicGrade === '5' ? 'f-on' : ''}}" data-g="5" bindtap="pickScenicGrade">5A</view>
+        <view class="f-chip {{scenicGrade === '4' ? 'f-on' : ''}}" data-g="4" bindtap="pickScenicGrade">4A</view>
+      </view>
+    </view>
+    <input class="scenic-search" placeholder="搜索景点名 / 城市 / 亮点" placeholder-class="ph" value="{{scenicKw}}" bindinput="onScenicKw" />
+    <view class="scenic-lib-sub">{{scenicCount}} 个景点 · 点一下按所在城市做攻略</view>
+    <scroll-view class="scenic-lib-list" scroll-y>
+      <view wx:if="{{!scenicList.length}}" class="scenic-empty">没有匹配的景点，换个条件试试</view>
+      <view class="scenic-item card" wx:for="{{scenicList}}" wx:key="n" bindtap="onScenicPlan" data-city="{{item.c}}">
+        <text class="scenic-emoji">{{item.e}}</text>
+        <view class="scenic-main">
+          <view class="scenic-name-row">
+            <text class="scenic-name">{{item.n}}</text>
+            <text class="scenic-lv lv5">{{item.lv}}</text>
+          </view>
+          <text class="scenic-loc">{{item.p}} · {{item.c}}</text>
+          <text class="scenic-desc">{{item.d}}</text>
+        </view>
+        <view class="scenic-ops">
+          <text class="scenic-op" catchtap="onScenicPlan" data-city="{{item.c}}">🧳 做攻略</text>
+          <text class="scenic-op" catchtap="onScenicFilter" data-city="{{item.c}}">📍 筛推荐</text>
+        </view>
+      </view>
+      <view class="scenic-list-pad"></view>
+    </scroll-view>
+  </view>
+</view>
+
 
