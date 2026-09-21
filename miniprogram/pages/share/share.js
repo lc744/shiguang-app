@@ -124,7 +124,7 @@ Page({
 
   onHide(){
     // 离开页面时恢复 tabBar（防弹层未关导致下页无 tab）
-    wx.showTabBar({ fail: () => {} });
+    if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false);
   },
 
   onPullDownRefresh(){
@@ -235,12 +235,12 @@ Page({
     const d = new Date(); d.setDate(d.getDate() + 1);
     const p = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     const t = new Date();
-    wx.hideTabBar({ fail: () => {} });
+    if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(true);
     this.setData({ planForm: true, plan: null, planCity: '', planRegion: [], planDate: p, today: t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0') });
   },
   noop(){},
-  closePlanForm(){ wx.showTabBar({ fail: () => {} }); this.setData({ planForm: false }); },
-  closePlan(){ wx.showTabBar({ fail: () => {} }); this.setData({ plan: null }); },
+  closePlanForm(){ if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false); this.setData({ planForm: false }); },
+  closePlan(){ if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false); this.setData({ plan: null }); },
   onPlanRegion(e){
     const v = (e.detail && e.detail.value) || [];
     this.setData({ planRegion: v, planCity: (v[1] || '').replace(/市辖区|县/g, '') || (v[0] || '') });
@@ -397,14 +397,14 @@ Page({
 
   /* ---------------- 国家名胜库（对齐 App scenicOverlay：省/等级/搜索筛选 + 一键攻略/筛feed） ---------------- */
   openScenic(){
-    wx.hideTabBar({ fail: () => {} });
+    if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(true);
     const provs = [];
     SCENIC.SCENIC_SPOTS.forEach(s => { if(provs.indexOf(s.p) < 0) provs.push(s.p); });
     this._scenicProvs = provs;
     this.setData({ scenicOpen: true, scenicProvs: ['全部省份'].concat(provs), scenicProvIdx: 0, scenicProv: '', scenicGrade: '', scenicKw: '' });
     this._filterScenic();
   },
-  closeScenic(){ wx.showTabBar({ fail: () => {} }); this.setData({ scenicOpen: false }); },
+  closeScenic(){ if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false); this.setData({ scenicOpen: false }); },
   noop(){},
 
   _filterScenic(){
@@ -445,7 +445,7 @@ Page({
   onScenicFilter(e){
     const city = e.currentTarget.dataset.city;
     if(!city) return;
-    wx.showTabBar({ fail: () => {} });
+    if(typeof this.getTabBar === 'function' && this.getTabBar()) this.getTabBar().setHidden(false);
     this.setData({ scenicOpen: false, feedCity: city });
     wx.showToast({ title: '已按 ' + city + ' 筛选', icon: 'none' });
     this.load();

@@ -3,6 +3,7 @@ Component({
   data: {
     selected: 0,
     dark: false,        // 主题跟随宿主页（页面 onShow 里同步 dark）
+    hidden: false,      // 弹层打开时由页面置 true 隐藏（自定义 tabBar 下 wx.hideTabBar 无效）
     list: [
       { pagePath: '/pages/home/home', icon: '⌂', label: '今天' },
       { pagePath: '/pages/upcoming/upcoming', icon: '⏳', label: '预告' },
@@ -12,6 +13,8 @@ Component({
     ]
   },
   methods: {
+    // 页面直接调：tabBar 显示/隐藏（自定义 tabBar 专用，替代 wx.hideTabBar）
+    setHidden(v){ this.setData({ hidden: !!v }); },
     switchTab(e){
       const { path, index } = e.currentTarget.dataset;
       // 中间精灵（对齐 App）：不切页，在当前页弹出聊天小面板
