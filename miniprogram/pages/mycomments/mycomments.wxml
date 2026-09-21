@@ -1,0 +1,18 @@
+<view class="shell">
+  <view class="subhead">
+    <text class="subhead-title">我的评论</text>
+    <text class="subhead-sub">最多显示最近 50 条</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="mc-empty">加载中…</view>
+  <view wx:elif="{{!list.length}}" class="mc-empty">还没有发过评论</view>
+  <view wx:else class="mc-list">
+    <view class="mc-item card" wx:for="{{list}}" wx:key="cid">
+      <text class="mc-content" data-pid="{{item.postId}}" bindtap="goPost">{{item.content}}</text>
+      <view class="mc-foot">
+        <text class="mc-time" data-pid="{{item.postId}}" bindtap="goPost">{{item.timeText}} · 点击查看原帖</text>
+        <text class="mc-del" data-cid="{{item.cid}}" bindtap="onDel">删除</text>
+      </view>
+    </view>
+  </view>
+</view>

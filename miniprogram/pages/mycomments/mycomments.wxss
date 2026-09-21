@@ -1,0 +1,12 @@
+/* 我的评论 */
+.shell{min-height:100vh;background:var(--bg);padding-bottom:40rpx}
+.subhead{padding:14px 18px 4px}
+.subhead-title{font-size:21px;font-weight:800;color:var(--text)}
+.subhead-sub{display:block;font-size:12px;color:var(--sub);margin-top:3px}
+.mc-empty{text-align:center;font-size:26rpx;color:var(--sub);padding:80rpx 0}
+.mc-list{padding:14px 18px 0}
+.mc-item{padding:20rpx 24rpx;margin-bottom:16rpx}
+.mc-content{display:block;font-size:27rpx;color:var(--text);line-height:1.55;word-break:break-all}
+.mc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12rpx}
+.mc-time{font-size:22rpx;color:var(--sub)}
+.mc-del{font-size:23rpx;color:#c65c52}

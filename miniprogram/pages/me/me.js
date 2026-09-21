@@ -126,6 +126,8 @@ Page({
 
   goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
 
+  goMyComments(){ wx.navigateTo({ url: '/pages/mycomments/mycomments' }); },
+
   /* 性别 / 出生年月（对齐 App 资料行，本地保存） */
   onPickGender(){
     wx.showActionSheet({

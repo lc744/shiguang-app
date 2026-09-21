@@ -70,3 +70,5 @@
 .f-chip{font-size:24rpx;color:var(--sub);background:var(--card);border-radius:999rpx;padding:8rpx 22rpx}
 .f-chip.f-on{background:var(--accent);color:#fff;font-weight:600}
 .f-city{margin-left:auto}
+/* seg 行右侧操作 pill（对齐 App pub-pill） */
+.pub-pill{flex:none;font-size:23rpx;color:var(--accent);background:rgba(36,99,83,.1);border-radius:999rpx;padding:8rpx 18rpx;font-weight:600;margin-left:8rpx}

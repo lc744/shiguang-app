@@ -205,6 +205,15 @@ exports.main = async (event) => {
       return { ok: true, op: 'report' };
     }
 
+    // ---- 我的评论列表 ----
+    if(action === 'myComments'){
+      const r = await db.collection(CMT)
+        .where({ openid: OPENID, hidden: false })
+        .orderBy('createdAt', 'desc').limit(50)
+        .get();
+      return { ok: true, list: r.data.map(c => ({ cid: c._id, postId: c.postId, content: c.content, createdAt: c.createdAt })) };
+    }
+
     // ---- 评论：发表（词库 + msgSecCheck + 频率限制） ----
     if(action === 'commentAdd'){
       const postId = String(event.id || '');

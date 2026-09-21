@@ -5,8 +5,10 @@
   </view>
 
   <view class="seg-row">
-    <view class="seg {{tab === 'feed' ? 'seg-on' : ''}}" data-tab="feed" bindtap="switchTab">大家的推荐</view>
+    <view class="seg {{tab === 'feed' ? 'seg-on' : ''}}" data-tab="feed" bindtap="switchTab">大众推荐</view>
     <view class="seg {{tab === 'mine' ? 'seg-on' : ''}}" data-tab="mine" bindtap="switchTab">我的发布</view>
+    <view class="pub-pill" bindtap="openPlanMaker">🧳 攻略</view>
+    <view class="pub-pill" bindtap="goPublish">＋ 发布</view>
   </view>
 
   <!-- 筛选行（类型 × 城市） -->
@@ -16,16 +18,6 @@
     <picker mode="region" bindchange="onFeedRegion">
       <view class="f-chip f-city">{{feedCity || '📍 全部城市'}}</view>
     </picker>
-  </view>
-
-  <!-- 攻略入口 -->
-  <view class="plan-entry card" wx:if="{{tab === 'feed'}}" bindtap="openPlanMaker">
-    <text class="plan-entry-emoji">🗺️</text>
-    <view class="plan-entry-text">
-      <text class="plan-entry-title">一键生成行程攻略</text>
-      <text class="plan-entry-sub">按城市聚合大家的推荐，排出一天吃喝玩乐</text>
-    </view>
-    <text class="id-arrow">›</text>
   </view>
 
   <view wx:if="{{empty}}" class="share-empty">
