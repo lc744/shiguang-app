@@ -279,6 +279,18 @@ exports.main = async (event) => {
       const u = await db.collection(USR).where({ openid: OPENID }).limit(1).get();
       return !!(u.data.length && u.data[0].admin);
     }
+    // 口令自授（替代控制台手动设 admin:true）：部署后在小程序"我的"页长按"设置"输入口令即可
+    const ADMIN_PASS = 'choumou2026';
+    if(action === 'adminGrant'){
+      if(String(event.pass || '') !== ADMIN_PASS) return { ok: false, error: '口令不对' };
+      const u = await db.collection(USR).where({ openid: OPENID }).get();
+      if(u.data.length){
+        await db.collection(USR).where({ openid: OPENID }).update({ data: { admin: true } });
+      } else {
+        await db.collection(USR).add({ data: { openid: OPENID, nickname: '', avatarUrl: '', admin: true, updatedAt: nowMs() } });
+      }
+      return { ok: true, admin: true };
+    }
     if(action === 'adminCheck'){
       return { ok: true, admin: await isAdmin() };
     }

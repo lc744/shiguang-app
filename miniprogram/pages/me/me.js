@@ -137,6 +137,37 @@ Page({
 
   goAdmin(){ wx.navigateTo({ url: '/pages/admin/admin' }); },
 
+  // 隐藏开启口：长按"设置"→ 输入管理口令 → 云端标记 admin:true（对齐 App 管理员逻辑）
+  onSecretAdmin(){
+    if(this.data.adminMode){
+      wx.showToast({ title: '你已是管理员', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '管理员口令',
+      editable: true,
+      placeholderText: '输入管理员口令',
+      success: res => {
+        if(!res.confirm) return;
+        const pass = String(res.content || '').trim();
+        if(!pass) return;
+        wx.showLoading({ title: '验证中…', mask: true });
+        wx.cloud.callFunction({ name: 'postApi', data: { action: 'adminGrant', pass } })
+          .then(r => {
+            wx.hideLoading();
+            const d = r.result || {};
+            if(d.ok && d.admin){
+              this.setData({ adminMode: true });
+              wx.showToast({ title: '管理员已开启', icon: 'success' });
+            } else {
+              wx.showToast({ title: d.error || '口令不对', icon: 'none' });
+            }
+          })
+          .catch(e => { wx.hideLoading(); wx.showToast({ title: (e.errMsg || '验证失败'), icon: 'none' }); });
+      }
+    });
+  },
+
   /* 性别 / 出生年月（对齐 App 资料行，本地保存） */
   onPickGender(){
     wx.showActionSheet({

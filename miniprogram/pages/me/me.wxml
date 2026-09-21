@@ -109,7 +109,7 @@
         <text class="me-item-label">日历视图</text>
         <text class="me-arrow">›</text>
       </view>
-      <view class="me-item" bindtap="goSettings">
+      <view class="me-item" bindtap="goSettings" bindlongpress="onSecretAdmin">
         <text class="me-item-emoji">⚙️</text>
         <text class="me-item-label">设置</text>
         <text class="me-arrow">›</text>
