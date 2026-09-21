@@ -34,6 +34,9 @@ Page({
     }
     this._event = e;
 
+    // 打开即标记已触发（对齐安卓 fireRemind：防订阅消息直达后再开首页重复弹）
+    try{ notify.markFired(e); }catch(err){}
+
     // 展示内容（与 Web 版 fireRemind 一致）
     const custom = store.isCustomEmoji(e.emoji);
     this.setData({

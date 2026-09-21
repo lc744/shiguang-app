@@ -29,11 +29,12 @@ function markFired(e){
   const nowStamp = t + 'T' + core.pad(new Date().getHours()) + ':' + core.pad(new Date().getMinutes());
   if(e.snooze && e.snooze <= nowStamp){
     e.firedOn = e.firedOn || [];
-    e.firedOn.push('snooze:' + e.snooze);
+    const key = 'snooze:' + e.snooze;
+    if(e.firedOn.indexOf(key) < 0) e.firedOn.push(key);
     delete e.snooze;
   } else {
     e.firedOn = e.firedOn || [];
-    e.firedOn.push(t);
+    if(e.firedOn.indexOf(t) < 0) e.firedOn.push(t);
   }
   store.persist();
 }
