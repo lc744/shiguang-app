@@ -274,6 +274,56 @@ exports.main = async (event) => {
       return { ok: true, op: 'commentReport' };
     }
 
+    // ---- 管理端（users 集合 admin: true 的用户；判定/待审列表/处理，对齐 App 管理面板） ----
+    async function isAdmin(){
+      const u = await db.collection(USR).where({ openid: OPENID }).limit(1).get();
+      return !!(u.data.length && u.data[0].admin);
+    }
+    if(action === 'adminCheck'){
+      return { ok: true, admin: await isAdmin() };
+    }
+    if(action === 'adminList'){
+      if(!(await isAdmin())) return { ok: false, error: '无管理权限' };
+      const posts = await db.collection(COL).where({ hidden: true }).orderBy('createdAt', 'desc').limit(50).get();
+      const cmts = await db.collection(CMT).where({ hidden: true }).orderBy('createdAt', 'desc').limit(50).get();
+      return { ok: true, posts: posts.data.map(p => ({ id: p._id, type: p.type, name: p.name || p.addr || '（未命名）', nickname: p.nickname, reports: p.reports || 0, photos: p.photos || [] })),
+               comments: cmts.data.map(c => ({ cid: c._id, content: c.content, nickname: c.nickname, reports: c.reports || 0 })) };
+    }
+    if(action === 'adminPostAction'){
+      if(!(await isAdmin())) return { ok: false, error: '无管理权限' };
+      const id = String(event.id || '');
+      const act = String(event.act || '');
+      if(act === 'restore'){
+        await db.collection(COL).doc(id).update({ data: { hidden: false, reports: 0 } });
+        return { ok: true };
+      }
+      if(act === 'delete'){
+        const doc = await db.collection(COL).doc(id).get().catch(() => null);
+        const fileIDs = ((doc && doc.data && doc.data.photos) || []).filter(x => /^cloud:\/\//.test(String(x)));
+        if(fileIDs.length){ try{ await cloud.deleteFile({ fileList: fileIDs }); }catch(e){} }
+        await db.collection(COL).doc(id).remove();
+        return { ok: true };
+      }
+      return { ok: false, error: '未知操作' };
+    }
+    if(action === 'adminCommentAction'){
+      if(!(await isAdmin())) return { ok: false, error: '无管理权限' };
+      const cid = String(event.cid || '');
+      const act = String(event.act || '');
+      if(act === 'restore'){
+        await db.collection(CMT).doc(cid).update({ data: { hidden: false, reports: 0 } });
+        return { ok: true };
+      }
+      if(act === 'delete'){
+        const doc = await db.collection(CMT).doc(cid).get().catch(() => null);
+        const postId = doc && doc.data && doc.data.postId;
+        await db.collection(CMT).doc(cid).remove();
+        if(postId){ await db.collection(COL).doc(postId).update({ data: { commentCount: _.inc(-1) } }).catch(() => {}); }
+        return { ok: true };
+      }
+      return { ok: false, error: '未知操作' };
+    }
+
     return { ok: false, error: 'unknown action' };
   }catch(e){
     return { ok: false, error: String((e && e.message) || e) };

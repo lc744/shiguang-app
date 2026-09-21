@@ -271,6 +271,71 @@ Page({
       .catch(() => { wx.hideLoading(); wx.showToast({ title: '生成失败，稍后再试', icon: 'none' }); });
   },
 
+  // 生成攻略海报（canvas 600x860：城市/日期/五时段 + 品牌脚注），保存到相册
+  makePlanPoster(){
+    const plan = this.data.plan;
+    if(!plan || !(plan.items || []).length) return;
+    const q = wx.createSelectorQuery();
+    q.select('#plancanvas').fields({ node: true }).exec(res => {
+      if(!res || !res[0] || !res[0].node){ wx.showToast({ title: '画布未就绪', icon: 'none' }); return; }
+      const canvas = res[0].node;
+      const W = 600, H = 860;
+      canvas.width = W; canvas.height = H;
+      const x = canvas.getContext('2d');
+      // 背景
+      let g = x.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#246353'); g.addColorStop(.55, '#3c8a70'); g.addColorStop(1, '#eaf6f0');
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+      // 标题
+      x.fillStyle = '#fff';
+      x.font = 'bold 40px sans-serif';
+      x.textAlign = 'center';
+      x.fillText(plan.city + ' · 出行攻略', W / 2, 96);
+      x.font = '24px sans-serif';
+      x.fillStyle = 'rgba(255,255,255,.85)';
+      x.fillText(plan.dateLabel + ' 由绸缪为你编排', W / 2, 138);
+      // 行程卡片
+      const rows = plan.items || [];
+      const top = 180, rh = 116, cw = 524, cx = (W - cw) / 2;
+      x.textAlign = 'left';
+      rows.forEach((it, i) => {
+        const y = top + i * rh;
+        x.fillStyle = 'rgba(255,255,255,.94)';
+        x.fillRect(cx, y, cw, rh - 18);
+        x.font = 'bold 30px sans-serif';
+        x.fillStyle = '#246353';
+        x.fillText((it.emoji || '📍') + ' ' + it.slot + ' ' + it.time, cx + 26, y + 44);
+        x.font = '26px sans-serif';
+        x.fillStyle = '#333';
+        const name = String(it.name || '').slice(0, 15);
+        x.fillText(name, cx + 26, y + 82);
+      });
+      // 脚注
+      x.textAlign = 'center';
+      x.fillStyle = 'rgba(36,99,83,.85)';
+      x.font = 'bold 26px sans-serif';
+      x.fillText('绸缪 · 未雨绸缪', W / 2, H - 28);
+      // 导出保存
+      wx.canvasToTempFilePath({
+        canvas,
+        success: r => {
+          wx.saveImageToPhotosAlbum({
+            filePath: r.tempFilePath,
+            success: () => wx.showToast({ title: '海报已保存到相册', icon: 'none' }),
+            fail: err => {
+              if(err.errMsg && err.errMsg.indexOf('auth') >= 0){
+                wx.showModal({ title: '需要相册权限', content: '请在设置中允许保存到相册', confirmText: '去设置', success: s => { if(s.confirm) wx.openSetting(); } });
+              } else {
+                wx.showToast({ title: '保存失败', icon: 'none' });
+              }
+            }
+          });
+        },
+        fail: () => wx.showToast({ title: '海报生成失败', icon: 'none' })
+      });
+    });
+  },
+
   addPlanToEvents(){
     const plan = this.data.plan;
     if(!plan || !(plan.items || []).length) return;

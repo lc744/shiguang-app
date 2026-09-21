@@ -19,7 +19,8 @@ Page({
     statDone: 0,
     statPosts: '—',
     gender: '',
-    birth: ''
+    birth: '',
+    adminMode: false
   },
 
   onShow(){
@@ -58,6 +59,12 @@ Page({
         .then(r => {
           const d = r.result || {};
           if(d.ok) this.setData({ statPosts: d.hasMore ? (d.list || []).length + '+' : (d.list || []).length });
+        }).catch(() => {});
+      // 管理员判定（users 集合 admin:true 的用户显示管理入口）
+      wx.cloud.callFunction({ name: 'postApi', data: { action: 'adminCheck' } })
+        .then(r => {
+          const a = r.result || {};
+          if(a.ok && a.admin) this.setData({ adminMode: true });
         }).catch(() => {});
     }
   },
@@ -127,6 +134,8 @@ Page({
   goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
 
   goMyComments(){ wx.navigateTo({ url: '/pages/mycomments/mycomments' }); },
+
+  goAdmin(){ wx.navigateTo({ url: '/pages/admin/admin' }); },
 
   /* 性别 / 出生年月（对齐 App 资料行，本地保存） */
   onPickGender(){

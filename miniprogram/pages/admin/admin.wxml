@@ -1,0 +1,42 @@
+<view class="shell">
+  <view class="subhead">
+    <text class="subhead-title">内容管理</text>
+    <text class="subhead-sub">被举报隐藏的内容：核实后恢复或删除</text>
+  </view>
+
+  <view class="seg-row">
+    <view class="seg {{tab === 'posts' ? 'seg-on' : ''}}" data-tab="posts" bindtap="switchTab">帖子 {{posts.length}}</view>
+    <view class="seg {{tab === 'comments' ? 'seg-on' : ''}}" data-tab="comments" bindtap="switchTab">评论 {{comments.length}}</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="ad-empty">加载中…</view>
+
+  <view wx:elif="{{tab === 'posts'}}" class="ad-list">
+    <view wx:if="{{!posts.length}}" class="ad-empty">没有待处理的帖子</view>
+    <view class="ad-item card" wx:for="{{posts}}" wx:key="id">
+      <image wx:if="{{item.thumb}}" class="ad-thumb" src="{{item.thumb}}" mode="aspectFill" />
+      <view class="ad-main">
+        <text class="ad-name">{{item.name}}</text>
+        <text class="ad-sub">{{item.type}} · {{item.nickname}} · 被举报 {{item.reports}} 次</text>
+        <view class="ad-ops">
+          <text class="ad-op ok" data-kind="post" data-id="{{item.id}}" bindtap="onRestore">恢复</text>
+          <text class="ad-op danger" data-kind="post" data-id="{{item.id}}" bindtap="onDelete">删除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{tab === 'comments'}}" class="ad-list">
+    <view wx:if="{{!comments.length}}" class="ad-empty">没有待处理的评论</view>
+    <view class="ad-item card" wx:for="{{comments}}" wx:key="cid">
+      <view class="ad-main">
+        <text class="ad-name">{{item.content}}</text>
+        <text class="ad-sub">{{item.nickname}} · 被举报 {{item.reports}} 次</text>
+        <view class="ad-ops">
+          <text class="ad-op ok" data-kind="comment" data-id="{{item.cid}}" bindtap="onRestore">恢复</text>
+          <text class="ad-op danger" data-kind="comment" data-id="{{item.cid}}" bindtap="onDelete">删除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

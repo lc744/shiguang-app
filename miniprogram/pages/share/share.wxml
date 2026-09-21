@@ -115,7 +115,12 @@
         <button class="pp-btn pf-cancel" bindtap="regenPlan">换一换</button>
         <button class="pp-btn pf-ok" bindtap="addPlanToEvents">加入提醒</button>
       </view>
+      <view class="pp-btns" style="margin-top:14rpx">
+        <button class="pp-btn pf-cancel" bindtap="makePlanPoster">🖼 生成海报</button>
+      </view>
       <view class="plan-close" bindtap="closePlan">收起</view>
     </view>
   </view>
 </view>
+<canvas type="2d" id="plancanvas" style="position:fixed;left:-9999px;top:-9999px;width:300px;height:430px"></canvas>
+

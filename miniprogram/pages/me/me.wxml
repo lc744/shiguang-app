@@ -120,6 +120,15 @@
         <text class="me-arrow">›</text>
       </view>
     </view>
+
+    <!-- 管理入口（仅管理员可见） -->
+    <view wx:if="{{adminMode}}" class="card me-menu">
+      <view class="me-item" bindtap="goAdmin">
+        <text class="me-item-emoji">🛡</text>
+        <text class="me-item-label">内容管理（待审）</text>
+        <text class="me-arrow">›</text>
+      </view>
+    </view>
   </block>
 </view>
 <privacy-popup />
