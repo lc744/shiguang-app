@@ -11,3 +11,5 @@
 /* 日历入口 */
 .up-head-row{display:flex;align-items:center;justify-content:space-between;margin-top:3px}
 .cal-entry{font-size:24rpx;color:var(--accent);background:rgba(36,99,83,.1);border-radius:999rpx;padding:8rpx 20rpx;font-weight:600}
+/* 自定义 tabBar 留白 */
+.shell{padding-bottom:170rpx}

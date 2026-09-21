@@ -308,3 +308,10 @@ button {
 button::after { border: none; }
 input, textarea { font-family: inherit; }
 .shell { min-height: 100vh; box-sizing: border-box; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important; }
+/* ===== 对齐 App 布局规范 ===== */
+/* subhead 左右布局：标题左、副题右（App .subhead{justify-content:space-between}） */
+.subhead{display:flex;flex-direction:row;justify-content:space-between;align-items:center}
+.subhead .subhead-title{margin-right:auto}
+.subhead .subhead-sub{margin-top:0;text-align:right;max-width:58%;line-height:1.4}
+/* fab 抬到自定义 tabBar 之上（tab 高约 110rpx + 安全区） */
+.fab{bottom:calc(190rpx + env(safe-area-inset-bottom, 0px)) !important}

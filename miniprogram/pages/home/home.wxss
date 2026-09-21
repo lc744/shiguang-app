@@ -32,3 +32,6 @@
 .mi-name{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mi-time{font-size:11px;color:#9a6a00}
 .theme-dark .missed-title,.theme-dark .mi-time{color:#e3b95c}
+
+/* 自定义 tabBar 留白 */
+.shell{padding-bottom:170rpx}
