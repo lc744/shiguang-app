@@ -75,7 +75,25 @@
       </view>
     </view>
 
+    <!-- 资料信息行 + 菜单（对齐 App：邮箱/性别/出生年月为信息行，其余为菜单行） -->
     <view class="card me-menu">
+      <view class="me-item">
+        <text class="me-item-emoji">📧</text>
+        <text class="me-item-label">邮箱</text>
+        <text class="me-info-value info-unset">未添加</text>
+      </view>
+      <view class="me-item" bindtap="onPickGender">
+        <text class="me-item-emoji">🚻</text>
+        <text class="me-item-label">性别</text>
+        <text class="me-info-value {{gender ? '' : 'info-unset'}}">{{gender || '未设置'}}</text>
+        <text class="me-arrow">›</text>
+      </view>
+      <view class="me-item" bindtap="onPickBirth">
+        <text class="me-item-emoji">🎂</text>
+        <text class="me-item-label">出生年月</text>
+        <text class="me-info-value {{birth ? '' : 'info-unset'}}">{{birth || '未设置'}}</text>
+        <text class="me-arrow">›</text>
+      </view>
       <view class="me-item" bindtap="goMyPosts">
         <text class="me-item-emoji">📮</text>
         <text class="me-item-label">我的发布</text>

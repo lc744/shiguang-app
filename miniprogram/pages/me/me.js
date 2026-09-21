@@ -17,7 +17,9 @@ Page({
     saving: false,
     statEvents: 0,
     statDone: 0,
-    statPosts: '—'
+    statPosts: '—',
+    gender: '',
+    birth: ''
   },
 
   onShow(){
@@ -35,6 +37,7 @@ Page({
       this.setData({ statEvents: events.length, statDone: doneCount });
     }catch(e){}
     const local = readLocal();
+    this.setData({ gender: local.gender || '', birth: local.birth || '' });
     if(!local || !local.nickname){
       this.setData({ loading: false, loggedIn: false, editing: false });
       return;
@@ -122,6 +125,37 @@ Page({
   },
 
   goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
+
+  /* 性别 / 出生年月（对齐 App 资料行，本地保存） */
+  onPickGender(){
+    wx.showActionSheet({
+      itemList: ['男', '女', '保密'],
+      success: res => {
+        const g = ['男', '女', '保密'][res.tapIndex] || '';
+        const id = readLocal() || {};
+        try{ wx.setStorageSync(ID_KEY, { ...id, gender: g }); }catch(e){}
+        this.setData({ gender: g });
+      }
+    });
+  },
+  onPickBirth(){
+    const now = new Date();
+    const cur = this.data.birth || (now.getFullYear() - 10) + '-01';
+    wx.showModal({
+      title: '出生年月',
+      editable: true,
+      placeholderText: '格式：2000-06',
+      content: cur.length >= 7 ? cur : '',
+      success: res => {
+        if(!res.confirm) return;
+        const v = String(res.content || '').trim();
+        if(v && !/^\d{4}-\d{2}$/.test(v)){ wx.showToast({ title: '格式应为 2000-06', icon: 'none' }); return; }
+        const id = readLocal() || {};
+        try{ wx.setStorageSync(ID_KEY, { ...id, birth: v }); }catch(e){}
+        this.setData({ birth: v });
+      }
+    });
+  },
 
   // 绑定码登录 App：输入 app 端「微信登录」显示的 6 位码，云函数用 openid 确认
   onWxBind(){

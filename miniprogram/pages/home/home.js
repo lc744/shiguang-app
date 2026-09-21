@@ -49,6 +49,26 @@ Page({
     this.refresh();
   },
 
+  // 清空全部事件（对齐 App：home 统计行第三卡）
+  onClearAll(){
+    const events = store.getEvents();
+    const n = events.length;
+    if(!n){ wx.showToast({ title: '当前没有事件', icon: 'none' }); return; }
+    wx.showModal({
+      title: '清空全部事件',
+      content: '确定清空全部 ' + n + ' 个事件吗？删除后可通过自动备份恢复。',
+      confirmText: '清空',
+      confirmColor: '#c65c52',
+      success: r => {
+        if(!r.confirm) return;
+        events.forEach(e => store.deleteRecording(e.voiceData));
+        store.setEvents([]);
+        wx.showToast({ title: '已清空全部事件', icon: 'none' });
+        this.refresh();
+      }
+    });
+  },
+
   refresh(){
     const t = core.todayStr();
     const d = new Date();

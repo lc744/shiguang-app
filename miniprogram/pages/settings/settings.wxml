@@ -71,11 +71,6 @@
       <view class="mini about-line">小程序备案号：苏ICP备2026065980号-1X</view>
       <view class="mini about-line">App（安卓）备案：审核中</view>
     </view>
-
-    <!-- 清空 -->
-    <view class="action-row clear-row">
-      <button class="danger-btn" bindtap="clearAll">清空全部事件</button>
-    </view>
   </view>
-  </view>
+</view>
 <privacy-popup />

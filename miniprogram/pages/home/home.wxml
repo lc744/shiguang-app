@@ -26,10 +26,11 @@
     </swiper>
   </view>
 
-  <!-- 统计卡 -->
+  <!-- 统计卡（对齐 App：待办/完成/清空事件） -->
   <view class="stats">
     <view class="card stat"><text class="stat-num">{{statTodo}}</text><text class="stat-label">今日待办</text></view>
     <view class="card stat"><text class="stat-num">{{statDone}}</text><text class="stat-label">已完成</text></view>
+    <view class="card stat stat-clear" bindtap="onClearAll"><text class="stat-num">🗑</text><text class="stat-label">清空事件</text></view>
   </view>
 
   <!-- 今天的事件 -->
