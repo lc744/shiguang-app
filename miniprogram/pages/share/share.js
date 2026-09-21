@@ -59,6 +59,22 @@ Page({
       tab = app.globalData.shareTab;
       app.globalData.shareTab = null;
     }
+    // 攻略存档页恢复：直接弹出对应攻略弹层
+    if(app && app.globalData && app.globalData.planRestore){
+      const pr = app.globalData.planRestore;
+      app.globalData.planRestore = null;
+      if(pr && pr.city && Array.isArray(pr.items)){
+        this.setData({
+          plan: {
+            city: pr.city,
+            dateIso: pr.dateIso || '',
+            dateLabel: (pr.dateIso && pr.dateIso.length >= 10) ? pr.dateIso.slice(5).replace('-', '月') + '日' : '',
+            count: pr.items.filter(Boolean).length,
+            items: pr.items.map(it => ({ ...it, added: false }))
+          }
+        });
+      }
+    }
     if(tab !== this.data.tab){ this.setData({ tab, list: [], page: 0, hasMore: true, empty: false }); }
     this.refresh();
   },
@@ -280,6 +296,20 @@ Page({
         this._buildPlan(planCity, planDate, foods.concat(rests), spots.concat(funs, others));
       })
       .catch(() => { wx.hideLoading(); wx.showToast({ title: '生成失败，稍后再试', icon: 'none' }); });
+  },
+
+  // 保存当前攻略到云端存档（对齐 App planSave）
+  savePlan(){
+    const plan = this.data.plan;
+    if(!plan || !(plan.items || []).length) return;
+    wx.showLoading({ title: '保存中…', mask: true });
+    callPost({ action: 'planSave', city: plan.city, dateIso: plan.dateIso, items: plan.items })
+      .then(r => {
+        wx.hideLoading();
+        if(!r || !r.ok){ throw new Error(r && r.error || '保存失败'); }
+        wx.showToast({ title: r.already ? '已在存档里啦' : '已存入旅游攻略', icon: 'none' });
+      })
+      .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '保存失败', icon: 'none' }); });
   },
 
   // 生成攻略海报（canvas 600x860：城市/日期/五时段 + 品牌脚注），保存到相册

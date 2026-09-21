@@ -126,6 +126,7 @@
         <button class="pp-btn pf-ok" bindtap="addPlanToEvents">加入提醒</button>
       </view>
       <view class="pp-btns" style="margin-top:14rpx">
+        <button class="pp-btn pf-cancel" bindtap="savePlan">💾 存入攻略</button>
         <button class="pp-btn pf-cancel" bindtap="makePlanPoster">🖼 生成海报</button>
       </view>
       <view class="plan-close" bindtap="closePlan">收起</view>

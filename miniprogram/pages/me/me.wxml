@@ -104,6 +104,11 @@
         <text class="me-item-label">我的评论</text>
         <text class="me-arrow">›</text>
       </view>
+      <view class="me-item" bindtap="goPlans">
+        <text class="me-item-emoji">🧳</text>
+        <text class="me-item-label">旅游攻略</text>
+        <text class="me-arrow">›</text>
+      </view>
       <view class="me-item" bindtap="goCalendar">
         <text class="me-item-emoji">📅</text>
         <text class="me-item-label">日历视图</text>

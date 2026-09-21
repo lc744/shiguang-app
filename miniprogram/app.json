@@ -8,6 +8,7 @@
     "pages/share/publish",
     "pages/share/post",
     "pages/mycomments/mycomments",
+    "pages/plans/plans",
     "pages/admin/admin",
     "pages/me/me",
     "pages/settings/settings",

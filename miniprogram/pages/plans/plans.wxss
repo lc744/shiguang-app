@@ -1,0 +1,15 @@
+/* 旅游攻略存档 */
+.shell{min-height:100vh;background:var(--bg);padding-bottom:40rpx}
+.subhead{padding:14px 18px 4px}
+.subhead-title{font-size:21px;font-weight:800;color:var(--text)}
+.subhead-sub{display:block;font-size:12px;color:var(--sub);margin-top:3px}
+.pl-empty{text-align:center;font-size:26rpx;color:var(--sub);padding:80rpx 30rpx;line-height:1.7}
+.pl-list{padding:14px 18px 0}
+.pl-item{padding:22rpx 24rpx;margin-bottom:16rpx}
+.pl-head{display:flex;justify-content:space-between;align-items:baseline}
+.pl-city{font-size:29rpx;font-weight:800;color:var(--text)}
+.pl-date{font-size:23rpx;color:var(--accent);font-weight:600}
+.pl-stops{display:block;font-size:24rpx;color:var(--sub);margin-top:10rpx;line-height:1.5;word-break:break-all}
+.pl-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14rpx}
+.pl-open{font-size:23rpx;color:var(--accent);font-weight:600}
+.pl-del{font-size:23rpx;color:#c65c52}

@@ -135,6 +135,8 @@ Page({
 
   goMyComments(){ wx.navigateTo({ url: '/pages/mycomments/mycomments' }); },
 
+  goPlans(){ wx.navigateTo({ url: '/pages/plans/plans' }); },
+
   goAdmin(){ wx.navigateTo({ url: '/pages/admin/admin' }); },
 
   // 隐藏开启口：长按"设置"→ 输入管理口令 → 云端标记 admin:true（对齐 App 管理员逻辑）

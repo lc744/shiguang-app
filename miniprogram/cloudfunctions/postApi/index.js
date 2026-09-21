@@ -10,6 +10,7 @@ const COL = 'posts';
 const REP = 'reports';
 const USR = 'users';
 const CMT = 'comments';
+const PLAN = 'plans';       // 攻略存档（对齐 App planSave/planList）
 const HIDE_THRESHOLD = 3;      // 举报数达到即自动隐藏
 const CMT_HIDE_THRESHOLD = 3;  // 评论举报隐藏阈值
 const MAX_PHOTOS = 3;
@@ -272,6 +273,36 @@ exports.main = async (event) => {
         return { ok: true, op: 'commentReport', hiddenNow: true };
       }
       return { ok: true, op: 'commentReport' };
+    }
+
+    // ---- 攻略存档（对齐 App planSave/planList/planDel） ----
+    if(action === 'planSave'){
+      const city = String(event.city || '').slice(0, 20);
+      const dateIso = String(event.dateIso || '').slice(0, 10);
+      const items = Array.isArray(event.items) ? event.items.slice(0, 6).map(it => ({
+        slot: String(it.slot || '').slice(0, 10),
+        time: String(it.time || '').slice(0, 5),
+        emoji: String(it.emoji || '📍').slice(0, 4),
+        name: String(it.name || '').slice(0, 30),
+        addr: String(it.addr || '').slice(0, 50)
+      })) : [];
+      if(!city || !items.length) return { ok: false, error: '攻略内容为空' };
+      // 防重复：同城市同日期同首站已存过则不重复入库
+      const dup = await db.collection(PLAN).where({ openid: OPENID, city, dateIso, 'items.0.name': items[0].name }).count();
+      if(dup.total > 0) return { ok: true, op: 'planSave', already: true };
+      await db.collection(PLAN).add({ data: { openid: OPENID, city, dateIso, items, createdAt: nowMs() } });
+      return { ok: true, op: 'planSave' };
+    }
+    if(action === 'planList'){
+      const r = await db.collection(PLAN).where({ openid: OPENID }).orderBy('createdAt', 'desc').limit(30).get();
+      return { ok: true, list: r.data.map(p => ({ id: p._id, city: p.city, dateIso: p.dateIso, items: p.items, createdAt: p.createdAt })) };
+    }
+    if(action === 'planDel'){
+      const id = String(event.id || '');
+      const doc = await db.collection(PLAN).where({ _id: id, openid: OPENID }).count();
+      if(!doc.total) return { ok: false, error: '无此攻略' };
+      await db.collection(PLAN).doc(id).remove();
+      return { ok: true };
     }
 
     // ---- 管理端（users 集合 admin: true 的用户；判定/待审列表/处理，对齐 App 管理面板） ----
