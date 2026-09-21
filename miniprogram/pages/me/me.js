@@ -23,9 +23,15 @@ Page({
     adminMode: false
   },
 
+
+  _isDarkTheme(){
+    const app = getApp();
+    return !!(app && app.globalData && app.globalData.resolvedTheme === 'dark');
+  },
   onShow(){
     if(typeof this.getTabBar === 'function' && this.getTabBar()){
-      this.getTabBar().setData({ selected: 4 });
+      const tb = this.getTabBar();
+    if(tb){ tb.setData({ selected: 4, dark: this._isDarkTheme() }); }
     }
     this.refresh();
   },

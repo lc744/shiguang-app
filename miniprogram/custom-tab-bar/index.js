@@ -2,6 +2,7 @@
 Component({
   data: {
     selected: 0,
+    dark: false,        // 主题跟随宿主页（页面 onShow 里同步 dark）
     list: [
       { pagePath: '/pages/home/home', icon: '⌂', label: '今天' },
       { pagePath: '/pages/upcoming/upcoming', icon: '⏳', label: '预告' },

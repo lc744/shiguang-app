@@ -11,9 +11,15 @@ Page({
     empty: false
   },
 
+
+  _isDarkTheme(){
+    const app = getApp();
+    return !!(app && app.globalData && app.globalData.resolvedTheme === 'dark');
+  },
   onShow(){
     if(typeof this.getTabBar === 'function' && this.getTabBar()){
-      this.getTabBar().setData({ selected: 1 });
+      const tb = this.getTabBar();
+    if(tb){ tb.setData({ selected: 1, dark: this._isDarkTheme() }); }
     }
     const app = getApp();
     this.setData({

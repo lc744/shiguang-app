@@ -37,9 +37,15 @@ Page({
     this.setData({ slides });
   },
 
+
+  _isDarkTheme(){
+    const app = getApp();
+    return !!(app && app.globalData && app.globalData.resolvedTheme === 'dark');
+  },
   onShow(){
     if(typeof this.getTabBar === 'function' && this.getTabBar()){
-      this.getTabBar().setData({ selected: 0 });
+      const tb = this.getTabBar();
+    if(tb){ tb.setData({ selected: 0, dark: this._isDarkTheme() }); }
     }
     const app = getApp();
     this.setData({

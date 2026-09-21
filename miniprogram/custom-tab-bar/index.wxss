@@ -1,10 +1,17 @@
-/* 自定义 tabBar（复刻 Web 版 .tabs 样式：胶囊高亮 + 顶部指示条） */
-.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--surface);padding:8rpx 10rpx calc(8rpx + env(safe-area-inset-bottom));border-top:1rpx solid var(--line);box-shadow:0 -6rpx 24rpx rgba(18,48,39,.06)}
+/* 自定义 tabBar（复刻 Web 版 .tabs 样式：胶囊高亮 + 顶部指示条）
+   注意：custom-tab-bar 是独立组件，拿不到 page 上的 CSS 变量，颜色必须硬编码 */
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:#ffffff;padding:8rpx 10rpx calc(8rpx + env(safe-area-inset-bottom));border-top:1rpx solid #e5ece9;box-shadow:0 -6rpx 24rpx rgba(18,48,39,.06)}
+.tabs.dark{background:#18241f;border-top:1rpx solid #2c4038;box-shadow:0 -6rpx 24rpx rgba(0,0,0,.45)}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:10rpx 0;border-radius:18rpx}
 .tab-icon{font-size:34rpx;line-height:1.2}
-.tab-label{font-size:20rpx;color:var(--sub);margin-top:2rpx}
-.tab-active .tab-label{color:var(--accent);font-weight:700}
-.tab-active::before{content:'';position:absolute;top:-8rpx;left:50%;transform:translateX(-50%);width:52rpx;height:6rpx;border-radius:0 0 6rpx 6rpx;background:var(--accent)}
+.tab-label{font-size:20rpx;color:#6e7f79;margin-top:2rpx}
+.tabs.dark .tab-label{color:#9db0a8}
+.tab-active .tab-label{color:#246353;font-weight:700}
+.tabs.dark .tab-active .tab-label{color:#4fae92}
+.tab-active::before{content:'';position:absolute;top:-8rpx;left:50%;transform:translateX(-50%);width:52rpx;height:6rpx;border-radius:0 0 6rpx 6rpx;background:#246353}
+.tabs.dark .tab-active::before{background:#4fae92}
 .tab-active{background:rgba(36,99,83,.13)}
+.tabs.dark .tab-active{background:rgba(79,174,146,.16)}
 /* 中间精灵：头像图（同 Web 版 genie-tab） */
 .tab-genie-img{width:76rpx;height:76rpx;border-radius:50%;box-shadow:0 4rpx 14rpx rgba(36,99,83,.3);margin-top:-14rpx;border:3rpx solid #fff}
+.tabs.dark .tab-genie-img{border-color:#2c4038;box-shadow:0 4rpx 14rpx rgba(0,0,0,.5)}

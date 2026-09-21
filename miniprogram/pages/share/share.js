@@ -48,9 +48,15 @@ Page({
     scenicKw: ''
   },
 
+
+  _isDarkTheme(){
+    const app = getApp();
+    return !!(app && app.globalData && app.globalData.resolvedTheme === 'dark');
+  },
   onShow(){
     if(typeof this.getTabBar === 'function' && this.getTabBar()){
-      this.getTabBar().setData({ selected: 3 });
+      const tb = this.getTabBar();
+    if(tb){ tb.setData({ selected: 3, dark: this._isDarkTheme() }); }
     }
     // 「我的」页跳转：指定打开哪个分段
     const app = getApp();
