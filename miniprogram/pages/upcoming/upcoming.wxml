@@ -1,4 +1,4 @@
-<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh">
+<view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh;padding-bottom:200rpx">
   <view class="subhead">
     <text class="subhead-title">预告</text>
     <text class="subhead-sub">接下来会发生什么</text>

@@ -5,7 +5,7 @@
 </view>
 
 <!-- 展开态：底部滑出聊天面板 -->
-<view class="genie-panel {{open ? 'show' : ''}}" catchtouchmove="noop">
+<view class="genie-panel {{open ? 'show' : ''}}" >
   <view class="genie-head">
     <view class="genie-avatar">
       <image class="genie-avatar-img" src="/images/genie.jpg" mode="aspectFill" />

@@ -1,4 +1,4 @@
-<view class="shell {{themeClass}}">
+<view class="shell {{themeClass}}" style="padding-bottom:160rpx">
   <view class="subhead">
     <text class="subhead-title">分享</text>
     <text class="subhead-sub">把好店与好风景推荐给同好</text>
@@ -104,7 +104,7 @@
   </view>
 
   <!-- 攻略结果弹层 -->
-  <view class="plan-mask" wx:if="{{plan}}" catchtouchmove="noop">
+  <view class="plan-mask" wx:if="{{plan}}">
     <view class="plan-result card">
       <view class="plan-form-title">{{plan.city}} · {{plan.dateLabel}}</view>
       <view class="plan-sub">由大家的 {{plan.count}} 条推荐编排 · 加入提醒后到点自动弹出</view>
@@ -136,7 +136,7 @@
 <canvas type="2d" id="plancanvas" style="position:fixed;left:-9999px;top:-9999px;width:300px;height:430px"></canvas>
 
 <!-- 国家名胜库全屏弹层 -->
-<view class="scenic-mask" wx:if="{{scenicOpen}}" catchtouchmove="noop">
+<view class="scenic-mask" wx:if="{{scenicOpen}}">
   <view class="scenic-lib card">
     <view class="scenic-lib-head">
       <text class="scenic-lib-title">🏛️ 国家名胜</text>

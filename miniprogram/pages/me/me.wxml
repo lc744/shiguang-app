@@ -1,4 +1,4 @@
-<view class="shell {{themeClass}}">
+<view class="shell {{themeClass}}" style="padding-bottom:280rpx">
   <view class="subhead">
     <text class="subhead-title">我的</text>
     <text class="subhead-sub">账号、发布与提醒设置都在这里</text>
