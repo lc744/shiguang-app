@@ -42,8 +42,12 @@
     <picker mode="region" bindchange="onRegion" value="{{region}}">
       <view class="p-input picker-sim">{{city || '选择省 / 市（选到市级即可）'}}</view>
     </picker>
-    <view class="p-label mt">具体位置<text class="p-optional">（选填）</text></view>
-    <input class="p-input" placeholder="比如：南禅寺步行街东侧" placeholder-class="ph" value="{{addr}}" bindinput="onAddr" maxlength="60" />
+    <view class="p-label mt">地址<text class="p-req">（必填，点右侧"填写"地图选择）</text></view>
+    <view class="addr-row">
+      <text class="addr-icon">📍</text>
+      <input class="p-input addr-input" placeholder="点击"填写"选择规范地址" placeholder-class="ph" maxlength="120" value="{{addr}}" disabled />
+      <button class="loc-btn" bindtap="chooseAddr">填写</button>
+    </view>
     <view class="p-label mt">推荐理由<text class="p-optional">（选填）</text></view>
     <textarea class="p-textarea" placeholder="说说好在哪：味道、位置、性价比……" placeholder-class="ph" value="{{desc}}" bindinput="onDesc" maxlength="500" />
   </view>

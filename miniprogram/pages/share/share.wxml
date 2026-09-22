@@ -78,7 +78,6 @@
   <view class="share-loading" wx:if="{{!hasMore && list.length > 3}}">— 到底啦 —</view>
 
   <!-- 悬浮发布按钮 -->
-  <view class="share-fab" bindtap="goPublish">＋</view>
 
   <!-- 攻略弹层：选城市/日期 -->
   <view class="plan-mask" wx:if="{{planForm}}" catchtouchmove="noop">

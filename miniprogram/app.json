@@ -15,6 +15,12 @@
     "pages/detail/detail",
     "pages/remind/remind"
   ],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于发布推荐时选择你的位置地址"
+    }
+  },
+  "requiredPrivateInfos": ["chooseLocation"],
   "window": {
     "navigationBarTitleText": "绸缪",
     "navigationBarBackgroundColor": "@navBgColor",

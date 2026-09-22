@@ -45,6 +45,25 @@ Page({
 
   onAddr(e){ this.setData({ addr: e.detail.value }); },
 
+  // 地图选点（对齐安卓地图选址：微信原生地图，定位+搜索+附近POI，免费无需key）
+  chooseAddr(){
+    wx.chooseLocation({
+      success: res => {
+        const name = String(res.name || '').trim();
+        const address = String(res.address || '').trim();
+        const addr = name && address.indexOf(name) < 0 ? name + '，' + address : (address || name);
+        this.setData({ addr });
+        // 名称未填时用地点名回填（对齐安卓选点后顺带填名的体验）
+        if(!this.data.name.trim() && name){ this.setData({ name: name.slice(0, 30) }); }
+      },
+      fail: err => {
+        if(err && err.errMsg && err.errMsg.indexOf('auth') >= 0){
+          wx.showModal({ title: '需要位置权限', content: '请在设置中允许使用位置信息', confirmText: '去设置', success: s => { if(s.confirm) wx.openSetting(); } });
+        }
+      }
+    });
+  },
+
   onName(e){ this.setData({ name: e.detail.value }); },
   onDesc(e){ this.setData({ desc: e.detail.value }); },
 
@@ -139,6 +158,7 @@ Page({
     const desc = this.data.desc.trim();
     const nickname = (this.data.nickname || '').trim() || '路过的朋友';
     if(!this.data.city){ wx.showToast({ title: '选一下所在城市', icon: 'none' }); return; }
+    if(!this.data.addr.trim()){ wx.showToast({ title: '还差一步：点击"填写"选择规范地址', icon: 'none', duration: 2200 }); return; }
     if(!this.data.photos.length){ wx.showToast({ title: '至少放一张照片', icon: 'none' }); return; }
 
     this.setData({ uploading: true });

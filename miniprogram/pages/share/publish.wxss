@@ -38,3 +38,9 @@
 
 /* 城市选择器（模拟 input 样式） */
 .picker-sim{color:var(--text);line-height:1.4;padding:16rpx 20rpx}
+/* 地址行（对齐安卓 addrPicker：📍 + 只读回显 + 填写按钮） */
+.p-req{font-size:11px;color:#c65c52}
+.addr-row{display:flex;align-items:center;gap:10px}
+.addr-icon{flex:none;font-size:16px}
+.addr-input{flex:1;background:transparent}
+.loc-btn{flex:none;font-size:13px;padding:0 18px;height:34px;line-height:34px;border-radius:999px;background:var(--main);color:#fff;border:0}
