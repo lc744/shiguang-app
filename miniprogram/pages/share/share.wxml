@@ -141,6 +141,7 @@
       <view class="plan-close" bindtap="closePlan">收起</view>
     </view>
   </view>
+  </block>
 </view>
 <canvas type="2d" id="plancanvas" style="position:fixed;left:-9999px;top:-9999px;width:300px;height:430px"></canvas>
 
@@ -183,6 +184,5 @@
       <view class="scenic-list-pad"></view>
     </scroll-view>
   </view>
-  </block>
 </view>
 <genie id="geniecomp" showfab="{{false}}" />
