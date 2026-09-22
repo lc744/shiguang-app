@@ -109,7 +109,9 @@ if ($debugApks.Count -eq 0) {
 
 if ($debugApks.Count -gt 0) {
     foreach ($apk in $debugApks) {
-        $destName = "ShiGuang_Debug_${Get-Date -Format 'yyyyMMdd_HHmmss'}.apk"
+        # 用 APK 文件名中的架构命名（app-arm64-v8a-debug.apk → ShiGuang_Debug_arm64-v8a.apk），避免多架构互相覆盖
+        $arch = if ($apk.Name -match '^app-(.+)-debug\.apk$') { $Matches[1] } else { Get-Date -Format 'yyyyMMdd_HHmmss' }
+        $destName = "ShiGuang_Debug_$arch.apk"
         Copy-Item $apk.FullName (Join-Path $outputDir $destName)
         $size = [math]::Round($apk.Length / 1MB, 2)
         Write-Host "✓ APK 已复制到：$destName ($size MB)" -ForegroundColor Green
