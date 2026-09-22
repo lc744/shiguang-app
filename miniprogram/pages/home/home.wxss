@@ -3,7 +3,7 @@
 /* 品牌头文字类名已提升到 app.wxss（预告页等 tab 页共用） */
 
 /* 统计卡（原 .stats 容器无全局规则，补两列网格） */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 18px 14px}
+/* .stats 已提升 app.wxss */
 .stat-num{display:block;font-size:22px;line-height:1;font-weight:800}
 .stat-label{display:block;font-size:12px;color:var(--sub);margin-top:4px}
 
@@ -11,10 +11,10 @@
 .subhead-sub{color:var(--sub);font-size:12px}
 
 /* hero 幻灯片 */
-.hero-swiper{height:120px}
-.hero-cat{display:block;font-size:12px;margin:0 0 6px;opacity:.75;letter-spacing:.05em;font-weight:600;color:#2c5f4d}
-.hero-main{display:block;font-size:19px;line-height:1.35;margin:0 0 6px;color:#2c5f4d;font-weight:700;word-wrap:break-word}
-.hero-desc{display:block;font-size:13px;line-height:1.6;opacity:.9;color:#3a6b56}
+/* .hero-swiper 等公共区样式已提升 app.wxss */
+
+
+
 
 /* 事件卡片内文本 */
 .et-time{display:block;font-size:17px;line-height:1}
@@ -31,10 +31,7 @@
 /* 自定义 tabBar 留白 */
 .shell{padding-bottom:260rpx}
 /* ===== 对齐 App 首页样式 ===== */
-/* hero 切换按钮（slide-nav-btn） */
-.slide-nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.75);color:var(--main);font-size:20px;line-height:34px;text-align:center;z-index:2;box-shadow:0 2px 8px rgba(18,48,39,.12)}
-.slide-prev{left:10px}
-.slide-next{right:10px}
+/* slide-nav-btn 已提升 app.wxss */
 /* header 文字按钮（日历） */
 .txt-btn{width:auto;padding:0 14px;font-size:14px;border-radius:999px}
 /* 已完成徽章 */

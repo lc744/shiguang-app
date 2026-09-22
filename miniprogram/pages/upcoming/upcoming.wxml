@@ -10,6 +10,30 @@
     </view>
   </view>
 
+  <!-- 公共区（对齐安卓：hero 幻灯 + 统计卡为首页/预告公共区） -->
+  <view class="hero">
+    <swiper class="hero-swiper" current="{{slideIndex}}" autoplay="{{true}}" circular="{{true}}" interval="5000" bindchange="onSlideChange">
+      <swiper-item wx:for="{{slides}}" wx:key="idx">
+        <view class="hero-text">
+          <text class="hero-cat">{{item.heroCat}}</text>
+          <text class="hero-main">{{item.heroMainTitle}}</text>
+          <text class="hero-desc">{{item.heroDesc}}</text>
+        </view>
+        <view class="hero-decoration">
+          <text class="decoration-item">{{item.deco}}</text>
+        </view>
+      </swiper-item>
+    </swiper>
+    <view class="slide-nav-btn slide-prev" bindtap="prevSlide">‹</view>
+    <view class="slide-nav-btn slide-next" bindtap="nextSlide">›</view>
+  </view>
+
+  <view class="stats">
+    <view class="card stat"><text class="stat-num">{{statTodo}}</text><text class="stat-label">今日待办</text></view>
+    <view class="card stat"><text class="stat-num">{{statDone}}</text><text class="stat-label">已完成</text></view>
+    <view class="card stat stat-clear" bindtap="onClearAll"><text class="stat-num">🗑</text><text class="stat-label">清空事件</text></view>
+  </view>
+
   <view class="subhead">
     <text class="subhead-title">预告</text>
     <text class="subhead-sub">接下来会发生什么</text>

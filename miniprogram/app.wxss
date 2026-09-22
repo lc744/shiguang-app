@@ -318,3 +318,15 @@ input, textarea { font-family: inherit; }
 .subhead .subhead-sub{margin-top:0;text-align:right;max-width:58%;line-height:1.4}
 /* fab 抬到自定义 tabBar 之上（tab 高约 110rpx + 安全区） */
 .fab{bottom:calc(190rpx + env(safe-area-inset-bottom, 0px)) !important}
+/* ===== 首页/预告页共用公共区（对齐安卓：hero 幻灯 + 统计卡为首页/预告公共区） ===== */
+.hero-swiper{height:120px}
+.hero-cat{display:block;font-size:12px;margin:0 0 6px;opacity:.75;letter-spacing:.05em;font-weight:600;color:#2c5f4d}
+.hero-main{display:block;font-size:19px;line-height:1.35;margin:0 0 6px;color:#2c5f4d;font-weight:700;word-wrap:break-word}
+.hero-desc{display:block;font-size:13px;line-height:1.6;opacity:.9;color:#3a6b56}
+.slide-nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.75);color:var(--main);font-size:20px;line-height:34px;text-align:center;z-index:2;box-shadow:0 2px 8px rgba(18,48,39,.12)}
+.slide-prev{left:10px}
+.slide-next{right:10px}
+.txt-btn{width:auto !important;padding:0 14px !important;font-size:14px;border-radius:999px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 18px 14px}
+.stat-num{display:block;font-size:22px;line-height:1;font-weight:800}
+.stat-label{display:block;font-size:12px;color:var(--sub);margin-top:4px}
