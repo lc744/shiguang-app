@@ -42,11 +42,6 @@
 .ph{color:var(--sub)}
 
 /* 统计卡 */
-.me-stats{display:flex;align-items:center;margin-top:14px;padding:22rpx 10rpx}
-.stat-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:4rpx}
-.stat-num{font-size:34rpx;font-weight:800;color:var(--text)}
-.stat-label{font-size:22rpx;color:var(--sub)}
-.stat-divider{width:1rpx;height:52rpx;background:var(--line)}
 /* 信息值行（对齐 App me-info-value） */
 .me-info-value{margin-left:auto;font-size:24rpx;color:var(--text);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .info-unset{color:var(--sub);opacity:.7}

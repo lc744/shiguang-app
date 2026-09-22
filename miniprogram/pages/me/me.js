@@ -15,9 +15,6 @@ Page({
     draftNickname: '',
     draftAvatar: '',
     saving: false,
-    statEvents: 0,
-    statDone: 0,
-    statPosts: '—',
     gender: '',
     birth: '',
   birthFull: '',
@@ -52,12 +49,6 @@ Page({
   },
 
   refresh(){
-    // 本地统计（提醒/完成次数）
-    try{
-      const events = store.getEvents();
-      const doneCount = events.reduce((s, e) => s + ((e.doneOn || []).length || (e.done ? 1 : 0)), 0);
-      this.setData({ statEvents: events.length, statDone: doneCount });
-    }catch(e){}
     const local = readLocal();
     const birthVal = local.birth || '';
     this.setData({
@@ -80,12 +71,6 @@ Page({
             wx.setStorageSync(ID_KEY, { nickname: p.nickname, avatarUrl: p.avatarUrl || '', updatedAt: p.updatedAt });
             this.setData({ nickname: p.nickname, avatarUrl: p.avatarUrl || '' });
           }
-        }).catch(() => {});
-      // 我的发布数
-      wx.cloud.callFunction({ name: 'postApi', data: { action: 'mine', page: 0 } })
-        .then(r => {
-          const d = r.result || {};
-          if(d.ok) this.setData({ statPosts: d.hasMore ? (d.list || []).length + '+' : (d.list || []).length });
         }).catch(() => {});
       // 管理员判定（users 集合 admin:true 的用户显示管理入口）
       wx.cloud.callFunction({ name: 'postApi', data: { action: 'adminCheck' } })
@@ -157,8 +142,6 @@ Page({
     if(app){ app.globalData = app.globalData || {}; app.globalData.shareTab = 'mine'; }
     wx.switchTab({ url: '/pages/share/share' });
   },
-
-  goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
 
   goMyComments(){ wx.navigateTo({ url: '/pages/mycomments/mycomments' }); },
 

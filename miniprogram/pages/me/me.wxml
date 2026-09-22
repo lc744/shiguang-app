@@ -57,24 +57,6 @@
       </block>
     </view>
 
-    <!-- 统计（对齐 App）：提醒 / 完成 / 发布 -->
-    <view class="card me-stats">
-      <view class="stat-cell">
-        <text class="stat-num">{{statEvents}}</text>
-        <text class="stat-label">提醒</text>
-      </view>
-      <view class="stat-divider"></view>
-      <view class="stat-cell">
-        <text class="stat-num">{{statDone}}</text>
-        <text class="stat-label">完成次数</text>
-      </view>
-      <view class="stat-divider"></view>
-      <view class="stat-cell">
-        <text class="stat-num">{{statPosts}}</text>
-        <text class="stat-label">发布</text>
-      </view>
-    </view>
-
     <!-- 资料信息行 + 菜单（对齐 App：邮箱/性别/出生年月为信息行，其余为菜单行） -->
     <view class="card me-menu">
       <view class="me-item">
@@ -109,11 +91,6 @@
       <view class="me-item" bindtap="goPlans">
         <text class="me-item-emoji">🧳</text>
         <text class="me-item-label">旅游攻略</text>
-        <text class="me-arrow">›</text>
-      </view>
-      <view class="me-item" bindtap="goCalendar">
-        <text class="me-item-emoji">📅</text>
-        <text class="me-item-label">日历视图</text>
         <text class="me-arrow">›</text>
       </view>
       <view class="me-item" bindtap="goSettings" bindlongpress="onSecretAdmin">
