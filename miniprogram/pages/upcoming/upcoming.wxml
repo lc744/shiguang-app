@@ -1,3 +1,4 @@
+<wxs src="../home/multi.wxs" module="mx" />
 <view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh;padding-bottom:200rpx">
   <!-- 品牌头（对齐安卓全局 header：每页顶部都有） -->
   <view class="header">
@@ -45,8 +46,8 @@
       <view>点击右下角 + 计划下一件事</view>
     </view>
     <block wx:else>
-      <view class="event {{multiOn && multiIds.indexOf(item.id) >= 0 ? 'multi-on' : ''}}" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" bindlongpress="onEventLongPress" data-id="{{item.id}}">
-        <view wx:if="{{multiOn}}" class="multi-check {{multiIds.indexOf(item.id) >= 0 ? 'on' : ''}}">✓</view>
+      <view class="event {{multiOn && mx.has(multiIds, item.id) ? 'multi-on' : ''}}" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" bindlongpress="onEventLongPress" data-id="{{item.id}}">
+        <view wx:if="{{multiOn}}" class="multi-check {{mx.has(multiIds, item.id) ? 'on' : ''}}">✓</view>
         <view class="event-time">
           <text class="et-time">{{item.time}}</text>
           <text class="et-period">{{item.label}}</text>

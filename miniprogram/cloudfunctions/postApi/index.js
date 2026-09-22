@@ -419,9 +419,10 @@ exports.main = async (event) => {
             const r = await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql:
               "SELECT uid, nickname, EXTRACT(EPOCH FROM (now() - last_seen))::BIGINT AS ago FROM users WHERE last_seen IS NOT NULL AND last_seen > now() - interval '90 days' ORDER BY last_seen DESC LIMIT 200" });
             (r && r.Rows ? r.Rows : []).forEach(line => {
-              let row = null; try{ row = JSON.parse(line)[0]; }catch(e){}
-              if(!row) return;
-              const rec = { nickname: String(row.nickname || ''), tail: String(row.uid || '').slice(-6), agoSec: Number(row.ago) || 0, key: String(row.uid || '') };
+              // ExecutePGSql 的 Rows 每行是"字符串化的值数组"，需双层解析（实测 [uid, nickname, ago]）
+              let arr = null; try{ arr = JSON.parse(JSON.parse(line)); }catch(e){}
+              if(!Array.isArray(arr) || arr.length < 3) return;
+              const rec = { nickname: String(arr[1] || ''), tail: String(arr[0] || '').slice(-6), agoSec: Number(arr[2]) || 0, key: String(arr[0] || '') };
               const ex = byKey[rec.key];
               if(!ex) byKey[rec.key] = rec;
               else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; ex.both = true; }

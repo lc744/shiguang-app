@@ -75,7 +75,14 @@ async function pgUpsertEvent(uid, e){
 async function pgPullEvents(uid){
   const r = await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql:
     "SELECT data FROM events WHERE uid = '" + pgEsc(uid) + "' LIMIT 1000" });
-  return (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(JSON.parse(line))[0]; }catch(e){ return null; } }).filter(Boolean);
+  // Rows 每行是"字符串化的值数组"：双层解析得 [data字符串]，data 字符串再 parse 成事件对象
+  return (r && r.Rows ? r.Rows : []).map(line => {
+    try{
+      const arr = JSON.parse(JSON.parse(line));
+      const v = arr[0];
+      return typeof v === 'string' ? JSON.parse(v) : v;
+    }catch(e){ return null; }
+  }).filter(Boolean);
 }
 
 exports.main = async (event) => {

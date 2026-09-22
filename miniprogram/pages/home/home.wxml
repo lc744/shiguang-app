@@ -1,3 +1,4 @@
+<wxs src="multi.wxs" module="mx" />
 <view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh;padding-bottom:200rpx">
   <!-- 品牌头 -->
   <view class="header">
@@ -12,7 +13,7 @@
 
   <!-- hero 幻灯片（对齐 App：‹ › 手动切换 + 5 秒自动轮播） -->
   <view class="hero">
-    <swiper class="hero-swiper" current="{{slideIndex}}" autoplay="{{true}}" circular="{{true}}" interval="5000" bindchange="onSlideChange">
+    <swiper class="hero-swiper" current="{{slideIndex}}" autoplay="{{autoplay}}" circular="{{true}}" interval="5000" bindchange="onSlideChange">
       <swiper-item wx:for="{{slides}}" wx:key="idx">
         <view class="hero-text">
           <text class="hero-cat">{{item.heroCat}}</text>
@@ -65,8 +66,8 @@
       <view>点击右下角 + 安排一件事，可任选未来日期</view>
     </view>
     <block wx:else>
-      <view class="event {{item.done ? 'done' : ''}} {{multiOn && multiIds.indexOf(item.id) >= 0 ? 'multi-on' : ''}}" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" bindlongpress="onEventLongPress" data-id="{{item.id}}">
-        <view wx:if="{{multiOn}}" class="multi-check {{multiIds.indexOf(item.id) >= 0 ? 'on' : ''}}">✓</view>
+      <view class="event {{item.done ? 'done' : ''}} {{multiOn && mx.has(multiIds, item.id) ? 'multi-on' : ''}}" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" bindlongpress="onEventLongPress" data-id="{{item.id}}">
+        <view wx:if="{{multiOn}}" class="multi-check {{mx.has(multiIds, item.id) ? 'on' : ''}}">✓</view>
         <view class="event-time">
           <text class="et-time">{{item.time}}</text>
           <text class="et-period">{{item.period}}</text>

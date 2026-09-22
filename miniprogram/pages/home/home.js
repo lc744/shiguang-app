@@ -67,9 +67,14 @@ Page({
     const app = getApp();
     this.setData({
       themeClass: app.globalData.resolvedTheme === 'dark' ? 'theme-dark' : '',
-      bgColor: app.globalData.bgColor
+      bgColor: app.globalData.bgColor,
+      autoplay: true   // 切回前台重启轮播（后台挂起恢复时 swiper 动画会错乱抖动）
     });
     this.refresh();
+  },
+  onHide(){
+    // 挂后台立即停轮播，避免恢复瞬间动画堆积抖动
+    this.setData({ autoplay: false });
   },
 
   // 清空全部事件（对齐 App：home 统计行第三卡）

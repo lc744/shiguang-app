@@ -771,7 +771,14 @@ async function handlePostAction(action, body, uid){
   if(action === 'eventPull'){
     if(!me) return json(401, { ok: false, error: '请先登录' });
     const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT data FROM events WHERE uid = '" + esc(uid) + "' LIMIT 1000" });
-    const events = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(JSON.parse(line))[0]; }catch(e){ return null; } }).filter(Boolean);
+    // Rows 每行是"字符串化的值数组"：双层解析得 [data字符串]，data 字符串再 parse 成事件对象
+    const events = (r && r.Rows ? r.Rows : []).map(line => {
+      try{
+        const arr = JSON.parse(JSON.parse(line));
+        const v = arr[0];
+        return typeof v === 'string' ? JSON.parse(v) : v;
+      }catch(e){ return null; }
+    }).filter(Boolean);
     return json(200, { ok: true, op: 'eventPull', events });
   }
 
