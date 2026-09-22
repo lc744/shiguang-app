@@ -49,7 +49,8 @@ Page({
   },
 
   refresh(){
-    const local = readLocal();
+    // 未登录/无缓存时 local 可能为 null：直接取属性会抛错导致页面卡在加载态（内容全空）
+    const local = readLocal() || {};
     const birthVal = local.birth || '';
     this.setData({
       gender: local.gender || '',
