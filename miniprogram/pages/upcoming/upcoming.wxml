@@ -1,4 +1,15 @@
 <view class="shell {{themeClass}}" style="background:{{bgColor}};min-height:100vh;padding-bottom:200rpx">
+  <!-- 品牌头（对齐安卓全局 header：每页顶部都有） -->
+  <view class="header">
+    <view class="brand">
+      <text class="brand-name">绸缪</text>
+      <text class="brand-sub">记事 · 闹钟 · 语音包 · 表情包</text>
+    </view>
+    <view class="header-actions">
+      <button class="icon-btn txt-btn" bindtap="goHome">今天</button>
+    </view>
+  </view>
+
   <view class="subhead">
     <text class="subhead-title">预告</text>
     <text class="subhead-sub">接下来会发生什么</text>

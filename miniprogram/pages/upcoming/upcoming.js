@@ -88,6 +88,9 @@ Page({
     this.setData({ list: list, empty: list.length === 0 });
   },
 
+  // 品牌头右侧按钮：跳回今天（对齐安卓 header 全局导航）
+  goHome(){ wx.switchTab({ url: '/pages/home/home' }); },
+
   onEventTap(e){ wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
 
   onAddTap(){ wx.navigateTo({ url: '/pages/editor/editor' }); }

@@ -1,7 +1,6 @@
 /* 首页补充样式：全局 app.wxss 里部分排版依赖 HTML 标签选择器（strong/small/p 等），
    WXML 不使用这些标签，这里以类名等价补充 */
-.brand-name{font-size:22px;line-height:1;letter-spacing:.02em;font-weight:700}
-.brand-sub{font-size:12px;color:var(--sub)}
+/* 品牌头文字类名已提升到 app.wxss（预告页等 tab 页共用） */
 
 /* 统计卡（原 .stats 容器无全局规则，补两列网格） */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 18px 14px}
