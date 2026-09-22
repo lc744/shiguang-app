@@ -5,6 +5,93 @@ let selectedWeekdays = [];        // 自定义重复时选中的星期（1..7，
 let isBirthdayMode = false;       // 生日事件模式
 let isLunarBirthday = false;      // 农历生日
 
+/* ---------------- 通用滚轮选择弹层（日期/时间，滚轮 + 手动输入双模式） ---------------- */
+let wpState = null;
+const wpPad2 = n => String(n).padStart(2, '0');
+
+function wpMakeCol(id, values, selected, onChange){
+  fillWheel(id, values, selected, onChange);
+  return { id, values, sel: Math.max(0, values.indexOf(selected)) };
+}
+
+function wpReadCol(c){
+  const el = document.getElementById(c.id);
+  return Math.max(0, Math.min(c.values.length - 1, Math.round(el.scrollTop / WHEEL_ITEM_H)));
+}
+
+function openWheelPicker(cfg){
+  wpState = cfg;
+  document.getElementById('wpTitle').textContent = cfg.title;
+  document.getElementById('wpManual').value = '';
+  document.getElementById('wpManual').placeholder = cfg.manualPlaceholder || '或在此手动输入';
+  document.getElementById('wpCols').innerHTML = cfg.cols.map(c => `<div class="wheel-col" id="${c.id}" style="flex:1"></div>`).join('');
+  cfg.cols.forEach(c => wpMakeCol(c.id, c.values, c.selected, c.onChange));
+  document.getElementById('wheelPickerOverlay').style.display = 'flex';
+}
+
+function closeWheelPicker(){
+  const o = document.getElementById('wheelPickerOverlay'); if(o) o.style.display = 'none';
+  wpState = null;
+}
+
+function wpConfirm(){
+  if(!wpState) return;
+  const manual = (document.getElementById('wpManual').value || '').trim();
+  const out = wpState.onConfirm(manual, wpState.cols.map(c => c.values[wpReadCol(c)]));
+  if(out === false) return;   // 手动值非法时保留弹层让用户改
+  closeWheelPicker();
+}
+
+// 日期滚轮：年(1900..今年+10)/月/日，月年变化时日列联动天数（闰年/大小月）
+function openDateWheel(){
+  const cur = (document.getElementById('fDate').value || todayStr()).split('-');
+  const y0 = parseInt(cur[0], 10) || new Date().getFullYear();
+  const m0 = parseInt(cur[1], 10) || 1;
+  const d0 = parseInt(cur[2], 10) || 1;
+  const nowY = new Date().getFullYear();
+  const years = Array.from({length: nowY + 10 - 1900 + 1}, (_, i) => 1900 + i);
+  let sel = { y: y0, m: m0, d: Math.min(d0, new Date(y0, m0, 0).getDate()) };
+  const dayValues = () => Array.from({length: new Date(sel.y, sel.m, 0).getDate()}, (_, i) => i + 1);
+  openWheelPicker({
+    title: '选择日期',
+    manualPlaceholder: '或手动输入，如 2027-03-08',
+    cols: [
+      { id: 'wpY', values: years, selected: sel.y, onChange: v => { sel.y = v; sel.d = Math.min(sel.d, new Date(sel.y, sel.m, 0).getDate()); wpMakeCol('wpD', dayValues(), sel.d); } },
+      { id: 'wpM', values: Array.from({length: 12}, (_, i) => i + 1), selected: sel.m, onChange: v => { sel.m = v; sel.d = Math.min(sel.d, new Date(sel.y, sel.m, 0).getDate()); wpMakeCol('wpD', dayValues(), sel.d); } },
+      { id: 'wpD', values: dayValues(), selected: sel.d, onChange: v => { sel.d = v; } },
+    ],
+    onConfirm: (manual, vals) => {
+      let v = vals[0] + '-' + wpPad2(vals[1]) + '-' + wpPad2(vals[2]);
+      if(manual){
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(manual)){ toast('日期格式应为 YYYY-MM-DD'); return false; }
+        v = manual;
+      }
+      document.getElementById('fDate').value = v;
+    }
+  });
+}
+
+// 时间滚轮：时(0-23)/分(0-59)
+function openTimeWheel(){
+  const cur = (document.getElementById('fTime').value || '09:00').split(':');
+  openWheelPicker({
+    title: '选择时间',
+    manualPlaceholder: '或手动输入，如 09:30',
+    cols: [
+      { id: 'wpH', values: Array.from({length: 24}, (_, i) => i), selected: parseInt(cur[0], 10) || 0, onChange: () => {} },
+      { id: 'wpMin', values: Array.from({length: 60}, (_, i) => i), selected: parseInt(cur[1], 10) || 0, onChange: () => {} },
+    ],
+    onConfirm: (manual, vals) => {
+      let v = wpPad2(vals[0]) + ':' + wpPad2(vals[1]);
+      if(manual){
+        if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(manual)){ toast('时间格式应为 HH:MM'); return false; }
+        v = manual;
+      }
+      document.getElementById('fTime').value = v;
+    }
+  });
+}
+
 /* 生日提醒：不再手动开启——由“我的”页出生日期自动生成（isBirthday 事件）。
    编辑已存在的生日事件时保持其生日属性，不可转普通事件。 */
 

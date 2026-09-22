@@ -110,8 +110,8 @@
               <textarea id="fNote" placeholder="选填，提醒时一并展示"></textarea>
             </div>
             <div class="meta-grid">
-              <div class="meta"><small>日期（可选任意未来日期）</small><input type="date" id="fDate" style="border:0;background:transparent;outline:none;width:100%;font-weight:700;color:var(--text)" /></div>
-              <div class="meta"><small>时间</small><input type="time" id="fTime" style="border:0;background:transparent;outline:none;width:100%;font-weight:700;color:var(--text)" /></div>
+              <div class="meta" onclick="openDateWheel()" style="cursor:pointer"><small>日期（点击选择或输入）</small><input type="text" id="fDate" readonly placeholder="YYYY-MM-DD" style="border:0;background:transparent;outline:none;width:100%;font-weight:700;color:var(--text);cursor:pointer" /></div>
+              <div class="meta" onclick="openTimeWheel()" style="cursor:pointer"><small>时间（点击选择或输入）</small><input type="text" id="fTime" readonly placeholder="HH:MM" style="border:0;background:transparent;outline:none;width:100%;font-weight:700;color:var(--text);cursor:pointer" /></div>
             </div>
             <div class="field">
               <label>重复提醒</label>
@@ -511,9 +511,26 @@
     </div>
   </div>
 
-  <!-- 修改出生年月弹层（三列滚轮选择器） -->
-  <div class="remind-fullscreen" id="birthOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
+  <!-- 通用滚轮选择弹层（编辑页日期/时间；手动输入行可选） -->
+  <div class="remind-fullscreen" id="wheelPickerOverlay" style="display:none" onclick="if(event.target===this)closeWheelPicker()">
     <div class="remind-card card" style="max-width:340px;padding:20px 18px">
+      <h2 id="wpTitle" style="font-size:17px;margin:0 0 14px;text-align:center">选择</h2>
+      <div class="wheel-box" id="wpBox">
+        <div class="wheel-highlight"></div>
+        <div id="wpCols" style="display:flex;width:100%"></div>
+      </div>
+      <div class="field" style="margin-top:10px;text-align:left">
+        <input id="wpManual" type="text" placeholder="或在此手动输入" style="width:100%" />
+      </div>
+      <div class="action-row" style="margin-top:14px">
+        <button class="secondary" onclick="closeWheelPicker()">取消</button>
+        <button class="primary" onclick="wpConfirm()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改出生年月弹层（三列滚轮选择器） -->
+  <div class="remind-fullscreen" id="birthOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">    <div class="remind-card card" style="max-width:340px;padding:20px 18px">
       <h2 style="font-size:17px;margin:0 0 14px;text-align:center">修改出生日期</h2>
       <div class="field" style="text-align:left">
         <label>出生日期（公历）</label>
