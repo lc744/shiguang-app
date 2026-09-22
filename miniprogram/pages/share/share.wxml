@@ -1,4 +1,13 @@
 <view class="shell {{themeClass}}" style="padding-bottom:160rpx">
+  <!-- 未登录：整页登录引导（对齐安卓：分享页需登录） -->
+  <view wx:if="{{needLogin}}" class="share-login-gate">
+    <view class="slg-icon">🔐</view>
+    <view class="slg-title">需要登录</view>
+    <view class="slg-sub">登录后即可浏览与发布分享</view>
+    <button class="primary slg-btn" bindtap="goLogin">微信一键登录</button>
+  </view>
+
+  <block wx:else>
   <view class="subhead">
     <text class="subhead-title">分享</text>
     <text class="subhead-sub">把好店与好风景推荐给同好</text>
@@ -174,5 +183,6 @@
       <view class="scenic-list-pad"></view>
     </scroll-view>
   </view>
+  </block>
 </view>
 <genie id="geniecomp" showfab="{{false}}" />

@@ -28,6 +28,7 @@ Page({
     hasMore: true,
     loading: false,
     empty: false,
+    needLogin: false,       // 未登录整页引导态（对齐安卓：分享页需登录）
     feedType: '',           // 筛选：'' 全部 | 美食 | 景点 | 娱乐
     feedTypes: ['美食', '景点', '娱乐'],
     feedCity: '',           // 筛选城市（空=不限）
@@ -67,11 +68,31 @@ Page({
     const hide = e.scrollTop > 80;
     if(tb.data.hidden !== hide) tb.setHidden(hide);
   },
+  // 登录引导：跳我的页完成微信登录
+  goLogin(){ wx.switchTab({ url: '/pages/me/me' }); },
+
   onShow(){
     if(typeof this.getTabBar === 'function' && this.getTabBar()){
       const tb = this.getTabBar();
     if(tb){ tb.setData({ selected: 3, dark: this._isDarkTheme() }); }
     }
+    // 分享页需要登录（对齐安卓 showPage：未登录时提示并引导登录）
+    let loggedIn = false;
+    try{
+      const id = wx.getStorageSync('shiguang_share_identity') || {};
+      loggedIn = !!(id && id.nickname);
+    }catch(e){}
+    if(!loggedIn){
+      this.setData({ needLogin: true, list: [], empty: true });
+      wx.showModal({
+        title: '需要登录',
+        content: '登录后即可浏览与发布分享',
+        confirmText: '去登录',
+        success: r => { if(r.confirm) wx.switchTab({ url: '/pages/me/me' }); }
+      });
+      return;
+    }
+    if(this.data.needLogin) this.setData({ needLogin: false });
     // 「我的」页跳转：指定打开哪个分段
     const app = getApp();
     let tab = this.data.tab;
