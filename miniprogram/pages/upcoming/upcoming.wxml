@@ -45,7 +45,8 @@
       <view>点击右下角 + 计划下一件事</view>
     </view>
     <block wx:else>
-      <view class="event" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" data-id="{{item.id}}">
+      <view class="event {{multiOn && multiIds.indexOf(item.id) >= 0 ? 'multi-on' : ''}}" wx:for="{{list}}" wx:key="id" bindtap="onEventTap" bindlongpress="onEventLongPress" data-id="{{item.id}}">
+        <view wx:if="{{multiOn}}" class="multi-check {{multiIds.indexOf(item.id) >= 0 ? 'on' : ''}}">✓</view>
         <view class="event-time">
           <text class="et-time">{{item.time}}</text>
           <text class="et-period">{{item.label}}</text>
@@ -65,6 +66,13 @@
         </view>
       </view>
     </block>
+  </view>
+
+  <!-- 多选删除操作条（对齐安卓 multiBar） -->
+  <view class="multi-bar" wx:if="{{multiOn}}">
+    <button class="secondary" bindtap="multiAll">全选</button>
+    <button class="danger-btn" bindtap="multiDelete">删除({{multiIds.length}})</button>
+    <button class="secondary" bindtap="multiExit">取消</button>
   </view>
 
   <button class="fab" bindtap="onAddTap">+</button>

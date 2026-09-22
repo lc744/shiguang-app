@@ -11,6 +11,8 @@ function missedHiddenKey(){ return 'shiguang_missed_hidden_' + core.todayStr(); 
 
 Page({
   data: {
+    multiOn: false,
+    multiIds: [],
     themeClass: '',
     bgColor: '#eef4f1',
     homeDate: '',
@@ -158,7 +160,58 @@ Page({
 
   onAddTap(){ wx.navigateTo({ url: '/pages/editor/editor' }); },
 
-  onEventTap(e){ wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
+  // 长按事件卡：进入多选模式（对齐安卓 480ms 长按 enterMultiSel，长按的那条默认选中）
+  onEventLongPress(e){
+    const id = e.currentTarget.dataset.id;
+    this.setData({ multiOn: true, multiIds: [id] });
+    wx.showToast({ title: '已进入多选模式，点选要删除的事件', icon: 'none', duration: 2000 });
+  },
+
+  onEventTap(e){
+    const id = e.currentTarget.dataset.id;
+    // 多选模式下点击 = 勾选/取消（对齐安卓 toggleMultiSel）
+    if(this.data.multiOn){
+      const ids = this.data.multiIds.slice();
+      const i = ids.indexOf(id);
+      if(i >= 0) ids.splice(i, 1); else ids.push(id);
+      this.setData({ multiIds: ids });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/detail/detail?id=' + id });
+  },
+
+  // 全选：今天发生的全部事件（对齐安卓 multiSelAll home 分支）
+  multiAll(){
+    const t = core.todayStr();
+    const events = store.getEvents();
+    const ids = [];
+    events.forEach(e => { try{ if(core.occursOn(e, t)) ids.push(e.id); }catch(err){} });
+    this.setData({ multiIds: ids });
+  },
+
+  // 批量删除（对齐安卓 multiSelDelete：确认 → 清理录音 → 过滤 → 退出多选）
+  multiDelete(){
+    const ids = this.data.multiIds;
+    if(!ids.length){ wx.showToast({ title: '先勾选要删除的事件', icon: 'none' }); return; }
+    wx.showModal({
+      title: '批量删除',
+      content: '确定删除选中的 ' + ids.length + ' 个事件吗？删除后不可恢复',
+      confirmText: '删除',
+      confirmColor: '#c65c52',
+      success: res => {
+        if(!res.confirm) return;
+        const delSet = ids.slice();
+        const events = store.getEvents();
+        events.forEach(e => { if(delSet.indexOf(e.id) >= 0) store.deleteRecording(e.voiceData); });
+        store.setEvents(events.filter(e => delSet.indexOf(e.id) < 0));
+        this.setData({ multiOn: false, multiIds: [] });
+        this.refresh();
+        wx.showToast({ title: '已删除 ' + delSet.length + ' 个事件', icon: 'none' });
+      }
+    });
+  },
+
+  multiExit(){ this.setData({ multiOn: false, multiIds: [] }); },
 
   onMissedTap(e){ wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
 

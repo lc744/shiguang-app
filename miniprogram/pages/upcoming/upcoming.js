@@ -10,6 +10,8 @@ Page({
     bgColor: '#eef4f1',
     list: [],
     empty: false,
+    multiOn: false,
+    multiIds: [],
     // 公共区（对齐安卓：hero + 统计卡为首页/预告公共区）
     slides: [],
     slideIndex: 0,
@@ -144,7 +146,55 @@ Page({
     });
   },
 
-  onEventTap(e){ wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id }); },
+  // 长按事件卡：进入多选模式（对齐安卓，长按的那条默认选中）
+  onEventLongPress(e){
+    const id = e.currentTarget.dataset.id;
+    this.setData({ multiOn: true, multiIds: [id] });
+    wx.showToast({ title: '已进入多选模式，点选要删除的事件', icon: 'none', duration: 2000 });
+  },
+
+  onEventTap(e){
+    const id = e.currentTarget.dataset.id;
+    // 多选模式下点击 = 勾选/取消
+    if(this.data.multiOn){
+      const ids = this.data.multiIds.slice();
+      const i = ids.indexOf(id);
+      if(i >= 0) ids.splice(i, 1); else ids.push(id);
+      this.setData({ multiIds: ids });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/detail/detail?id=' + id });
+  },
+
+  // 全选：当前预告列表的全部事件
+  multiAll(){
+    const ids = this.data.list.map(x => x.id);
+    this.setData({ multiIds: ids });
+  },
+
+  // 批量删除（确认 → 清理录音 → 过滤 → 退出多选）
+  multiDelete(){
+    const ids = this.data.multiIds;
+    if(!ids.length){ wx.showToast({ title: '先勾选要删除的事件', icon: 'none' }); return; }
+    wx.showModal({
+      title: '批量删除',
+      content: '确定删除选中的 ' + ids.length + ' 个事件吗？删除后不可恢复',
+      confirmText: '删除',
+      confirmColor: '#c65c52',
+      success: res => {
+        if(!res.confirm) return;
+        const delSet = ids.slice();
+        const events = store.getEvents();
+        events.forEach(e => { if(delSet.indexOf(e.id) >= 0) store.deleteRecording(e.voiceData); });
+        store.setEvents(events.filter(e => delSet.indexOf(e.id) < 0));
+        this.setData({ multiOn: false, multiIds: [] });
+        this.refresh();
+        wx.showToast({ title: '已删除 ' + delSet.length + ' 个事件', icon: 'none' });
+      }
+    });
+  },
+
+  multiExit(){ this.setData({ multiOn: false, multiIds: [] }); },
 
   onAddTap(){ wx.navigateTo({ url: '/pages/editor/editor' }); }
 });
