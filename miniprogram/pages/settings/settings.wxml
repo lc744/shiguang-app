@@ -66,6 +66,9 @@
     <!-- 关于 -->
     <view class="detail-card gap">
       <view class="card-title">关于</view>
+      <view class="action-row">
+        <button class="secondary" style="width:100%" bindtap="openPrivacy">📄 隐私政策</button>
+      </view>
       <view class="mini about-line">绸缪 v{{version}}</view>
       <view class="mini about-line">「绸缪」出自《诗经·唐风》"未雨绸缪"，愿每一件要紧事，都从容有备。</view>
       <view class="mini about-line">小程序备案号：苏ICP备2026065980号-1X</view>

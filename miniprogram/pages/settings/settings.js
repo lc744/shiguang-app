@@ -180,6 +180,17 @@ Page({
         wx.showToast({ title: '已清空全部事件', icon: 'none' });
       }
     });
+  },
+
+  // 查看隐私政策（对齐安卓设置页入口；小程序走微信官方半屏《用户隐私保护指引》）
+  openPrivacy(){
+    if(wx.openPrivacyContract){
+      wx.openPrivacyContract({
+        fail: () => wx.showToast({ title: '当前微信版本不支持', icon: 'none' })
+      });
+    } else {
+      wx.showToast({ title: '当前微信版本不支持', icon: 'none' });
+    }
   }
 });
 

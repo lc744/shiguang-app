@@ -34,7 +34,16 @@ App({
     this._timer = setInterval(() => this.checkReminders(), 5000);
   },
 
-  onShow(){ this.checkReminders(); },
+  onShow(){
+    this.checkReminders();
+    // 用户心跳（对齐安卓 CloudAuth heartbeat：管理面板在线状态数据源）——静默失败
+    try{
+      const local = wx.getStorageSync('shiguang_share_identity') || {};
+      if(local.nickname){
+        wx.cloud.callFunction({ name: 'postApi', data: { action: 'heartbeat', nickname: local.nickname } }).catch(() => {});
+      }
+    }catch(e){}
+  },
   onHide(){},
 
   // 主题解析：system 跟随微信深浅色

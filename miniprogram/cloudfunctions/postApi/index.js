@@ -17,6 +17,14 @@ const MAX_PHOTOS = 3;
 
 function nowMs(){ return Date.now(); }
 
+function fmtTimeStr(ms){
+  const t = typeof ms === 'number' ? ms : (ms ? new Date(ms).getTime() : 0);
+  if(!t) return '';
+  const d = new Date(t);
+  const p = n => String(n).padStart(2, '0');
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 // ---------- 评论侧敏感词（对齐 App 双轨审核第一道） ----------
 const BAD_WORDS = ['加微信','加V','加Q','赌博','博彩','下注','代开发票','色情','约炮','刷单','点赞返现','兼职日结','高利贷','办证','外挂','代练','转账返','资金盘','裸聊','枪支','援交','一夜情','包养','代孕','卖淫','嫖娼','毒品','冰毒','迷药','自残','跑分','洗钱','砍头息','网贷','征信修复','养卡','时时彩','百家乐','刷粉','刷量','僵尸粉','加weixin','君羊'];
 function normalizeText(s){
@@ -341,8 +349,32 @@ exports.main = async (event) => {
       if(!(await isAdmin())) return { ok: false, error: '无管理权限' };
       const posts = await db.collection(COL).where({ hidden: true }).orderBy('createdAt', 'desc').limit(50).get();
       const cmts = await db.collection(CMT).where({ hidden: true }).orderBy('createdAt', 'desc').limit(50).get();
-      return { ok: true, posts: posts.data.map(p => ({ id: p._id, type: p.type, name: p.name || p.addr || '（未命名）', nickname: p.nickname, reports: p.reports || 0, photos: p.photos || [] })),
-               comments: cmts.data.map(c => ({ cid: c._id, content: c.content, nickname: c.nickname, reports: c.reports || 0 })) };
+      // 用户在线状态（对齐安卓管理面板：🟢在线5分钟内 / 🟡最近30分钟内 / ⚪离线）
+      let users = [];
+      try{
+        const ur = await db.collection(USR).limit(100).get();
+        users = ur.data.map(u => ({
+          nickname: u.nickname || '',
+          tail: String(u.openid || '').slice(-6),
+          agoSec: u.lastActive ? Math.max(0, Math.floor((Date.now() - u.lastActive) / 1000)) : -1
+        })).sort((a, b) => b.agoSec - a.agoSec);
+      }catch(e){}
+      return { ok: true, users,
+               posts: posts.data.map(p => ({ id: p._id, type: p.type, name: p.name || p.addr || '（未命名）', nickname: p.nickname, reports: p.reports || 0, photos: p.photos || [], time: fmtTimeStr(p.createdAt) })),
+               comments: cmts.data.map(c => ({ cid: c._id, content: c.content, nickname: c.nickname, reports: c.reports || 0, time: fmtTimeStr(c.createdAt) })) };
+    }
+    // ---- 心跳（用户在线状态数据源，对齐安卓 CloudAuth heartbeat） ----
+    if(action === 'heartbeat'){
+      const nickname = String(event.nickname || '').slice(0, 20);
+      try{
+        const r = await db.collection(USR).where({ openid: OPENID }).get();
+        if(r.data && r.data.length){
+          await db.collection(USR).doc(r.data[0]._id).update({ data: { lastActive: Date.now(), nickname: nickname || (r.data[0].nickname || '') } });
+        } else {
+          await db.collection(USR).add({ data: { openid: OPENID, nickname: nickname, lastActive: Date.now(), admin: false } });
+        }
+      }catch(e){}
+      return { ok: true };
     }
     if(action === 'adminPostAction'){
       if(!(await isAdmin())) return { ok: false, error: '无管理权限' };

@@ -1,42 +1,55 @@
 <view class="shell">
   <view class="subhead">
-    <text class="subhead-title">内容管理</text>
-    <text class="subhead-sub">被举报隐藏的内容：核实后恢复或删除</text>
+    <text class="subhead-title">🛡 内容管理</text>
+    <text class="subhead-sub">被隐藏的内容：核实后通过或删除</text>
   </view>
 
-  <view class="seg-row">
-    <view class="seg {{tab === 'posts' ? 'seg-on' : ''}}" data-tab="posts" bindtap="switchTab">帖子 {{posts.length}}</view>
-    <view class="seg {{tab === 'comments' ? 'seg-on' : ''}}" data-tab="comments" bindtap="switchTab">评论 {{comments.length}}</view>
-  </view>
+  <view wx:if="{{loading}}" class="ad-empty">验证权限 / 加载中…</view>
 
-  <view wx:if="{{loading}}" class="ad-empty">加载中…</view>
-
-  <view wx:elif="{{tab === 'posts'}}" class="ad-list">
-    <view wx:if="{{!posts.length}}" class="ad-empty">没有待处理的帖子</view>
-    <view class="ad-item card" wx:for="{{posts}}" wx:key="id">
-      <image wx:if="{{item.thumb}}" class="ad-thumb" src="{{item.thumb}}" mode="aspectFill" />
-      <view class="ad-main">
-        <text class="ad-name">{{item.name}}</text>
-        <text class="ad-sub">{{item.type}} · {{item.nickname}} · 被举报 {{item.reports}} 次</text>
-        <view class="ad-ops">
-          <text class="ad-op ok" data-kind="post" data-id="{{item.id}}" bindtap="onRestore">恢复</text>
-          <text class="ad-op danger" data-kind="post" data-id="{{item.id}}" bindtap="onDelete">删除</text>
+  <block wx:else>
+    <!-- 用户在线（对齐安卓管理面板） -->
+    <view wx:if="{{users.length}}" class="ad-users">
+      <view class="ad-sec-title">👥 用户在线 <text class="ad-sec-sub">共 {{total}} 人 · 🟢 在线 {{online}} · 🟡 最近 {{recent}}</text></view>
+      <view class="ad-item card" wx:for="{{users}}" wx:key="tail">
+        <view class="ad-main">
+          <text class="ad-name">{{item.dot}} {{item.name}}</text>
+          <text class="ad-sub">…{{item.tail}}</text>
         </view>
+        <text class="ad-ago">{{item.agoText}}</text>
       </view>
     </view>
-  </view>
 
-  <view wx:elif="{{tab === 'comments'}}" class="ad-list">
-    <view wx:if="{{!comments.length}}" class="ad-empty">没有待处理的评论</view>
-    <view class="ad-item card" wx:for="{{comments}}" wx:key="cid">
-      <view class="ad-main">
-        <text class="ad-name">{{item.content}}</text>
-        <text class="ad-sub">{{item.nickname}} · 被举报 {{item.reports}} 次</text>
-        <view class="ad-ops">
-          <text class="ad-op ok" data-kind="comment" data-id="{{item.cid}}" bindtap="onRestore">恢复</text>
-          <text class="ad-op danger" data-kind="comment" data-id="{{item.cid}}" bindtap="onDelete">删除</text>
+    <!-- 被隐藏的帖子 -->
+    <block wx:if="{{posts.length}}">
+      <view class="ad-sec-title gap">被隐藏的帖子</view>
+      <view class="ad-item card" wx:for="{{posts}}" wx:key="id">
+        <image wx:if="{{item.thumb}}" class="ad-thumb" src="{{item.thumb}}" mode="aspectFill" />
+        <view class="ad-main">
+          <text class="ad-name">{{item.name}}</text>
+          <text class="ad-sub">{{item.type}} · {{item.nickname}} · 举报 {{item.reports}} 次 · {{item.time}}</text>
+          <view class="ad-ops">
+            <text class="ad-op ok" data-kind="post" data-id="{{item.id}}" bindtap="onRestore">通过</text>
+            <text class="ad-op danger" data-kind="post" data-id="{{item.id}}" bindtap="onDelete">删除</text>
+          </view>
         </view>
       </view>
-    </view>
-  </view>
+    </block>
+
+    <!-- 被隐藏的评论 -->
+    <block wx:if="{{comments.length}}">
+      <view class="ad-sec-title gap">被隐藏的评论</view>
+      <view class="ad-item card" wx:for="{{comments}}" wx:key="cid">
+        <view class="ad-main">
+          <text class="ad-name">{{item.content}}</text>
+          <text class="ad-sub">{{item.nickname}} · 举报 {{item.reports}} 次 · {{item.time}}</text>
+          <view class="ad-ops">
+            <text class="ad-op ok" data-kind="comment" data-id="{{item.cid}}" bindtap="onRestore">通过</text>
+            <text class="ad-op danger" data-kind="comment" data-id="{{item.cid}}" bindtap="onDelete">删除</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{!posts.length && !comments.length && !users.length}}" class="ad-empty">当前没有待审内容 ✨</view>
+  </block>
 </view>

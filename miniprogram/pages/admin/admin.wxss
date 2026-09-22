@@ -17,3 +17,10 @@
 .ad-op{font-size:24rpx;font-weight:600}
 .ad-op.ok{color:var(--accent)}
 .ad-op.danger{color:#c65c52}
+
+/* 用户在线区块（对齐安卓管理面板） */
+.ad-sec-title{font-size:13px;font-weight:700;color:var(--text);padding:0 4rpx 12rpx}
+.ad-sec-sub{font-size:11px;color:var(--sub);font-weight:400;margin-left:6rpx}
+.ad-users{margin-bottom:6rpx}
+.gap{margin-top:26rpx}
+.ad-ago{flex:none;font-size:12px;color:var(--sub);align-self:center}

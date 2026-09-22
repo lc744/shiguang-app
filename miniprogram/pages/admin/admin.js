@@ -20,7 +20,7 @@ function fileUrls(photos){
 
 Page({
   data: {
-    tab: 'posts',       // posts | comments
+    users: [],      // 用户在线状态（对齐安卓：🟢在线/🟡最近/⚪离线）
     posts: [],
     comments: [],
     loading: true
@@ -32,9 +32,18 @@ Page({
     callPost({ action: 'adminList' })
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '加载失败');
+        const users = (r.users || []).map(u => ({
+          ...u,
+          dot: u.agoSec < 0 ? '⚪' : (u.agoSec <= 300 ? '🟢' : (u.agoSec <= 1800 ? '🟡' : '⚪')),
+          name: u.nickname || '用户',
+          agoText: this.fmtAgo(u.agoSec)
+        }));
+        const online = (r.users || []).filter(u => u.agoSec >= 0 && u.agoSec <= 300).length;
+        const recent = (r.users || []).filter(u => u.agoSec > 300 && u.agoSec <= 1800).length;
+        this.setData({ users, online, total: (r.users || []).length, recent });
         const posts = r.posts || [];
         // 待审帖子首图 → 临时链接
-        Promise.all(posts.map(p => p.photos.length ? fileUrls([p.photos[0]]) : Promise.resolve([])))
+        Promise.all(posts.map(p => p.photos && p.photos.length ? fileUrls([p.photos[0]]) : Promise.resolve([])))
           .then(urlLists => {
             this.setData({
               posts: posts.map((p, i) => ({ ...p, thumb: (urlLists[i] && urlLists[i][0]) || '' })),
@@ -50,8 +59,13 @@ Page({
       });
   },
 
-  switchTab(e){
-    this.setData({ tab: e.currentTarget.dataset.tab });
+  // 最后上线距今文案（对齐安卓 fmtAgo）
+  fmtAgo(s){
+    if(s < 0) return '从未上线';
+    if(s < 60) return '刚刚';
+    if(s < 3600) return Math.floor(s / 60) + ' 分钟前';
+    if(s < 86400) return Math.floor(s / 3600) + ' 小时前';
+    return Math.floor(s / 86400) + ' 天前';
   },
 
   _act(kind, id, act){
