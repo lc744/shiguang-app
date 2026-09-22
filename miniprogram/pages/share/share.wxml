@@ -146,7 +146,7 @@
 <canvas type="2d" id="plancanvas" style="position:fixed;left:-9999px;top:-9999px;width:300px;height:430px"></canvas>
 
 <!-- 国家名胜库全屏弹层 -->
-<view class="scenic-mask" wx:if="{{scenicOpen}}">
+<view class="scenic-mask" wx:if="{{scenicOpen}}" catchtouchmove="noop">
   <view class="scenic-lib card">
     <view class="scenic-lib-head">
       <text class="scenic-lib-title">🏛️ 国家名胜</text>
