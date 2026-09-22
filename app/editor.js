@@ -38,6 +38,42 @@ function toggleWeekday(btn){
   if(i >= 0) selectedWeekdays.splice(i, 1); else selectedWeekdays.push(d);
   btn.classList.toggle('selected', i < 0);
 }
+
+/* ---------------- 提醒方式开关（方案C'） ----------------
+   登录用户（云端身份就绪）可三选：App本地提醒(默认) / 两端都提醒 / 仅微信服务通知；
+   未登录固定 App 本地提醒（无选择界面）。与小程序端语义对齐（缺省=创建端本地提醒）。 */
+let selectedRemindVia = 'app';
+function currentRemindVia(){
+  try{
+    if(window.CloudAuth && CloudAuth.active() && CloudAuth.currentUser()){
+      return selectedRemindVia;
+    }
+  }catch(e){}
+  return 'app';
+}
+function pickRemindVia(btn){
+  selectedRemindVia = btn.dataset.via || 'app';
+  document.querySelectorAll('#remindViaChips .chip').forEach(c => c.classList.toggle('selected', c === btn));
+}
+function initRemindViaChips(editing){
+  const box = document.getElementById('remindViaChips');
+  const note = document.getElementById('remindViaNote');
+  let loggedIn = false, saved = 'app';
+  try{
+    loggedIn = !!(window.CloudAuth && CloudAuth.active() && CloudAuth.currentUser());
+  }catch(e){}
+  if(editing && editing.remindVia) saved = editing.remindVia;
+  selectedRemindVia = loggedIn ? saved : 'app';
+  if(!box) return;
+  if(loggedIn){
+    box.style.display = 'flex';
+    if(note) note.style.display = 'none';
+    box.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c.dataset.via === selectedRemindVia));
+  } else {
+    box.style.display = 'none';
+    if(note) note.style.display = 'block';
+  }
+}
 function syncRepeatUI(e){
   // 从事件数据回显重复规则选择
   const wd = e && Array.isArray(e.weekdays) ? e.weekdays : [];
@@ -180,6 +216,7 @@ async function openEditor(id){
   else { document.getElementById('recAudio').removeAttribute('src'); }
   document.getElementById('recTime').textContent = '00:00';
   document.getElementById('recTip').textContent = recordedDataUrl ? '已使用此事件的原录音' : '录一段自己的声音作为提示音（最长 30 秒）';
+  initRemindViaChips(e);   // 提醒方式三选（登录解锁；编辑时回填已有选择）
   refreshRecButtons();
   document.querySelectorAll('#emojiChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.emoji === selectedEmoji));
   document.querySelectorAll('#voiceChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.voice === selectedVoice));
@@ -277,6 +314,9 @@ async function saveEvent(){
       const oldVoice = e.voiceData;
       Object.assign(e, {name, note, date, time, emoji:selectedEmoji, voice:selectedVoice, voiceData, weekdays,
         isBirthday:isBirthdayMode, lunarBirthday:isBirthdayMode ? isLunarBirthday : false});
+      // 提醒方式开关（方案C'）+ 云同步冲突判定时间戳
+      e.remindVia = currentRemindVia();
+      e.updatedAt = Date.now();
       if(changedTime){ e.doneOn = []; e.firedOn = []; delete e.snooze; }
       // 录音被替换/清除时回收旧的大对象
       if(isRecRef(oldVoice) && oldVoice !== voiceData) mediaDel(oldVoice);
@@ -284,7 +324,8 @@ async function saveEvent(){
     toast(isBirthdayMode ? '🎂 生日提醒已保存，每年当天送上祝福' : '修改已保存');
   } else {
     events.push({id:eventId, name, note, date, time, emoji:selectedEmoji, voice:selectedVoice, voiceData, weekdays,
-      isBirthday:isBirthdayMode, lunarBirthday:isBirthdayMode ? isLunarBirthday : false, doneOn:[], firedOn:[]});
+      isBirthday:isBirthdayMode, lunarBirthday:isBirthdayMode ? isLunarBirthday : false, doneOn:[], firedOn:[],
+      remindVia: currentRemindVia(), updatedAt: Date.now()});
     toast(isBirthdayMode ? `🎂 生日提醒已保存：每年 ${date.slice(5).replace('-','月')}日 祝生日快乐` : `提醒已保存：${dateLabel(date)} ${time} 到点提醒你`);
   }
   persist(); renderAll();

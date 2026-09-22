@@ -125,6 +125,15 @@
             </div>
             <div class="err" id="errTime" style="margin:0 0 8px">请选择有效的未来日期和时间</div>
             <div class="field">
+              <label>提醒方式</label>
+              <div class="chips" id="remindViaChips" style="display:none">
+                <button type="button" class="chip selected" data-via="app" onclick="pickRemindVia(this)">App本地提醒</button>
+                <button type="button" class="chip" data-via="both" onclick="pickRemindVia(this)">两端都提醒</button>
+                <button type="button" class="chip" data-via="subscribe" onclick="pickRemindVia(this)">仅微信服务通知</button>
+              </div>
+              <div id="remindViaNote" style="font-size:12px;color:var(--sub)">App本地提醒（登录后可在两端提醒）</div>
+            </div>
+            <div class="field">
               <label>提醒表情包</label>
               <div class="chips" id="emojiChips"></div>
               <button type="button" class="secondary" style="margin-top:8px;width:100%" onclick="document.getElementById('emojiImport').click()">＋ 导入表情图片</button>

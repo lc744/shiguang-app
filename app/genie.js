@@ -265,6 +265,7 @@ async function processGenie(text){
       const e = found[0];
       if(isRecRef(e.voiceData)) mediaDel(e.voiceData);
       events = events.filter(x => x.id !== e.id);
+      if(window.EventSync) window.EventSync.delOne(e.id);   // 云端镜像一并删除
       persist(); renderAll(); renderBackupList();
       addGenieBubble('assistant', `已删除「${e.name}」✓`);
       return;

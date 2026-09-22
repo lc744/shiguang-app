@@ -57,6 +57,8 @@ function sanitizeEvent(raw){
 function clearAll(){
   if(!confirm('确定清空全部事件吗？')) return;
   events.forEach(e => { if(isRecRef(e.voiceData)) mediaDel(e.voiceData); });
+  // 云端镜像一并删除（否则 pull 会把已删事件拉回来）
+  if(window.EventSync) events.forEach(e => window.EventSync.delOne(e.id));
   events = []; persist(); renderAll(); renderBackupList(); toast('已清空全部事件');
 }
 

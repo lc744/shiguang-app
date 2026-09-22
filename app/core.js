@@ -144,6 +144,8 @@ function persist(){
     localStorage.setItem(STORE_KEY, JSON.stringify(events));
     syncNativeNotifs();
     writeAutoBackup();
+    // 事件云同步：防抖推送（镜像+实时，updatedAt 幂等；cloud.js EventSync，未登录时内部自跳过）
+    if(window.EventSync && window.EventSync.markDirty) window.EventSync.markDirty();
   }catch(e){
     // 存储满/不可用：多为大体积内联数据撑爆配额
     toast('本机存储空间不足，最新修改可能未保存');
@@ -151,6 +153,16 @@ function persist(){
   }
 }
 /* ---------------- 自动备份（滚动快照） ---------------- */
+// 云同步合并专用：整体替换事件数组，落盘+重排通知+重渲染，但不触发 EventSync.markDirty（防同步递归）
+window.__eventsReplace = function(next){
+  try{
+    events = Array.isArray(next) ? next : [];
+    localStorage.setItem(STORE_KEY, JSON.stringify(events));
+    syncNativeNotifs();
+    writeAutoBackup();
+    if(typeof renderAll === 'function') renderAll();
+  }catch(e){ console.warn('eventsReplace failed:', e); }
+};
 const BACKUP_LATEST_KEY = 'shiguang_backup_latest';
 const BACKUP_HISTORY_KEY = 'shiguang_backup_history';
 const BACKUP_MAX = 10;
@@ -217,6 +229,8 @@ function syncNativeNotifs(){
   const t = todayStr();
   const nowStamp = `${t}T${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
   events.forEach(e => {
+    // 提醒方式开关（方案C'）：remindVia='subscribe' 的事件只发微信服务通知，不注册本地通知
+    if(e.remindVia === 'subscribe') return;
     const items = [];
     if(e.snooze && e.snooze > nowStamp) items.push({at:e.snooze, body:notificationText(e)});
     else {

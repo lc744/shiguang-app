@@ -469,6 +469,75 @@
     register: sendRegisterCode,
   };
 
+  // ===== 事件云同步（安卓端，对齐小程序 utils/sync.js 设计：镜像+实时，updatedAt 幂等） =====
+  // 存储：profileApi eventPush/eventPull（PG events 表，uid 归属）；voiceData 不上云
+  let __esTimer = null;
+  let __esBusy = false;
+
+  function esMergeCloud(cloudEvents){
+    // 合并到 core.js 的全局 events：云端有本地无=新增；都有=updatedAt 大者覆盖（保留本地 voiceData）
+    try{
+      if(!Array.isArray(cloudEvents) || !cloudEvents.length) return { added: 0, updated: 0 };
+      const local = (typeof window.events !== 'undefined' && Array.isArray(window.events)) ? window.events : [];
+      const byId = {};
+      local.forEach(e => { if(e && e.id) byId[e.id] = e; });
+      let added = 0, updated = 0;
+      cloudEvents.forEach(cd => {
+        if(!cd || !cd.id) return;
+        const cur = byId[cd.id];
+        if(!cur){
+          if(!('voiceData' in cd)) cd.voiceData = '';
+          byId[cd.id] = cd;
+          added++;
+        } else {
+          const cT = Number(cd.updatedAt) || 0;
+          const lT = Number(cur.updatedAt) || 0;
+          if(cT > lT){
+            byId[cd.id] = Object.assign({}, cd, { voiceData: cur.voiceData || '' });
+            updated++;
+          } else if(!lT){ cur.updatedAt = Date.now(); }
+        }
+      });
+      if(added || updated){
+        const merged = Object.keys(byId).map(k => byId[k]);
+        if(typeof window.__eventsReplace === 'function'){ window.__eventsReplace(merged); }
+        else { window.events = merged; if(typeof window.persist === 'function') window.persist(); if(typeof window.renderAll === 'function') window.renderAll(); }
+      }
+      return { added, updated };
+    }catch(e){ return { added: 0, updated: 0 }; }
+  }
+
+  async function esSyncNow(){
+    if(__esBusy || !active() || !currentUser()) return;
+    __esBusy = true;
+    try{
+      const src = (typeof window.events !== 'undefined' && Array.isArray(window.events)) ? window.events : [];
+      const payload = src.map(e => { const c = Object.assign({}, e); delete c.voiceData; return c; });
+      await profileApiCall('eventPush', { events: payload });
+      const r = await profileApiCall('eventPull', {});
+      if(r && r.ok && Array.isArray(r.events)) esMergeCloud(r.events);
+    }catch(e){ /* 静默：网络/云不可用时保持本地 */ }
+    finally{ __esBusy = false; }
+  }
+
+  function esMarkDirty(){
+    if(!active() || !currentUser()) return;
+    if(__esTimer) clearTimeout(__esTimer);
+    __esTimer = setTimeout(() => { __esTimer = null; esSyncNow(); }, 3000);
+  }
+
+  async function esDelOne(eventId){
+    if(!active() || !currentUser() || !eventId) return;
+    try{ await profileApiCall('eventDelOne', { eventId }); }catch(e){}
+  }
+
+  // 暴露给 core.js persist 挂钩与删除路径
+  window.EventSync = { syncNow: esSyncNow, markDirty: esMarkDirty, delOne: esDelOne };
+
+  // 启动恢复会话后拉取云端事件一次（登录态时；稍延时避开启动期请求拥挤）
+  setTimeout(() => { if(active() && currentUser()) esSyncNow(); }, 4000);
+  setTimeout(() => { if(active() && currentUser()) esSyncNow(); }, 12000);
+
   // 云同步开关（设置弹层的 cloudChips 使用）
   window.setCloudMode = function(v){
     setEnabled(!!v);

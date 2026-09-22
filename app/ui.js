@@ -286,6 +286,8 @@ function multiSelDelete(){
   const delSet = multiSelIds.slice();
   events.forEach(e => { if(delSet.indexOf(e.id) >= 0 && isRecRef(e.voiceData)) mediaDel(e.voiceData); });
   events = events.filter(e => delSet.indexOf(e.id) < 0);
+  // 云端镜像一并删除（否则 pull 会把已删事件拉回来）
+  if(window.EventSync) delSet.forEach(id => window.EventSync.delOne(id));
   persist(); renderAll(); renderBackupList();
   exitMultiSel();
   toast(`已删除 ${delSet.length} 个事件`);
@@ -462,6 +464,7 @@ function deleteCurrentEvent(){
   events = events.filter(x => x.id !== currentDetailId);
   // 同步清理录音大对象
   if(isRecRef(e.voiceData)) mediaDel(e.voiceData);
+  if(window.EventSync) window.EventSync.delOne(currentDetailId);   // 云端镜像一并删除
   persist(); renderAll();
   toast('已删除'); goBack();
 }

@@ -329,6 +329,7 @@ exports.main = async (event) => {
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT ''" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ" });
       await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY)" });
+      await callApi('ExecutePGSql', { EnvId: ENV, Sql: "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, uid TEXT, data TEXT, updated_at BIGINT DEFAULT 0)" });
       __tablesReady = true;
     }
     await upsertUser(uid, me.email);   // 同步登记（函数可能随时冻结，不留给后台）
@@ -738,6 +739,47 @@ async function handlePostAction(action, body, uid){
       return json(404, { ok: false, error: '图片不存在' });
     }
     return json(200, { ok: true, url: url || null });
+  }
+
+  // ---- 事件云同步（安卓端：PG 表 events，uid 归属，updated_at 幂等，对齐小程序 eventSync 设计） ----
+  if(action === 'eventPush'){
+    if(!me) return json(401, { ok: false, error: '请先登录' });
+    const list = Array.isArray(body.events) ? body.events : [];
+    let saved = 0;
+    for(const raw of list){
+      if(!raw || typeof raw.id !== 'string' || !raw.id) continue;
+      const ua = Number.isFinite(Number(raw.updatedAt)) ? Number(raw.updatedAt) : Date.now();
+      const clean = Object.assign({}, raw, { updatedAt: ua });
+      delete clean.voiceData;   // 录音 dataUrl 不上云（本地资源）
+      try{
+        const found = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT updated_at FROM events WHERE id = '" + esc(raw.id) + "' AND uid = '" + esc(uid) + "'" });
+        if(found && found.Rows && found.Rows.length){
+          const cloudAt = Number(JSON.parse(found.Rows[0])[0]) || 0;
+          if(ua >= cloudAt){
+            await callApi('ExecutePGSql', { EnvId: ENV, Sql: "UPDATE events SET data = '" + esc(JSON.stringify(clean)) + "', updated_at = " + ua + " WHERE id = '" + esc(raw.id) + "' AND uid = '" + esc(uid) + "'" });
+            saved++;
+          }
+        } else {
+          await callApi('ExecutePGSql', { EnvId: ENV, Sql: "INSERT INTO events (id, uid, data, updated_at) VALUES ('" + esc(raw.id) + "', '" + esc(uid) + "', '" + esc(JSON.stringify(clean)) + "', " + ua + ")" });
+          saved++;
+        }
+      }catch(e){ /* 单条失败继续 */ }
+    }
+    return json(200, { ok: true, op: 'eventPush', saved });
+  }
+
+  if(action === 'eventPull'){
+    if(!me) return json(401, { ok: false, error: '请先登录' });
+    const r = await callApi('ExecutePGSql', { EnvId: ENV, Sql: "SELECT data FROM events WHERE uid = '" + esc(uid) + "' LIMIT 1000" });
+    const events = (r && r.Rows ? r.Rows : []).map(line => { try{ return JSON.parse(JSON.parse(line))[0]; }catch(e){ return null; } }).filter(Boolean);
+    return json(200, { ok: true, op: 'eventPull', events });
+  }
+
+  if(action === 'eventDelOne'){
+    if(!me) return json(401, { ok: false, error: '请先登录' });
+    const eid = String(body.eventId || '').slice(0, 64);
+    await callApi('ExecutePGSql', { EnvId: ENV, Sql: "DELETE FROM events WHERE id = '" + esc(eid) + "' AND uid = '" + esc(uid) + "'" });
+    return json(200, { ok: true, op: 'eventDelOne' });
   }
 
   return json(400, { ok: false, error: '未知操作' });

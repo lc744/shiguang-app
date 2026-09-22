@@ -350,7 +350,10 @@ function syncAutoBirthdayEvent(){
     const name = nick + '的生日';
     const idx = events.findIndex(e => e && e.autoBirthday);
     if(!date){
-      if(idx >= 0){ events.splice(idx, 1); if(typeof persist === 'function') persist(); if(typeof renderAll === 'function') renderAll(); }
+      if(idx >= 0){
+        if(window.EventSync) window.EventSync.delOne(events[idx].id);   // 云端镜像一并删除
+        events.splice(idx, 1); if(typeof persist === 'function') persist(); if(typeof renderAll === 'function') renderAll();
+      }
       return;
     }
     if(idx >= 0){
