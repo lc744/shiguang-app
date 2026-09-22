@@ -28,3 +28,5 @@
 /* 字段级校验红字（对齐安卓 .err） */
 .err{color:#c65c52;font-size:11px;margin-top:4px}
 .err-time{margin:0 0 8px}
+/* 提醒方式：未绑定时的固定说明行 */
+.via-fixed{font-size:12px;color:var(--sub);padding:6px 0}

@@ -2,6 +2,7 @@
 const store = require('./utils/store');
 const notify = require('./utils/notify');
 const core = require('./utils/core');
+const sync = require('./utils/sync');
 
 const THEME_KEY = 'shiguang_theme';
 const BG_COLOR_KEY = 'shiguang_bg_color';
@@ -36,6 +37,8 @@ App({
 
   onShow(){
     this.checkReminders();
+    // 事件云同步（镜像+实时，最后修改时间赢）——静默失败
+    sync.syncNow();
     // 用户心跳（对齐安卓 CloudAuth heartbeat：管理面板在线状态数据源）——静默失败
     try{
       const local = wx.getStorageSync('shiguang_share_identity') || {};

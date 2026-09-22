@@ -216,7 +216,10 @@ Page({
       const name = nick + '的生日';
       const idx = events.findIndex(ev => ev && ev.autoBirthday);
       if(!date){
-        if(idx >= 0){ store.setEvents(events.filter((ev, i) => i !== idx)); }
+        if(idx >= 0){
+          require('../../utils/sync').delEvent(events[idx].id);   // 云端镜像一并移除
+          store.setEvents(events.filter((ev, i) => i !== idx));
+        }
         return;
       }
       if(idx >= 0){
@@ -253,7 +256,14 @@ Page({
         }).then(r => {
           wx.hideLoading();
           const b = r.result || {};
-          if(b.statusCode === 200){ wx.showToast({ title: '绑定成功，回 App 查看结果', icon: 'none', duration: 2500 }); }
+          if(b.statusCode === 200){
+            // 绑定成功：本地记录标记（编辑器据此解锁"提醒方式"三选）
+            try{
+              const id2 = readLocal() || {};
+              wx.setStorageSync(ID_KEY, Object.assign({}, id2, { boundApp: true }));
+            }catch(e2){}
+            wx.showToast({ title: '绑定成功，回 App 查看结果', icon: 'none', duration: 2500 });
+          }
           else{ wx.showToast({ title: (b.body && JSON.parse(b.body).error) || '绑定失败', icon: 'none', duration: 2500 }); }
         }).catch(() => { wx.hideLoading(); wx.showToast({ title: '网络异常，请重试', icon: 'none' }); });
       },

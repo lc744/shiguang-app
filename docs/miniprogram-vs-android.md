@@ -54,3 +54,23 @@
 - ❌ 无后台常驻、无自启动、无系统级闹钟注册
 - ❌ 离线 TTS（个人主体小程序无法用同声传译插件，已用云 TTS 替代）
 - ❌ 无限次推送（一次性订阅消息一次授权只推一条；"长期订阅"仅政务/医疗等特定类目开放）
+
+## 事件云同步 + 提醒方式开关（方案C'，2026-09 实现）
+
+### 事件云同步（小程序端已上线，安卓端待接入）
+- 集合：`eventSync`（全量镜像，`_id`=事件id，`owner`=openid，按 `updatedAt` 幂等取舍）
+- 接口：`syncEvent` 云函数新增 `pushAll` / `pullAll` / `delOne` 动作（原 `upsert/delete/get/deleteAll` 为推送源 reminders 集合保留）
+- 客户端：`utils/sync.js` —— `syncNow()`（push全部→pull合并）/ `markDirty()`（3秒防抖，store.setEvents/updateEvent 自动触发）/ `delEvent(id)`（删除时同步删云端镜像）
+- 合并规则：先 push 本地全部 → pull → 云端有本地无=他端新增（voiceData 置空）→ 都有=updatedAt 大者赢（保留本地 voiceData）
+- 触发点：app.js onShow、编辑器保存、detail 删除/完成、首页/预告多选删除、清空、备份导入、生日自动事件增删
+- 语音录音 dataUrl 不上云（本地资源跨端不可用），响铃由各端本地/订阅消息负责
+
+### 提醒方式开关（remindVia）
+- 取值：`subscribe`（微信服务通知，默认）/ `both`（两端）/ `app`（仅App闹钟）；存量数据缺省视为 subscribe
+- 编辑器：绑定 App 后（identity.boundApp，绑定码成功后写入）显示三选 chips；未绑定固定"微信服务通知"说明行
+- 推送判定：`pushDue` 扫描时 `remindVia === 'app'` 的事件直接 markFired 跳过发送；`subscribe/both` 正常发送
+- 安卓端：接入同步后，`remindVia === 'subscribe'` 的事件可跳过 AlarmManager（待安卓接入时实现）
+
+### 待办
+- 安卓端接入：function/profileApi（TCB HTTP）加 eventPush/eventPull + app/cloud.js EventSync + 保存/删除/启动挂钩 + alarm 判定 remindVia
+- 绑定组归属：绑定后两端事件合并到同一身份（当前按 openid 归属，安卓接入时需在绑定关系上做 owner 归并）

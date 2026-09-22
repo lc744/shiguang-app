@@ -48,6 +48,8 @@ exports.main = async () => {
         if(!doc.oneShot){ await markFired(doc._id); skipped++; continue; }                       // 重复/生日不推
         if((doc.doneOn || []).indexOf(today) >= 0){ await markFired(doc._id); skipped++; continue; } // 已完成
         if(String(doc.dueStamp).slice(0, 10) !== today){ await markFired(doc._id); skipped++; continue; } // 过期不再打扰
+        // 提醒方式开关（方案C'）：仅App闹钟(remindVia='app')的事件不发微信订阅消息；缺省视为 subscribe（兼容存量）
+        if(doc.remindVia === 'app'){ await markFired(doc._id); skipped++; continue; }
         const data = {};
         Object.keys(FIELD_MAP).forEach(k => {
           const src = FIELD_MAP[k];

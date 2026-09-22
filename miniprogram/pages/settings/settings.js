@@ -174,7 +174,7 @@ Page({
       confirmColor: '#c65c52',
       success: r => {
         if (!r.confirm) return;
-        store.getEvents().forEach(e => store.deleteRecording(e.voiceData)); // 一并回收录音文件
+        store.getEvents().forEach(e => { store.deleteRecording(e.voiceData); require('../../utils/sync').delEvent(e.id); }); // 一并回收录音文件+云端镜像
         store.setEvents([]);
         this.refreshBackups();
         wx.showToast({ title: '已清空全部事件', icon: 'none' });

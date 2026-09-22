@@ -79,6 +79,7 @@ Page({
         store.setEvents(store.getEvents().filter(x => x.id !== this._id));
         store.deleteRecording(e.voiceData);
         subscribe.removeSync(this._id);   // 云端推送记录一并移除
+        require('../../utils/sync').delEvent(this._id);   // 云端事件镜像一并移除
         wx.showToast({ title: '已删除', icon: 'none' });
         this.goBack();
       }

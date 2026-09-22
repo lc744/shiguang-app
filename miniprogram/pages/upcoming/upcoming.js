@@ -185,7 +185,7 @@ Page({
         if(!res.confirm) return;
         const delSet = ids.slice();
         const events = store.getEvents();
-        events.forEach(e => { if(delSet.indexOf(e.id) >= 0) store.deleteRecording(e.voiceData); });
+        events.forEach(e => { if(delSet.indexOf(e.id) >= 0){ store.deleteRecording(e.voiceData); require('../../utils/sync').delEvent(e.id); } });
         store.setEvents(events.filter(e => delSet.indexOf(e.id) < 0));
         this.setData({ multiOn: false, multiIds: [] });
         this.refresh();

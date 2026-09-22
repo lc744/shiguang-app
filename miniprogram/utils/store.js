@@ -40,12 +40,24 @@ function loadAll(){
 }
 
 function getEvents(){ return events; }
-function setEvents(next){ events = next; persist(); }
+// 正常写入：落盘 + 标记云同步（3 秒防抖，详见 utils/sync.js）
+function setEvents(next){
+  events = next;
+  // 云同步需要 updatedAt 做冲突判定：缺失时补当前时间
+  let touched = false;
+  events.forEach(e => { if(!Number.isFinite(e.updatedAt)){ e.updatedAt = Date.now() + Math.floor(Math.random() * 500); touched = true; } });
+  if(touched) persist(); else persist();
+  try{ require('./sync').markDirty(); }catch(e){ /* 循环依赖防护：sync 未就绪时忽略 */ }
+}
+// 同步层专用：合并结果落盘但不触发 markDirty（防递归）
+function setEventsRaw(next){ events = next; persist(); }
 function updateEvent(id, patch){
   const e = findEvent(id);
   if(!e) return null;
   Object.assign(e, patch);
+  if(!Number.isFinite(e.updatedAt)) e.updatedAt = Date.now();
   persist();
+  try{ require('./sync').markDirty(); }catch(e2){ /* 忽略 */ }
   return e;
 }
 function findEvent(id){ return events.find(e => e.id === id) || null; }
@@ -182,7 +194,7 @@ function sanitizeEvent(raw){
 }
 
 module.exports = {
-  loadAll, getEvents, setEvents, updateEvent, findEvent,
+  loadAll, getEvents, setEvents, setEventsRaw, updateEvent, findEvent,
   getCustomEmojis, isCustomEmoji, emojiIcon, emojiSrc, allEmojiValues,
   saveEmojiImage, deleteEmojiImage, persistCustomEmojis,
   saveRecording, deleteRecording, resolveVoicePath,

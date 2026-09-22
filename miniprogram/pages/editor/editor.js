@@ -5,6 +5,8 @@ const store = require('../../utils/store');
 const lunar = require('../../utils/lunar');
 const subscribe = require('../../utils/subscribe');
 
+function readIdentity(){ try{ return wx.getStorageSync('shiguang_share_identity') || {}; }catch(e){ return {}; } }
+
 const REC_MAX_SECONDS = 30;
 const REC_TIP_DEFAULT = '录一段自己的声音作为提示音（最长 30 秒）';
 const REC_TIP_READY = '录音已就绪，到点提醒时播放你的声音';
@@ -44,7 +46,25 @@ Page({
     recActive: false,
     recTime: '00:00',
     recTip: REC_TIP_DEFAULT,
-    hasRecording: false
+    hasRecording: false,
+    // 提醒方式开关（方案C'）：subscribe=微信服务通知 / both=两端 / app=仅App闹钟
+    // 绑定 App 后出现三选 chips；未绑定固定为 subscribe（显示说明行，无选择界面）
+    boundApp: false,
+    remindVia: 'subscribe',
+    viaChips: [
+      { via: 'subscribe', label: '微信服务通知' },
+      { via: 'both', label: '两端都提醒' },
+      { via: 'app', label: '仅App闹钟' }
+    ]
+  },
+
+  onAddTap(){},
+
+  // 提醒方式 chips（绑定 App 后可用）
+  onPickVia(e){
+    const via = e.currentTarget.dataset.via;
+    if(['subscribe', 'both', 'app'].indexOf(via) < 0) return;
+    this.setData({ remindVia: via });
   },
 
   /* ---------------- 生命周期 ---------------- */
@@ -96,7 +116,10 @@ Page({
       voiceList: this.buildVoiceList(selectedVoice),
       selectedVoice: selectedVoice,
       hasRecording: hasRecording,
-      recTip: hasRecording ? REC_TIP_PRESET : REC_TIP_DEFAULT
+      recTip: hasRecording ? REC_TIP_PRESET : REC_TIP_DEFAULT,
+      // 提醒方式：编辑回填已有选择；绑定 App 后解锁三选，未绑定固定微信服务通知
+      boundApp: !!(readIdentity().boundApp),
+      remindVia: (e && e.remindVia) || 'subscribe'
     });
 
     wx.setNavigationBarTitle({ title: e ? '编辑提醒' : '新建提醒' });
@@ -395,6 +418,8 @@ Page({
         weekdays: weekdays, isBirthday: d.isBirthday, lunarBirthday: lunarOn
       });
       if (changedTime) { ev.doneOn = []; ev.firedOn = []; delete ev.snooze; }
+      ev.remindVia = d.remindVia;              // 提醒方式开关随保存写入（云同步/推送判定共用）
+      ev.updatedAt = Date.now();               // 最后修改时间（云同步冲突判定：后者赢）
       events = events.map(x => x.id === d.editingId ? ev : x);
       wx.showToast({ title: d.isBirthday ? '🎂 生日提醒已保存' : '修改已保存', icon: 'none' });
     } else {
@@ -403,7 +428,8 @@ Page({
         emoji: d.selectedEmoji, voice: d.selectedVoice, voiceData: voiceData,
         weekdays: weekdays, isBirthday: d.isBirthday,
         lunarBirthday: d.isBirthday ? d.lunarBirthday : false,
-        doneOn: [], firedOn: []
+        doneOn: [], firedOn: [],
+        remindVia: d.remindVia, updatedAt: Date.now()
       };
       events.push(ev);
       wx.showToast({

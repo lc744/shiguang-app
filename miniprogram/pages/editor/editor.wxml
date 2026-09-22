@@ -50,6 +50,17 @@
         </view>
       </view>
 
+      <!-- 提醒方式（方案C'：绑定App后可选多端提醒；未绑定固定微信服务通知） -->
+      <view class="field">
+        <label>提醒方式</label>
+        <view class="chips" wx:if="{{boundApp}}">
+          <view wx:for="{{viaChips}}" wx:key="via"
+                class="{{item.via === remindVia ? 'chip selected' : 'chip'}}"
+                data-via="{{item.via}}" bindtap="onPickVia">{{item.label}}</view>
+        </view>
+        <view wx:else class="via-fixed">微信服务通知（绑定 App 后可在两端提醒）</view>
+      </view>
+
       <!-- 生日事件由「我的」页出生年月自动生成（对齐安卓），表单不再提供开关 -->
       <view class="err err-time" wx:if="{{errTime}}">请选择有效的未来日期和时间</view>
 
