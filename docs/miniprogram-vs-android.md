@@ -73,5 +73,6 @@
 
 ### 待办
 - ~~安卓端接入~~（已完成 2026-09）：function/profileApi（TCB HTTP）新增 eventPush/eventPull/eventDelOne（PG events 表，uid 归属，updatedAt 幂等）；app/cloud.js 新增 window.EventSync（markDirty 防抖 push / syncNow push+pull 合并 / delOne），core.js persist 挂钩 + __eventsReplace 合并写入，启动后 4s/12s 两次自动拉取；删除路径（详情/多选/清空/精灵语音/生日自动删）全部挂 delOne；编辑器新增"提醒方式"三选（登录解锁，缺省 App本地提醒）；syncNativeNotifs 跳过 remindVia='subscribe' 的事件（只发微信通知）
+- **跨端合并桥（已完成 2026-09）**：syncEvent 云函数内置 TC3 直签（环境变量 TCB_SECRET_ID/TCB_SECRET_KEY，缺省自动降级仅文档库）访问 TCB PG——pushAll 时小程序事件镜像写入 PG（uid=wxUid(openid) 确定性推导，与安卓微信登录账号 uid 一致，无需绑定表）；pullAll 时并入 PG 事件（同 id updatedAt 赢）；delOne 双删。安卓只读写 PG，小程序读写两侧 = 双向互通。限制：邮箱登录的安卓账号（uid=认证网关sub）暂不在桥内，仅微信登录账号（uid=wxUid(openid)）桥接
 - **存储架构说明**：安卓 profileApi 走 TCB PostgreSQL（ExecutePGSql），小程序云函数走微信云开发文档数据库——**两套独立存储**。事件同步同理：安卓事件镜像在 PG events 表，小程序事件镜像在 eventSync 集合。跨端合并（绑定组归并/双库桥）为下一步工作，需在 syncEvent 云函数内置 TCB 直签密钥（环境变量 TCB_SECRET_ID/KEY，可复用 profileApi 的 crypto 直签代码）访问 PG
 - 绑定组归属：绑定后两端事件合并到同一身份（当前安卓按 uid、小程序按 openid 各自归属，跨端合并需做 owner 归并）
