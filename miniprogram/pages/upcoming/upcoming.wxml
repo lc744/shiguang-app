@@ -6,7 +6,7 @@
       <text class="brand-sub">记事 · 闹钟 · 语音包 · 表情包</text>
     </view>
     <view class="header-actions">
-      <button class="icon-btn txt-btn" bindtap="goHome">今天</button>
+      <button class="icon-btn txt-btn" bindtap="goCalendar">日历</button>
     </view>
   </view>
 

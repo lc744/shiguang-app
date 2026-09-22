@@ -108,8 +108,8 @@ Page({
     this._refreshStats(t);
   },
 
-  // 品牌头右侧按钮：跳回今天（对齐安卓 header 全局导航）
-  goHome(){ wx.switchTab({ url: '/pages/home/home' }); },
+  // 品牌头右侧按钮：跳日历（对齐安卓全局 header 的日历入口）
+  goCalendar(){ wx.navigateTo({ url: '/pages/calendar/calendar' }); },
 
   // hero 手动切换（与首页一致）
   prevSlide(){
