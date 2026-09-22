@@ -55,6 +55,20 @@ Page({
         this.setData({ addr });
         // 名称未填时用地点名回填（对齐安卓选点后顺带填名的体验）
         if(!this.data.name.trim() && name){ this.setData({ name: name.slice(0, 30) }); }
+        // 经纬度反查省市区（云函数代理高德逆地理），自动回填所在城市
+        if(!(wx.cloud && wx.cloud.callFunction)) return;
+        wx.showLoading({ title: '识别城市中…', mask: false });
+        wx.cloud.callFunction({
+          name: 'postApi',
+          data: { action: 'regeo', lat: res.latitude, lng: res.longitude }
+        }).then(r => {
+          wx.hideLoading();
+          const out = r && r.result;
+          if(out && out.ok && out.city && !this.data.city){
+            this.setData({ city: out.city });
+            wx.showToast({ title: '已识别城市：' + out.city, icon: 'none' });
+          }
+        }).catch(() => wx.hideLoading());
       },
       fail: err => {
         if(err && err.errMsg && err.errMsg.indexOf('auth') >= 0){

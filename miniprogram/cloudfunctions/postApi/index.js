@@ -3,6 +3,7 @@
 //       mine（我的发布）/ del（删除+云存储清理）/ report（举报，阈值自动隐藏）/ get（详情）
 // 内容安全：文字 security.msgSecCheck、图片 security.imgSecCheck（权限声明在 config.json）
 const cloud = require('wx-server-sdk');
+const https = require('https');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
@@ -363,6 +364,30 @@ exports.main = async (event) => {
                posts: posts.data.map(p => ({ id: p._id, type: p.type, name: p.name || p.addr || '（未命名）', nickname: p.nickname, reports: p.reports || 0, photos: p.photos || [], time: fmtTimeStr(p.createdAt) })),
                comments: cmts.data.map(c => ({ cid: c._id, content: c.content, nickname: c.nickname, reports: c.reports || 0, time: fmtTimeStr(c.createdAt) })) };
     }
+    // ---- 逆地理（高德 regeo 代理，Key 与安卓 App 同一 Web 服务 Key）----
+    // 用途：发布页地图选点后由经纬度反查省市区，自动回填所在城市。
+    // wx.chooseLocation 返回 GCJ-02 坐标，与高德坐标系一致，无需转换。
+    if(action === 'regeo'){
+      const lat = Number(event.lat), lng = Number(event.lng);
+      if(!isFinite(lat) || !isFinite(lng)) return { ok: false, error: '参数错误' };
+      const AMAP_KEY = '6c6551e4b4386aa115db5bc121003d7c';
+      const j = await new Promise((resolve, reject) => {
+        const req = https.get('https://restapi.amap.com/v3/geocode/regeo?key=' + AMAP_KEY + '&location=' + lng.toFixed(6) + ',' + lat.toFixed(6), res => {
+          let d = '';
+          res.on('data', c => d += c);
+          res.on('end', () => { try{ resolve(JSON.parse(d)); }catch(e){ reject(e); } });
+        });
+        req.on('error', reject);
+        req.setTimeout(9000, () => { req.destroy(new Error('regeo timeout')); });
+      }).catch(() => null);
+      const comp = j && j.regeocode && j.regeocode.addressComponent || null;
+      if(!comp) return { ok: false, error: '位置识别失败' };
+      const pick = v => (Array.isArray(v) ? '' : String(v || ''));
+      const province = pick(comp.province);
+      const city = pick(comp.city) || province;   // 直辖市 city 字段为空数组
+      return { ok: true, province, city, district: pick(comp.district) };
+    }
+
     // ---- 心跳（用户在线状态数据源，对齐安卓 CloudAuth heartbeat） ----
     if(action === 'heartbeat'){
       const nickname = String(event.nickname || '').slice(0, 20);
