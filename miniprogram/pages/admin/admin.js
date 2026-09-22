@@ -32,6 +32,14 @@ Page({
     callPost({ action: 'adminList' })
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '加载失败');
+        if(r.diag){
+          const d = r.diag;
+          const msg = 'PG桥: ' + (d.envReady ? '已配置' : '❌环境变量未配') +
+            (d.pgError ? ' | 错误: ' + d.pgError : '') +
+            ' | PG行数: ' + d.pgRows + ' | 双端归并: ' + d.merged;
+          console.log('[adminList 诊断]', msg);
+          wx.showModal({ title: '跨端桥诊断', content: msg, showCancel: false });
+        }
         const users = (r.users || []).map(u => ({
           ...u,
           dot: u.agoSec < 0 ? '⚪' : (u.agoSec <= 300 ? '🟢' : (u.agoSec <= 1800 ? '🟡' : '⚪')),

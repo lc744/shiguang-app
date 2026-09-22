@@ -66,19 +66,19 @@ function pgCall(action, payload){
 async function pgUpsertEvent(uid, e){
   const ua = Number.isFinite(Number(e.updatedAt)) ? Number(e.updatedAt) : Date.now();
   const data = pgEsc(JSON.stringify(e));
-  await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+  await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
     "INSERT INTO events (id, uid, data, updated_at) VALUES ('" + pgEsc(e.id) + "', '" + pgEsc(uid) + "', '" + data + "', " + ua + ") " +
     "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = EXCLUDED.updated_at WHERE events.updated_at < EXCLUDED.updated_at" });
 }
 
 // 读安卓侧镜像（uid = wxUid(OPENID)，即安卓"微信登录"账号）
 async function pgPullEvents(uid){
-  const r = await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+  const r = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
     "SELECT data FROM events WHERE uid = '" + pgEsc(uid) + "' LIMIT 1000" });
-  // Rows 每行是"字符串化的值数组"：双层解析得 [data字符串]，data 字符串再 parse 成事件对象
+  // Rows 每行已是值数组（外层 JSON.parse 时已解析）：[data字符串]，data 字符串再 parse 成事件对象
   return (r && r.Rows ? r.Rows : []).map(line => {
     try{
-      const arr = JSON.parse(JSON.parse(line));
+      const arr = Array.isArray(line) ? line : JSON.parse(line);
       const v = arr[0];
       return typeof v === 'string' ? JSON.parse(v) : v;
     }catch(e){ return null; }
@@ -160,7 +160,7 @@ exports.main = async (event) => {
       let saved = 0;
       // 跨端桥：安卓镜像 uid（微信登录账号），由 openid 确定性推导；PG 不可用时自动降级
       let bridgeUid = null;
-      if(pgReady()){ try{ await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql: "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, uid TEXT, data TEXT, updated_at BIGINT DEFAULT 0)" }); bridgeUid = wxUidOf(OPENID); }catch(e2){ bridgeUid = null; } }
+      if(pgReady()){ try{ await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql: "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, uid TEXT, data TEXT, updated_at BIGINT DEFAULT 0)" }); bridgeUid = wxUidOf(OPENID); }catch(e2){ bridgeUid = null; } }
       for(const raw of list){
         if(!raw || typeof raw.id !== 'string' || !raw.id) continue;
         const e = cleanEvent(raw);
@@ -216,7 +216,7 @@ exports.main = async (event) => {
     if(action === 'delOne'){
       await db.collection(SYNC).where({ owner: OPENID, id: String(event.eventId || '') }).remove();
       // 跨端桥：PG 镜像一并删除
-      if(pgReady()){ try{ await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql: "DELETE FROM events WHERE id = '" + pgEsc(String(event.eventId || '')) + "' AND uid = '" + pgEsc(wxUidOf(OPENID)) + "'" }); }catch(e2){ /* 静默 */ } }
+      if(pgReady()){ try{ await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql: "DELETE FROM events WHERE id = '" + pgEsc(String(event.eventId || '')) + "' AND uid = '" + pgEsc(wxUidOf(OPENID)) + "'" }); }catch(e2){ /* 静默 */ } }
       return { ok: true, op: 'delOne' };
     }
 

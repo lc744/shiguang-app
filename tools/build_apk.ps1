@@ -1,4 +1,4 @@
-# 拾光应用 - Android APK 构建脚本
+﻿# 拾光应用 - Android APK 构建脚本
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host "📱 拾光 App - Android APK 构建工具" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
@@ -44,12 +44,22 @@ Write-Host "✓ Web 资源构建成功" -ForegroundColor Green
 
 # 步骤 3: 同步 Capacitor
 Write-Host "`n[步骤 3/6] 同步 Capacitor 到 Android..." -ForegroundColor Yellow
-try {
-    & node "$(Join-Path $rootDir "node_modules/@capacitor/cli/bin/capacitor")" sync android --verbose
-    Write-Host "✓ Capacitor 同步成功" -ForegroundColor Green
-} catch {
-    Write-Host "⚠ 警告：Capacitor 同步可能有警告（可继续）" -ForegroundColor Yellow
+& node "$(Join-Path $rootDir "node_modules/@capacitor/cli/bin/capacitor")" sync android
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ 错误：Capacitor 同步失败（exit $LASTEXITCODE）" -ForegroundColor Red
+    exit 1
 }
+# 内容自检：确认滚轮选择器代码真的同步进了 assets（防止复制失败仍继续打包）
+$assetEditor = Join-Path $androidDir "app\src\main\assets\public\app\editor.js"
+if (Test-Path $assetEditor) {
+    $assetText = Get-Content $assetEditor -Raw -Encoding UTF8
+    if ($assetText -notmatch 'openDateWheel') {
+        Write-Host "❌ 错误：assets 里缺少新版滚轮代码（editor.js 未同步）" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "✓ assets 内容自检通过（含滚轮选择器代码）" -ForegroundColor Green
+}
+Write-Host "✓ Capacitor 同步成功" -ForegroundColor Green
 
 # 步骤 4: 准备输出目录
 Write-Host "`n[步骤 4/6] 准备输出目录..." -ForegroundColor Yellow

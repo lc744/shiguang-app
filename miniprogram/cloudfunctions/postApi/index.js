@@ -403,6 +403,7 @@ exports.main = async (event) => {
       // 用户在线状态（对齐安卓管理面板：🟢在线5分钟内 / 🟡最近30分钟内 / ⚪离线）
       // 跨端桥：安卓心跳在 PG users 表（uid 归属），直签读取并与小程序端按身份归并
       let users = [];
+      const diag = { envReady: !!(process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY), pgError: '', pgRows: 0, merged: 0 };
       try{
         const ur = await db.collection(USR).limit(100).get();
         const byKey = {};
@@ -416,18 +417,19 @@ exports.main = async (event) => {
         // PG 桥：读安卓端心跳用户（last_seen 90 天内），uid 与 wxUid(openid) 相同即同一人归并
         if(process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY){
           try{
-            const r = await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+            const r = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
               "SELECT uid, nickname, EXTRACT(EPOCH FROM (now() - last_seen))::BIGINT AS ago FROM users WHERE last_seen IS NOT NULL AND last_seen > now() - interval '90 days' ORDER BY last_seen DESC LIMIT 200" });
             (r && r.Rows ? r.Rows : []).forEach(line => {
-              // ExecutePGSql 的 Rows 每行是"字符串化的值数组"，需双层解析（实测 [uid, nickname, ago]）
-              let arr = null; try{ arr = JSON.parse(JSON.parse(line)); }catch(e){}
+              // ExecutePGSql 的 Rows 每行已是值数组 [uid, nickname, ago]（外层 JSON.parse 时已解析）
+              const arr = Array.isArray(line) ? line : JSON.parse(line);
               if(!Array.isArray(arr) || arr.length < 3) return;
               const rec = { nickname: String(arr[1] || ''), tail: String(arr[0] || '').slice(-6), agoSec: Number(arr[2]) || 0, key: String(arr[0] || '') };
               const ex = byKey[rec.key];
               if(!ex) byKey[rec.key] = rec;
               else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; ex.both = true; }
             });
-          }catch(e2){ /* PG 不可用：仅显示小程序端 */ }
+            diag.pgRows = (r && r.Rows ? r.Rows.length : 0);
+          }catch(e2){ diag.pgError = String(e2 && e2.message || e2).slice(0, 120); }
         }
         users = Object.keys(byKey).map(k => {
           const r = byKey[k];
@@ -437,8 +439,9 @@ exports.main = async (event) => {
         });
         // 在线/最近的排前，从未活跃垫底
         users.sort((a, b) => ((a.agoSec < 0 ? 1 : 0) - (b.agoSec < 0 ? 1 : 0)) || (a.agoSec - b.agoSec));
+        diag.merged = users.filter(u => u.both).length;
       }catch(e){}
-      return { ok: true, users,
+      return { ok: true, diag, users,
                posts: posts.data.map(p => ({ id: p._id, type: p.type, name: p.name || p.addr || '（未命名）', nickname: p.nickname, reports: p.reports || 0, photos: p.photos || [], time: fmtTimeStr(p.createdAt) })),
                comments: cmts.data.map(c => ({ cid: c._id, content: c.content, nickname: c.nickname, reports: c.reports || 0, time: fmtTimeStr(c.createdAt) })) };
     }
