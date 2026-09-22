@@ -12,7 +12,7 @@
       <view class="ad-sec-title">👥 用户在线 <text class="ad-sec-sub">共 {{total}} 人 · 🟢 在线 {{online}} · 🟡 最近 {{recent}}</text></view>
       <view class="ad-item card" wx:for="{{users}}" wx:key="tail">
         <view class="ad-main">
-          <text class="ad-name">{{item.dot}} {{item.name}}</text>
+          <text class="ad-name">{{item.dot}} {{item.name}}<text wx:if="{{item.both}}" style="font-size:10px;color:var(--main,#3f7d64);margin-left:6px;font-weight:600">双端</text></text>
           <text class="ad-sub">…{{item.tail}}</text>
         </view>
         <text class="ad-ago">{{item.agoText}}</text>

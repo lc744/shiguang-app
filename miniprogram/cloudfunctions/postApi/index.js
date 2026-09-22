@@ -4,6 +4,7 @@
 // 内容安全：文字 security.msgSecCheck、图片 security.imgSecCheck（权限声明在 config.json）
 const cloud = require('wx-server-sdk');
 const https = require('https');
+const crypto = require('crypto');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
@@ -12,6 +13,55 @@ const REP = 'reports';
 const USR = 'users';
 const CMT = 'comments';
 const PLAN = 'plans';       // 攻略存档（对齐 App planSave/planList）
+
+// ---- TCB PG 直签（跨端桥：读安卓端心跳用户等；密钥来自环境变量，未配置时相关功能自动降级） ----
+const TCB_HOST = 'tcb.tencentcloudapi.com';
+function pgEsc(s){ return String(s).replace(/'/g, "''"); }
+function pgCall(action, payload){
+  const ts = Math.floor(Date.now() / 1000);
+  const date = new Date(ts * 1000).toISOString().slice(0, 10);
+  const body = JSON.stringify(payload || {});
+  const canonicalHeaders = 'content-type:application/json; charset=utf-8\nhost:' + TCB_HOST + '\nx-tc-action:' + action.toLowerCase() + '\n';
+  const signedHeaders = 'content-type;host;x-tc-action';
+  const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
+  const hmacBuf = (key, s) => crypto.createHmac('sha256', key).update(s).digest();
+  const canonicalRequest = 'POST' + '\n' + '/' + '\n' + '' + '\n' + canonicalHeaders + '\n' + signedHeaders + '\n' + sha256hex(body);
+  const stringToSign = 'TC3-HMAC-SHA256\n' + ts + '\n' + date + '/tcb/tc3_request\n' + sha256hex(canonicalRequest);
+  const kDate = hmacBuf('TC3' + process.env.TCB_SECRET_KEY, date);
+  const kSigning = hmacBuf(hmacBuf(kDate, 'tcb'), 'tc3_request');
+  const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+  const auth = 'TC3-HMAC-SHA256 Credential=' + process.env.TCB_SECRET_ID + '/' + date + '/tcb/tc3_request, SignedHeaders=' + signedHeaders + ', Signature=' + signature;
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: TCB_HOST, path: '/', method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Host': TCB_HOST,
+        'X-TC-Action': action,
+        'X-TC-Region': 'ap-shanghai',
+        'X-TC-Timestamp': String(ts),
+        'X-TC-Version': '2018-06-08',
+        'Authorization': auth,
+        'Content-Length': Buffer.byteLength(body),
+      },
+      timeout: 12000,
+    }, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try{
+          const j = JSON.parse(d);
+          if(j.Response && j.Response.Error) return reject(new Error(j.Response.Error.Code + ' ' + j.Response.Error.Message));
+          resolve(j.Response || {});
+        }catch(e){ reject(new Error('响应解析失败')); }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('PG API超时')); });
+    req.write(body);
+    req.end();
+  });
+}
 const HIDE_THRESHOLD = 3;      // 举报数达到即自动隐藏
 const CMT_HIDE_THRESHOLD = 3;  // 评论举报隐藏阈值
 const MAX_PHOTOS = 3;
@@ -351,14 +401,41 @@ exports.main = async (event) => {
       const posts = await db.collection(COL).where({ hidden: true }).orderBy('createdAt', 'desc').limit(50).get();
       const cmts = await db.collection(CMT).where({ hidden: true }).orderBy('createdAt', 'desc').limit(50).get();
       // 用户在线状态（对齐安卓管理面板：🟢在线5分钟内 / 🟡最近30分钟内 / ⚪离线）
+      // 跨端桥：安卓心跳在 PG users 表（uid 归属），直签读取并与小程序端按身份归并
       let users = [];
       try{
         const ur = await db.collection(USR).limit(100).get();
-        users = ur.data.map(u => ({
-          nickname: u.nickname || '',
-          tail: String(u.openid || '').slice(-6),
-          agoSec: u.lastActive ? Math.max(0, Math.floor((Date.now() - u.lastActive) / 1000)) : -1
-        })).sort((a, b) => b.agoSec - a.agoSec);
+        const byKey = {};
+        const wxUidOf = (openid) => { const c = require('crypto'); return 'wx_' + c.createHash('sha256').update('choumou-wx:' + openid).digest('hex').slice(0, 24); };
+        ur.data.forEach(u => {
+          const rec = { nickname: u.nickname || '', tail: String(u.openid || '').slice(-6), agoSec: u.lastActive ? Math.max(0, Math.floor((Date.now() - u.lastActive) / 1000)) : -1, key: u._openid ? wxUidOf(u._openid) : ('doc_' + String(u._openid || '')) };
+          const ex = byKey[rec.key];
+          if(!ex) byKey[rec.key] = rec;
+          else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec < 0 ? Infinity : rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; ex.both = true; }
+        });
+        // PG 桥：读安卓端心跳用户（last_seen 90 天内），uid 与 wxUid(openid) 相同即同一人归并
+        if(process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY){
+          try{
+            const r = await pgCall('ExecutePGSql', { EnvId: process.env.TCB_ENV || 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+              "SELECT uid, nickname, EXTRACT(EPOCH FROM (now() - last_seen))::BIGINT AS ago FROM users WHERE last_seen IS NOT NULL AND last_seen > now() - interval '90 days' ORDER BY last_seen DESC LIMIT 200" });
+            (r && r.Rows ? r.Rows : []).forEach(line => {
+              let row = null; try{ row = JSON.parse(line)[0]; }catch(e){}
+              if(!row) return;
+              const rec = { nickname: String(row.nickname || ''), tail: String(row.uid || '').slice(-6), agoSec: Number(row.ago) || 0, key: String(row.uid || '') };
+              const ex = byKey[rec.key];
+              if(!ex) byKey[rec.key] = rec;
+              else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; ex.both = true; }
+            });
+          }catch(e2){ /* PG 不可用：仅显示小程序端 */ }
+        }
+        users = Object.keys(byKey).map(k => {
+          const r = byKey[k];
+          const out = { nickname: r.nickname, tail: r.tail, agoSec: r.agoSec < 0 ? -1 : r.agoSec };
+          if(r.both) out.both = true;
+          return out;
+        });
+        // 在线/最近的排前，从未活跃垫底
+        users.sort((a, b) => ((a.agoSec < 0 ? 1 : 0) - (b.agoSec < 0 ? 1 : 0)) || (a.agoSec - b.agoSec));
       }catch(e){}
       return { ok: true, users,
                posts: posts.data.map(p => ({ id: p._id, type: p.type, name: p.name || p.addr || '（未命名）', nickname: p.nickname, reports: p.reports || 0, photos: p.photos || [], time: fmtTimeStr(p.createdAt) })),
