@@ -511,13 +511,18 @@
     </div>
   </div>
 
-  <!-- 修改出生年月弹层 -->
+  <!-- 修改出生年月弹层（三列滚轮选择器） -->
   <div class="remind-fullscreen" id="birthOverlay" style="display:none" onclick="if(event.target===this)closeInfoEditor()">
-    <div class="remind-card card" style="max-width:320px;padding:20px 18px">
+    <div class="remind-card card" style="max-width:340px;padding:20px 18px">
       <h2 style="font-size:17px;margin:0 0 14px;text-align:center">修改出生日期</h2>
       <div class="field" style="text-align:left">
         <label>出生日期（公历）</label>
-        <input id="birthInput" type="date" />
+        <div class="wheel-box" id="birthWheel">
+          <div class="wheel-highlight"></div>
+          <div class="wheel-col" id="wheelYear"></div>
+          <div class="wheel-col" id="wheelMonth"></div>
+          <div class="wheel-col" id="wheelDay"></div>
+        </div>
         <div id="birthClearRow" style="margin-top:6px;display:none">
           <small class="mini" style="cursor:pointer;color:var(--danger,#c65c52)" onclick="clearBirth()">清除出生日期</small>
         </div>

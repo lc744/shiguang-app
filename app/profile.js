@@ -298,10 +298,45 @@ function openGenderEditor(){
   document.querySelectorAll('#genderChips .chip').forEach(c => c.classList.toggle('selected', c.dataset.gender === pickedGender));
   document.getElementById('genderOverlay').style.display = 'flex';
 }
+/* ---------------- 出生年月：三列滚轮选择器 ---------------- */
+const WHEEL_ITEM_H = 36;
+let birthSel = { y: 2000, m: 1, d: 1 };
+let wheelTimers = {};
+
+function fillWheel(colId, values, selected, onChange){
+  const col = document.getElementById(colId);
+  if(!col) return;
+  // 上下留白由 .wheel-col::before/::after 伪元素提供（CSS），这里只放选项
+  col.innerHTML = values.map(v => `<div class="wheel-item" data-v="${v}">${v}</div>`).join('');
+  const idx = Math.max(0, values.indexOf(selected));
+  requestAnimationFrame(() => { col.scrollTop = idx * WHEEL_ITEM_H; });
+  if(!onChange) return;
+  col.onscroll = () => {
+    clearTimeout(wheelTimers[colId]);
+    wheelTimers[colId] = setTimeout(() => {
+      const i = Math.max(0, Math.min(values.length - 1, Math.round(col.scrollTop / WHEEL_ITEM_H)));
+      onChange(values[i]);
+    }, 120);
+  };
+}
+
+function wheelDaysIn(y, m){ return new Date(y, m, 0).getDate(); }
+
+function refreshDayWheel(){
+  const n = wheelDaysIn(birthSel.y, birthSel.m);
+  const d = Math.min(birthSel.d, n);
+  fillWheel('wheelDay', Array.from({length: n}, (_, i) => i + 1), d, v => { birthSel.d = v; });
+  birthSel.d = d;
+}
+
 function openBirthEditor(){
   if(!currentUser){ openLogin(); return; }
-  const inp = document.getElementById('birthInput');
-  inp.value = currentUser.birth || '';
+  const parts = (currentUser.birth || '2000-01-01').split('-');
+  birthSel = { y: parseInt(parts[0], 10) || 2000, m: parseInt(parts[1], 10) || 1, d: parseInt(parts[2], 10) || 1 };
+  const nowY = new Date().getFullYear();
+  fillWheel('wheelYear', Array.from({length: nowY - 1899}, (_, i) => 1900 + i), birthSel.y, v => { birthSel.y = v; refreshDayWheel(); });
+  fillWheel('wheelMonth', Array.from({length: 12}, (_, i) => i + 1), birthSel.m, v => { birthSel.m = v; refreshDayWheel(); });
+  refreshDayWheel();
   document.getElementById('birthClearRow').style.display = currentUser.birth ? 'block' : 'none';
   document.getElementById('birthOverlay').style.display = 'flex';
 }
@@ -329,8 +364,8 @@ function saveGender(){
 }
 function saveBirth(){
   if(!currentUser) return;
-  const birth = (document.getElementById('birthInput').value || '').trim();
-  if(birth && !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(birth)){ toast('出生日期格式不正确'); return; }
+  const pad2 = n => String(n).padStart(2, '0');
+  const birth = birthSel.y + '-' + pad2(birthSel.m) + '-' + pad2(birthSel.d);
   currentUser.birth = birth;
   persistUser();
   saveAccountToRegistry();

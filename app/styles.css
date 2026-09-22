@@ -592,3 +592,11 @@ body.no-hero .hero, body.no-hero .stats { display: none; }
 /* 图片预览层 */
 .img-preview{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:calc(12px + var(--safe-top,0px)) 12px 12px}
 .img-preview img{max-width:94%;max-height:88%;object-fit:contain;border-radius:6px}
+
+/* ===== 出生年月三列滚轮选择器 ===== */
+.wheel-box{position:relative;display:flex;height:150px;border:1px solid var(--line,#dfe8e3);border-radius:12px;overflow:hidden;background:var(--surface,#fff)}
+.wheel-highlight{position:absolute;left:8px;right:8px;top:50%;height:36px;transform:translateY(-50%);border-radius:9px;background:rgba(63,125,100,.08);pointer-events:none;border-top:1px solid rgba(63,125,100,.25);border-bottom:1px solid rgba(63,125,100,.25)}
+.wheel-col{flex:1;height:150px;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;text-align:center;z-index:1}
+.wheel-col::-webkit-scrollbar{display:none}
+.wheel-col::before,.wheel-col::after{content:'';display:block;height:57px}
+.wheel-item{height:36px;line-height:36px;font-size:15px;color:var(--text,#28322e);scroll-snap-align:center;scroll-snap-stop:always}
