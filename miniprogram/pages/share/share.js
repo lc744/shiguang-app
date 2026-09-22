@@ -88,7 +88,11 @@ Page({
         title: '需要登录',
         content: '登录后即可浏览与发布分享',
         confirmText: '去登录',
-        success: r => { if(r.confirm) wx.switchTab({ url: '/pages/me/me' }); }
+        cancelText: '返回',
+        success: r => {
+          // 两个按钮都离开分享页：硬门禁，未登录不存在"停留在分享页"的状态
+          wx.switchTab({ url: r.confirm ? '/pages/me/me' : '/pages/home/home' });
+        }
       });
       return;
     }
