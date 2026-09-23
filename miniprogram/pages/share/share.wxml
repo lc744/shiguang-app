@@ -24,6 +24,7 @@
   <view class="filter-row" wx:if="{{tab === 'feed'}}">
     <view class="f-chip {{feedType === '' ? 'f-on' : ''}}" data-t="" bindtap="pickFeedType">全部</view>
     <view class="f-chip {{feedType === item ? 'f-on' : ''}}" wx:for="{{feedTypes}}" wx:key="*this" data-t="{{item}}" bindtap="pickFeedType">{{item}}</view>
+    <view class="loc-chip" bindtap="locateCity">📍 定位</view>
     <picker mode="region" bindchange="onFeedRegion">
       <view class="f-chip f-city">{{feedCity || '📍 全部城市'}}</view>
     </picker>

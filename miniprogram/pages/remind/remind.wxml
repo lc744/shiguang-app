@@ -15,8 +15,7 @@
       <button class="secondary" hover-class="btn-hover" bindtap="onSnooze" data-min="30">30 分钟</button>
     </view>
     <view class="action-row">
-      <button class="secondary" hover-class="btn-hover" bindtap="onComplete">✓ 完成</button>
-      <button class="primary" hover-class="btn-hover" bindtap="onDismiss">知道啦</button>
+      <button class="primary" hover-class="btn-hover" bindtap="onComplete" style="width:100%">✓ 完成</button>
     </view>
   </view>
 </view>

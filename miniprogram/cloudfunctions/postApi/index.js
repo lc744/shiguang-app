@@ -206,7 +206,31 @@ exports.main = async (event) => {
         .skip(page * pageSize).limit(pageSize)
         .field({ openid: false })
         .get();
-      return { ok: true, list: r.data, page, hasMore: r.data.length === pageSize };
+      let list = r.data;
+      // 跨端桥：并入安卓端发布的帖子（PG posts 表），按时间归并（仅第一页，PG 侧最多取 100 条）
+      if(page === 0 && pgReady() && !event.city){
+        try{
+          const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+            "SELECT id, nickname, type, name, descr, photos, likes, reports, EXTRACT(EPOCH FROM created_at)::BIGINT AS ts FROM posts WHERE hidden = false ORDER BY created_at DESC LIMIT 100" });
+          const appPosts = (pr && pr.Rows ? pr.Rows : []).map(line => {
+            try{
+              const a = Array.isArray(line) ? line : JSON.parse(line);
+              let photos = [];
+              try{ photos = a[6] ? JSON.parse(a[6]) : []; }catch(e2){ photos = []; }
+              if(!Array.isArray(photos)) photos = [];
+              // 安卓照片是 TCB 存储的 cloud:// fileID，小程序环境无法换链，显示占位由前端容错
+              return { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, fromApp: true };
+            }catch(e2){ return null; }
+          }).filter(p => p && (!event.type || p.type === event.type));
+          if(appPosts.length){
+            const exist = new Set(list.map(p => p._id));
+            list = list.concat(appPosts.filter(p => !exist.has(p._id)));
+            list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            list = list.slice(0, pageSize);
+          }
+        }catch(e2){ /* PG 不可用：仅显示小程序端 */ }
+      }
+      return { ok: true, list, page, hasMore: r.data.length === pageSize };
     }
 
     // ---- 详情 ----
@@ -220,6 +244,14 @@ exports.main = async (event) => {
     // ---- 点赞切换 ----
     if(action === 'like'){
       const id = String(event.id || '');
+      // 跨端桥：安卓发布的帖子（app_ 前缀）点赞走 PG
+      if(id.startsWith('app_')){
+        if(!pgReady()) return { ok: false, error: '跨端点赞暂不可用' };
+        const pid = id.slice(4);
+        await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+          "UPDATE posts SET likes = GREATEST(likes + " + (event.undo ? -1 : 1) + ", 0) WHERE id = '" + pgEsc(pid) + "'" });
+        return { ok: true, liked: !event.undo };
+      }
       const r = await db.collection(COL).doc(id).get().catch(() => null);
       if(!r || !r.data || r.data.hidden) return { ok: false, error: '内容不存在' };
       const liked = (r.data.likedBy || []).indexOf(OPENID) >= 0;

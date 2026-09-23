@@ -149,6 +149,24 @@ Page({
     this.setData({ feedCity: '', list: [], page: 0, hasMore: true, empty: false });
     this.refresh();
   },
+  // 📍 按当前位置定位城市（对齐安卓"按位置"推荐）：getLocation → postApi regeo → 城市筛选
+  locateCity(){
+    wx.getLocation({
+      type: 'gcj02',
+      success: res => {
+        callPost({ action: 'regeo', lat: res.latitude, lng: res.longitude }).then(r => {
+          if(r && r.ok && r.city){
+            this.setData({ feedCity: r.city, list: [], page: 0, hasMore: true, empty: false });
+            this.refresh();
+            wx.showToast({ title: '已按 ' + r.city + ' 推荐', icon: 'none' });
+          } else {
+            wx.showToast({ title: (r && r.error) || '没识别到城市', icon: 'none' });
+          }
+        }).catch(() => wx.showToast({ title: '定位失败', icon: 'none' }));
+      },
+      fail: () => wx.showToast({ title: '未授权定位，请到设置开启', icon: 'none' })
+    });
+  },
 
   refresh(){
     this.setData({ page: 0, hasMore: true });
