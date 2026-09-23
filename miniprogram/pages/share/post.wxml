@@ -14,6 +14,7 @@
           <text class="post-name">{{post.name}}</text>
         </view>
         <text class="post-desc">{{post.desc}}</text>
+        <text wx:if="{{post.addr}}" class="post-addr">📍 {{post.addr}}</text>
         <view class="post-meta">
           <image wx:if="{{post.avatarUrl}}" class="post-avatar" src="{{post.avatarUrl}}" mode="aspectFill" />
           <view wx:else class="post-avatar post-avatar-ph">👤</view>

@@ -68,9 +68,11 @@
 }
 .genie-bubbles{
   height:100%; box-sizing:border-box;
-  padding:14px 16px;
-  display:flex; flex-direction:column; gap:10px;
+  padding:14px 16px 4px;
+  display:block;
 }
+.genie-bubble{ margin-top:10px; }
+.genie-bubble:first-child{ margin-top:0; }
 .genie-bubble{
   max-width:82%; padding:10px 13px; border-radius:16px;
   font-size:14px; line-height:1.55;

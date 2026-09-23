@@ -33,9 +33,10 @@
 
 .cmt-bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:16rpx;padding:16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));background:var(--card);border-top:1rpx solid var(--line)}
 .cmt-input{flex:1;background:var(--bg);border-radius:999rpx;padding:14rpx 28rpx;font-size:27rpx;color:var(--text)}
-.cmt-send{flex:none;background:var(--accent);color:#fff;font-size:25rpx;border-radius:999rpx}
+.cmt-send{flex:none;background:var(--accent);color:#fff;font-size:25rpx;border-radius:999rpx;margin:0}
 .cmt-send-on{opacity:1}
 .cmt-send[disabled]{opacity:.5;color:#fff;background:var(--accent)}
 
 .share-loading{text-align:center;font-size:24rpx;color:var(--sub);padding:40rpx 0}
 .cmt-owner{flex:none;font-size:18rpx;color:#fff;background:var(--accent,#246353);border-radius:6rpx;padding:2rpx 10rpx;margin-left:8rpx;font-weight:600}
+.post-addr{flex:none;font-size:22rpx;color:var(--sub);margin-top:8rpx;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

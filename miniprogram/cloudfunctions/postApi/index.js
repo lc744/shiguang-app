@@ -212,7 +212,7 @@ exports.main = async (event) => {
       if(page === 0 && pgReady() && !event.city){
         try{
           const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
-            "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT 100" });
+            "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT 100" });
           const appPosts = (pr && pr.Rows ? pr.Rows : []).map(line => {
             try{
               const a = Array.isArray(line) ? line : JSON.parse(line);
@@ -221,8 +221,8 @@ exports.main = async (event) => {
               if(!Array.isArray(rawPhotos)) rawPhotos = [];
               // 安卓照片是 {t,f} 对象数组（t=缩略 f=原图，dataURL 或 URL）——列表用缩略图
               const photos = rawPhotos.map(p => (typeof p === 'string') ? p : String((p && (p.t || p.f)) || '')).filter(Boolean);
-              // 列序: id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9) avatar(10)
-              return { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), avatarUrl: String(a[10] || ''), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true };
+              // 列序: id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9) avatar(10) addr(11)
+              return { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), avatarUrl: String(a[10] || ''), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), addr: String(a[11] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true };
             }catch(e2){ return null; }
           }).filter(p => p && (!event.type || p.type === event.type));
           if(appPosts.length){
@@ -242,7 +242,7 @@ exports.main = async (event) => {
       // 跨端桥：安卓发布的帖子（app_ 前缀）详情走 PG
       if(gid.startsWith('app_') && pgReady()){
         const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
-          "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.id = '" + pgEsc(gid.slice(4)) + "'" }).catch(() => null);
+          "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.id = '" + pgEsc(gid.slice(4)) + "'" }).catch(() => null);
         const line = pr && pr.Rows && pr.Rows[0];
         if(!line) return { ok: false, error: '内容不存在' };
         const a = Array.isArray(line) ? line : JSON.parse(line);
@@ -250,8 +250,8 @@ exports.main = async (event) => {
         if(!Array.isArray(rawPhotos)) rawPhotos = [];
         // 详情用原图 f（无则退缩略图 t）
         const photos = rawPhotos.map(p => (typeof p === 'string') ? p : String((p && (p.f || p.t)) || '')).filter(Boolean);
-        // 列序同 feed：id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9) avatar(10)
-        return { ok: true, post: { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), avatarUrl: String(a[10] || ''), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true } };
+        // 列序同 feed：id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9) avatar(10) addr(11)
+        return { ok: true, post: { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), avatarUrl: String(a[10] || ''), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), addr: String(a[11] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true } };
       }
       const r = await db.collection(COL).doc(String(event.id || '')).get().catch(() => null);
       if(!r || !r.data || r.data.hidden) return { ok: false, error: '内容不存在' };
@@ -391,7 +391,9 @@ exports.main = async (event) => {
         const list = (pr && pr.Rows ? pr.Rows : []).map(line => {
           try{
             const a = Array.isArray(line) ? line : JSON.parse(line);
-            return { _id: 'appc_' + String(a[0]), postId, nickname: String(a[2] || '路过的朋友'), content: String(a[3] || ''), likes: 0, hidden: false, createdAt: (Number(a[4]) || 0) * 1000, self: String(a[1] || '') === OPENID, isOwner: a[5] === true };
+            // PG 布尔经 ExecutePGSql 序列化为字符串 "true"/"false"，两种形态都要兼容
+            const isOwner = a[5] === true || a[5] === 'true';
+            return { _id: 'appc_' + String(a[0]), postId, nickname: String(a[2] || '路过的朋友'), content: String(a[3] || ''), likes: 0, hidden: false, createdAt: (Number(a[4]) || 0) * 1000, self: String(a[1] || '') === OPENID, isOwner };
           }catch(e){ return null; }
         }).filter(Boolean);
         return { ok: true, list };

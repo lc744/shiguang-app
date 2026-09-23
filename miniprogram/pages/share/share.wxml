@@ -69,6 +69,7 @@
           <text class="post-name">{{item.name}}</text>
         </view>
         <text class="post-desc">{{item.desc}}</text>
+        <text wx:if="{{item.addr}}" class="post-addr">📍 {{item.addr}}</text>
         <view class="post-meta">
           <image wx:if="{{item.avatarUrl}}" class="post-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
           <view wx:else class="post-avatar post-avatar-ph">👤</view>

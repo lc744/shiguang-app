@@ -114,3 +114,4 @@
 .slg-title{font-size:34rpx;font-weight:700;color:var(--text);margin-bottom:10rpx}
 .slg-sub{font-size:24rpx;color:var(--sub);margin-bottom:36rpx}
 .slg-btn{width:70%}
+.post-addr{font-size:22rpx;color:var(--sub);margin-top:6rpx;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -38,6 +38,7 @@ const ok = (name, pass, note) => {
 
   // ---- 2. 点开安卓帖子详情 ----
   if (appPost) {
+    ok('安卓帖子地址已带出', !!appPost.addr, 'addr=' + (appPost.addr || '无'));
     page = await mini.navigateTo('/pages/share/post?id=' + appPost._id);
     await sleep(3000);
     const pd = await page.data();
@@ -49,8 +50,14 @@ const ok = (name, pass, note) => {
     const ownerBadges = await page.$$('.cmt-owner');
     ok('评论列表可加载', (pd.comments || []).length >= 0, '条数=' + (pd.comments || []).length);
     if ((pd.comments || []).length) {
-      ok('评论含 isOwner 字段', (pd.comments || []).every(c => typeof c.isOwner === 'boolean'), '贴主评论=' + (pd.comments || []).filter(c => c.isOwner).length);
-      if ((pd.comments || []).some(c => c.isOwner)) ok('贴主徽章已渲染', ownerBadges.length > 0, 'badge=' + ownerBadges.length);
+      const ownerCount = (pd.comments || []).filter(c => c.isOwner).length;
+      const selfCount = (pd.comments || []).filter(c => c.self).length;
+      ok('评论含 isOwner 字段', (pd.comments || []).every(c => typeof c.isOwner === 'boolean'), '贴主评论=' + ownerCount + ' 本人评论=' + selfCount);
+      // 数据侧已知：时光的帖子下有时光本人评论（owner=true）——若出现则贴主徽章必须渲染
+      if (ownerCount > 0) {
+        const badges = await page.$$('.cmt-owner');
+        ok('贴主徽章已渲染', badges.length === ownerCount, 'badge=' + badges.length + ' 应为=' + ownerCount);
+      }
     }
     const ph = await page.$('input.cmt-input');
     if (ph) {
@@ -67,22 +74,27 @@ const ok = (name, pass, note) => {
   const genie = await page.$('genie');
   ok('首页挂载精灵组件', !!genie, '');
   if (genie) {
-    await genie.setData({ open: true, showfab: false, bubbles: [
-      { id: 'b1', role: 'user', text: '测试消息一' },
-      { id: 'b2', role: 'ai', text: '这是一条很长的回复用于撑起滚动区域'.repeat(12) },
-      { id: 'b3', role: 'user', text: '测试消息二' }
-    ], lastId: 'b3' });
-    await sleep(1200);
+    // 压力场景：20 条长消息（对齐用户"消息多了就出问题"的反馈）
+    const many = [];
+    for (let i = 1; i <= 20; i++) {
+      many.push({ id: 'b' + i, role: i % 2 ? 'user' : 'ai', text: '第' + i + '条消息：' + '这是一条比较长的回复用来撑起滚动区域检验多消息时面板内滚动是否正常'.repeat(3) });
+    }
+    await genie.setData({ open: true, showfab: false, bubbles: many, lastId: 'b20' });
+    await sleep(1500);
     const panel = await genie.$('.genie-panel');
-    ok('精灵面板可打开', !!panel, '');
+    ok('精灵面板可打开(20条长消息)', !!panel, '');
     const bubbles = await genie.$$('.genie-bubble');
-    ok('精灵消息渲染', bubbles.length === 3, 'bubble=' + bubbles.length);
+    ok('精灵消息渲染', bubbles.length === 20, 'bubble=' + bubbles.length);
     const wrap = await genie.$('.genie-scroll-wrap');
     ok('滚动包裹层存在(撑高方案)', !!wrap, '');
-    const sv = await genie.$('.genie-bubbles');
-    if (sv) {
-      const svProps = await sv.attribute('scroll-y');
-      ok('消息区 scroll-y 开启', svProps !== undefined && svProps !== null, 'scroll-y=' + svProps);
+    if (wrap && bubbles.length === 20) {
+      // 用首尾气泡的几何尺寸对比可视高：内容必须显著高于面板，否则多消息会溢出
+      const wrapSize = await wrap.size();
+      const first = await bubbles[0].offset();
+      const lastSize = await bubbles[19].size();
+      const last = await bubbles[19].offset();
+      const contentH = (last.top + lastSize.height) - first.top;
+      ok('消息区内容超高(可滚动前提)', contentH > wrapSize.height + 60, '内容高=' + Math.round(contentH) + ' 可视高=' + Math.round(wrapSize.height));
     }
     await genie.setData({ open: false });
   }
