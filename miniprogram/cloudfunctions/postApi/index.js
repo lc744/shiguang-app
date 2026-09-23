@@ -123,8 +123,7 @@ async function checkText(text){
 async function checkImage(fileID){
   try{
     const dl = await cloud.downloadFile({ fileID });
-    // 超出 imgSecCheck 检测上限（1M）：跳过检测放行（安卓端无图片强检，保持一致）
-    if(dl.fileContent.length > 1024 * 1024) return { ok: true };
+    if(dl.fileContent.length > 1024 * 1024) return { ok: false, why: '图片过大，请压缩后重试' };
     const r = await cloud.openapi.security.imgSecCheck({
       media: { contentType: 'image/jpeg', value: dl.fileContent }
     });
@@ -132,9 +131,7 @@ async function checkImage(fileID){
     return { ok: true };
   }catch(e){
     if(e && e.errCode === 87014) return { ok: false, why: '图片包含违规内容' };
-    // 非违规错误（imgSecCheck 对较大图易抛超限/接口异常）：放行不阻塞发布，仅记录
-    console.log('[checkImage] 非违规错误放行:', e && (e.errCode || e.message));
-    return { ok: true };
+    return { ok: false, why: '图片检测服务不可用，请稍后再试' };
   }
 }
 
