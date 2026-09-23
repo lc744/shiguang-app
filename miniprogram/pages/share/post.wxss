@@ -32,7 +32,7 @@
 .cmt-empty{text-align:center;font-size:24rpx;color:var(--sub);padding:50rpx 0}
 
 .cmt-bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:16rpx;padding:16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));background:var(--card);border-top:1rpx solid var(--line)}
-.cmt-input{flex:1;background:var(--bg);border-radius:999rpx;padding:14rpx 28rpx;font-size:27rpx;color:var(--text)}
+.cmt-input{flex:1;height:72rpx;line-height:72rpx;background:var(--bg);border-radius:999rpx;padding:0 28rpx;box-sizing:border-box;font-size:27rpx;color:var(--text)}
 .cmt-send{flex:none;background:var(--accent);color:#fff;font-size:25rpx;border-radius:999rpx;margin:0}
 .cmt-send-on{opacity:1}
 .cmt-send[disabled]{opacity:.5;color:#fff;background:var(--accent)}

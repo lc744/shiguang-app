@@ -20,7 +20,7 @@
       "desc": "用于发布推荐时选择你的位置地址"
     }
   },
-  "requiredPrivateInfos": ["chooseLocation"],
+  "requiredPrivateInfos": ["chooseLocation", "getLocation"],
   "window": {
     "navigationBarTitleText": "绸缪",
     "navigationBarBackgroundColor": "@navBgColor",

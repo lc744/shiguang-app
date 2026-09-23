@@ -46,6 +46,12 @@ Component({
         this.pushBubble('assistant', '你好呀，我是绸缪精灵 🧚 可以陪你聊天，也能帮你添加提醒、换背景、查日程。试试对我说“明天上午9点开会”，或者随便跟我聊聊～');
       }
       this.setData({ open: true });
+      // 打开面板时强制滚到最新消息（lastId 值未变化不会触发 scroll-into-view，需先清再设）
+      const last = this.data.bubbles.length ? this.data.bubbles[this.data.bubbles.length - 1].id : '';
+      if(last){
+        this.setData({ lastId: '' });
+        setTimeout(() => this.setData({ lastId: last }), 120);
+      }
     },
 
     onCloseTap(){ this.closePanel(); },

@@ -209,10 +209,14 @@ exports.main = async (event) => {
         .get();
       let list = r.data;
       // 跨端桥：并入安卓端发布的帖子（PG posts 表），按时间归并（仅第一页，PG 侧最多取 100 条）
-      if(page === 0 && pgReady() && !event.city){
+      // 城市筛选：PG 帖子无 city 列，用 addr 模糊匹配城市名（安卓地址含省市区）；类型筛选已按 p.type 精确匹配
+      let pgSql = "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false";
+      const wantCity = String(event.city || '');
+      if(wantCity) pgSql += " AND p.addr LIKE '%" + pgEsc(wantCity) + "%'";
+      pgSql += " ORDER BY p.created_at DESC LIMIT 100";
+      if(page === 0 && pgReady()){
         try{
-          const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
-            "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT 100" });
+          const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql: pgSql });
           const appPosts = (pr && pr.Rows ? pr.Rows : []).map(line => {
             try{
               const a = Array.isArray(line) ? line : JSON.parse(line);

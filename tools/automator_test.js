@@ -39,6 +39,18 @@ const ok = (name, pass, note) => {
   // ---- 2. 点开安卓帖子详情 ----
   if (appPost) {
     ok('安卓帖子地址已带出', !!appPost.addr, 'addr=' + (appPost.addr || '无'));
+    // 城市筛选跨端：选苏州市应能筛出安卓帖子（PG addr LIKE 匹配）
+    await page.setData({ feedCity: '苏州市' });
+    await page.callMethod('refresh');
+    await sleep(2800);
+    const cd = await page.data();
+    const cityApp = (cd.list || []).find(x => x.fromApp);
+    ok('城市筛选带出安卓帖子(addr匹配)', !!cityApp, cityApp ? 'addr=' + String(cityApp.addr).slice(0, 30) : '苏州市下无安卓帖子');
+    await page.setData({ feedCity: '' });
+    await page.callMethod('refresh');
+    await sleep(1800);
+  }
+  if (appPost) {
     page = await mini.navigateTo('/pages/share/post?id=' + appPost._id);
     await sleep(3000);
     const pd = await page.data();
