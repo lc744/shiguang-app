@@ -121,10 +121,24 @@ Page({
     }).then(r => r.fileID);
   },
 
-  // 对齐 App：无照片时按类型 canvas 生成默认图并缓存 fileID（首次生成，之后秒取）
+  // 对齐 App：优先上传打包高清实拍图（与安卓 app/assets/defaults 同一张），失败退 canvas 插画
   _ensureDefaultPhoto(type){
+    const asset = type === '景点' ? 'scene' : type === '美食' ? 'food' : 'fun';
+    const key = 'shiguang_defphoto_' + asset;
+    try{ const cached = wx.getStorageSync(key); if(cached) return Promise.resolve(cached); }catch(e){}
+    return wx.cloud.uploadFile({
+      cloudPath: 'defaults/def_' + asset + '_' + Date.now() + '.jpg',
+      filePath: '/images/defaults/' + asset + '.jpg'
+    }).then(up => {
+      try{ wx.setStorageSync(key, up.fileID); }catch(e){}
+      return up.fileID;
+    }).catch(() => this._canvasDefaultPhoto(type));
+  },
+
+  // 兜底：canvas 渐变插画（与安卓 drawDefaultPhoto 同款风格）
+  _canvasDefaultPhoto(type){
     const kind = type === '景点' ? '景点' : type === '美食' ? '美食' : '娱乐';
-    const key = 'shiguang_defphoto_' + kind;
+    const key = 'shiguang_defphoto_canvas_' + kind;
     try{ const cached = wx.getStorageSync(key); if(cached) return Promise.resolve(cached); }catch(e){}
     return new Promise(resolve => {
       const q = wx.createSelectorQuery();
@@ -187,11 +201,14 @@ Page({
       // 对齐 App：没选照片自动配一张类型默认图（生成失败才发无图卡片）
       jobs.push(this._ensureDefaultPhoto(this.data.type).then(def => { if(def) photoList = [def]; }));
     } else {
-      // 单张失败不拖垮整批：容错为空串，发布时过滤
-      photoList.forEach(p => jobs.push(this._upload(p, 'posts').catch(() => '')));
+      // 关键：上传结果必须回填 photoList（此前上传的 cloud:// fileID 被丢弃，导致永远降级默认图）
+      photoList.forEach((p, i) => jobs.push(
+        this._upload(p, 'posts').then(id => { photoList[i] = id; }).catch(() => {})
+      ));
     }
     Promise.all(jobs)
       .then(() => {
+        // 此时 photoList 已是 cloud:// fileID（上传成功）或原路径（失败，将被过滤）
         let photos = photoList.map(String).filter(p => /^cloud:\/\//.test(p));
         if(this.data.photos.length && !photos.length){
           // 所选照片全部上传失败 → 降级按类型补默认图（对齐安卓兜底）

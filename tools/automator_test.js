@@ -99,7 +99,23 @@ const ok = (name, pass, note) => {
     await genie.setData({ open: false });
   }
 
-  // ---- 4. 汇总 ----
+  // ---- 4. 发布页：云上传通路 + 默认图实拍图 ----
+  page = await mini.navigateTo('/pages/share/publish');
+  await sleep(1800);
+  try {
+    const fid = await page.callMethod('_upload', '/images/defaults/food.jpg', 'posts');
+    ok('云上传通路(返回cloud:// fileID)', /^cloud:\/\//.test(String(fid)), String(fid).slice(0, 46));
+    const def = await page.callMethod('_ensureDefaultPhoto', '美食');
+    ok('默认图=实拍图fileID(与安卓同图)', /^cloud:\/\//.test(String(def)), String(def).slice(0, 46));
+    const def2 = await page.callMethod('_ensureDefaultPhoto', '景点');
+    ok('景点默认图可用', /^cloud:\/\//.test(String(def2)), String(def2).slice(0, 46));
+  } catch (e) {
+    ok('发布页方法调用', false, e.message);
+  }
+  await mini.navigateBack();
+  await sleep(600);
+
+  // ---- 5. 汇总 ----
   const pass = results.filter(Boolean).length;
   console.log('\n===== 冒烟测试 ' + pass + '/' + results.length + ' 通过; console.error x' + consoleErrors.length + ' =====');
   await mini.disconnect();
