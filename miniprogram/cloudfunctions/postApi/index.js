@@ -17,6 +17,7 @@ const PLAN = 'plans';       // 攻略存档（对齐 App planSave/planList）
 // ---- TCB PG 直签（跨端桥：读安卓端心跳用户等；密钥来自环境变量，未配置时相关功能自动降级） ----
 const TCB_HOST = 'tcb.tencentcloudapi.com';
 function pgEsc(s){ return String(s).replace(/'/g, "''"); }
+function pgReady(){ return !!(process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY); }
 function pgCall(action, payload){
   const ts = Math.floor(Date.now() / 1000);
   const date = new Date(ts * 1000).toISOString().slice(0, 10);
