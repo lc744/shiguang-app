@@ -25,8 +25,6 @@
         </view>
       </swiper-item>
     </swiper>
-    <view class="slide-nav-btn slide-prev" bindtap="prevSlide">‹</view>
-    <view class="slide-nav-btn slide-next" bindtap="nextSlide">›</view>
   </view>
 
   <view class="stats">

@@ -120,7 +120,10 @@ Page({
     if(!content){ wx.showToast({ title: '说点什么再发吧', icon: 'none' }); return; }
     if(this.data.sending) return;
     this.setData({ sending: true });
-    callPost({ action: 'commentAdd', id: this._id, content })
+    // 评论带上用户昵称（与发布页同一身份来源）
+    let nickname = '路过的朋友';
+    try{ const id = wx.getStorageSync('shiguang_share_identity') || {}; if(id && id.nickname) nickname = String(id.nickname).slice(0, 20); }catch(e){}
+    callPost({ action: 'commentAdd', id: this._id, content, nickname })
       .then(r => {
         if(!r || !r.ok) throw new Error(r && r.error || '发送失败');
         this.setData({ draft: '', sending: false });

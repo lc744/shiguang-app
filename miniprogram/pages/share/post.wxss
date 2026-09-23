@@ -38,3 +38,4 @@
 .cmt-send[disabled]{opacity:.5;color:#fff;background:var(--accent)}
 
 .share-loading{text-align:center;font-size:24rpx;color:var(--sub);padding:40rpx 0}
+.cmt-owner{flex:none;font-size:18rpx;color:#fff;background:var(--accent,#246353);border-radius:6rpx;padding:2rpx 10rpx;margin-left:8rpx;font-weight:600}

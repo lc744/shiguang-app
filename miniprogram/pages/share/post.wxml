@@ -34,6 +34,7 @@
       <view class="cmt-item" wx:for="{{comments}}" wx:key="_id">
         <view class="cmt-main">
           <text class="cmt-nick">{{item.nickname}}</text>
+          <text wx:if="{{item.isOwner}}" class="cmt-owner">贴主</text>
           <text class="cmt-time">{{item.timeText}}</text>
         </view>
         <text class="cmt-text">{{item.content}}</text>
@@ -52,7 +53,7 @@
 
   <!-- 底部评论输入条 -->
   <view class="cmt-bar">
-    <input class="cmt-input" value="{{draft}}" placeholder="友善评论，理性交流…" confirm-type="send" bindinput="onDraftInput" bindconfirm="onSend" maxlength="200" />
+    <input class="cmt-input" value="{{draft}}" placeholder="友善评论，理性交流…" placeholder-style="font-size:12px" confirm-type="send" bindinput="onDraftInput" bindconfirm="onSend" maxlength="200" />
     <button class="cmt-send {{draft ? 'cmt-send-on' : ''}}" size="mini" bindtap="onSend" disabled="{{sending}}">{{sending ? '…' : '发送'}}</button>
   </view>
 </view>
