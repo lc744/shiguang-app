@@ -5,8 +5,8 @@
 </view>
 
 <!-- 展开态：底部滑出聊天面板 -->
-<view class="genie-panel {{open ? 'show' : ''}}" catchtouchmove="noop">
-  <view class="genie-head">
+<view class="genie-panel {{open ? 'show' : ''}}">
+  <view class="genie-head" catchtouchmove="noop">
     <view class="genie-avatar">
       <image class="genie-avatar-img" src="/images/genie.jpg" mode="aspectFill" />
     </view>
@@ -25,7 +25,7 @@
     </scroll-view>
   </view>
 
-  <view class="genie-inputbar">
+  <view class="genie-inputbar" catchtouchmove="noop">
     <input
       class="genie-input"
       value="{{inputValue}}"

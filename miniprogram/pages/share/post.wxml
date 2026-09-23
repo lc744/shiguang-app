@@ -53,7 +53,7 @@
 
   <!-- 底部评论输入条 -->
   <view class="cmt-bar">
-    <input class="cmt-input" value="{{draft}}" placeholder="友善评论，理性交流…" placeholder-style="font-size:12px" confirm-type="send" bindinput="onDraftInput" bindconfirm="onSend" maxlength="200" />
+    <input class="cmt-input" value="{{draft}}" placeholder="友善评论" placeholder-style="font-size:13px" confirm-type="send" bindinput="onDraftInput" bindconfirm="onSend" maxlength="200" />
     <button class="cmt-send {{draft ? 'cmt-send-on' : ''}}" size="mini" bindtap="onSend" disabled="{{sending}}">{{sending ? '…' : '发送'}}</button>
   </view>
 </view>

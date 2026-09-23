@@ -212,16 +212,17 @@ exports.main = async (event) => {
       if(page === 0 && pgReady() && !event.city){
         try{
           const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
-            "SELECT id, uid, nickname, type, name, descr, photos, likes, reports, EXTRACT(EPOCH FROM created_at)::BIGINT AS ts FROM posts WHERE hidden = false ORDER BY created_at DESC LIMIT 100" });
+            "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false ORDER BY p.created_at DESC LIMIT 100" });
           const appPosts = (pr && pr.Rows ? pr.Rows : []).map(line => {
             try{
               const a = Array.isArray(line) ? line : JSON.parse(line);
-              let photos = [];
-              try{ photos = a[6] ? JSON.parse(a[6]) : []; }catch(e2){ photos = []; }
-              if(!Array.isArray(photos)) photos = [];
-              // 列序: id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9)
-              // 安卓照片是 TCB 存储的 cloud:// fileID，小程序环境无法换链，显示占位由前端容错
-              return { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true };
+              let rawPhotos = [];
+              try{ rawPhotos = a[6] ? JSON.parse(a[6]) : []; }catch(e2){ rawPhotos = []; }
+              if(!Array.isArray(rawPhotos)) rawPhotos = [];
+              // 安卓照片是 {t,f} 对象数组（t=缩略 f=原图，dataURL 或 URL）——列表用缩略图
+              const photos = rawPhotos.map(p => (typeof p === 'string') ? p : String((p && (p.t || p.f)) || '')).filter(Boolean);
+              // 列序: id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9) avatar(10)
+              return { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), avatarUrl: String(a[10] || ''), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true };
             }catch(e2){ return null; }
           }).filter(p => p && (!event.type || p.type === event.type));
           if(appPosts.length){
@@ -241,14 +242,16 @@ exports.main = async (event) => {
       // 跨端桥：安卓发布的帖子（app_ 前缀）详情走 PG
       if(gid.startsWith('app_') && pgReady()){
         const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
-          "SELECT id, uid, nickname, type, name, descr, photos, likes, reports, EXTRACT(EPOCH FROM created_at)::BIGINT AS ts FROM posts WHERE id = '" + pgEsc(gid.slice(4)) + "'" }).catch(() => null);
+          "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.id = '" + pgEsc(gid.slice(4)) + "'" }).catch(() => null);
         const line = pr && pr.Rows && pr.Rows[0];
         if(!line) return { ok: false, error: '内容不存在' };
         const a = Array.isArray(line) ? line : JSON.parse(line);
-        let photos = []; try{ photos = a[6] ? JSON.parse(a[6]) : []; }catch(e){}
-        if(!Array.isArray(photos)) photos = [];
-        // 列序同 feed：id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9)
-        return { ok: true, post: { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true } };
+        let rawPhotos = []; try{ rawPhotos = a[6] ? JSON.parse(a[6]) : []; }catch(e){ rawPhotos = []; }
+        if(!Array.isArray(rawPhotos)) rawPhotos = [];
+        // 详情用原图 f（无则退缩略图 t）
+        const photos = rawPhotos.map(p => (typeof p === 'string') ? p : String((p && (p.f || p.t)) || '')).filter(Boolean);
+        // 列序同 feed：id(0) uid(1) nickname(2) type(3) name(4) descr(5) photos(6) likes(7) reports(8) ts(9) avatar(10)
+        return { ok: true, post: { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), avatarUrl: String(a[10] || ''), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, authorUid: String(a[1] || ''), fromApp: true } };
       }
       const r = await db.collection(COL).doc(String(event.id || '')).get().catch(() => null);
       if(!r || !r.data || r.data.hidden) return { ok: false, error: '内容不存在' };
@@ -407,6 +410,13 @@ exports.main = async (event) => {
     // ---- 评论：删除（仅本人） ----
     if(action === 'commentDel'){
       const cid = String(event.cid || '');
+      // 跨端桥：删除自己在安卓帖子下的评论（appc_ 前缀）走 PG
+      if(cid.startsWith('appc_') && pgReady()){
+        const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+          "DELETE FROM comments WHERE id = '" + pgEsc(cid.slice(5)) + "' AND uid = '" + pgEsc(OPENID) + "'" });
+        if(pr && pr.Error) return { ok: false, error: '删除失败' };
+        return { ok: true, op: 'commentDel' };
+      }
       const r = await db.collection(CMT).where({ _id: cid, openid: OPENID }).get();
       if(!r.data.length) return { ok: false, error: '只能删除自己的评论' };
       const postId = r.data[0].postId;

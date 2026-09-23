@@ -173,7 +173,7 @@ Page({
     const nickname = (this.data.nickname || '').trim() || '路过的朋友';
     if(!this.data.city){ wx.showToast({ title: '选一下所在城市', icon: 'none' }); return; }
     if(!this.data.addr.trim()){ wx.showToast({ title: '还差一步：点击"填写"选择规范地址', icon: 'none', duration: 2200 }); return; }
-    if(!this.data.photos.length){ wx.showToast({ title: '至少放一张照片', icon: 'none' }); return; }
+    // 照片选填（对齐安卓：未选时自动按类型配默认图）
 
     this.setData({ uploading: true });
     wx.showLoading({ title: '发布中…', mask: true });
@@ -187,12 +187,19 @@ Page({
       // 对齐 App：没选照片自动配一张类型默认图（生成失败才发无图卡片）
       jobs.push(this._ensureDefaultPhoto(this.data.type).then(def => { if(def) photoList = [def]; }));
     } else {
-      photoList.forEach(p => jobs.push(this._upload(p, 'posts')));
+      // 单张失败不拖垮整批：容错为空串，发布时过滤
+      photoList.forEach(p => jobs.push(this._upload(p, 'posts').catch(() => '')));
     }
     Promise.all(jobs)
       .then(() => {
-        const photos = photoList.filter(p => /^cloud:\/\//.test(String(p)));
-        if(photoList.length && !photos.length){ throw new Error('照片上传失败，请重试'); }
+        let photos = photoList.map(String).filter(p => /^cloud:\/\//.test(p));
+        if(this.data.photos.length && !photos.length){
+          // 所选照片全部上传失败 → 降级按类型补默认图（对齐安卓兜底）
+          return this._ensureDefaultPhoto(this.data.type).then(def => { if(def) photos = [def]; return photos; });
+        }
+        return photos;
+      })
+      .then(photos => {
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
         const finalName = name || this.data.addr.trim() || (this.data.type + '推荐');
         return wx.cloud.callFunction({
