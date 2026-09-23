@@ -11,7 +11,7 @@
     </view>
   </view>
 
-  <!-- hero 幻灯片（对齐 App：‹ › 手动切换 + 5 秒自动轮播） -->
+  <!-- hero 幻灯片（5 秒自动轮播） -->
   <view class="hero">
     <swiper class="hero-swiper" current="{{slideIndex}}" autoplay="{{autoplay}}" circular="{{true}}" interval="5000" bindchange="onSlideChange">
       <swiper-item wx:for="{{slides}}" wx:key="idx">
@@ -25,8 +25,6 @@
         </view>
       </swiper-item>
     </swiper>
-    <view class="slide-nav-btn slide-prev" bindtap="prevSlide">‹</view>
-    <view class="slide-nav-btn slide-next" bindtap="nextSlide">›</view>
   </view>
 
   <!-- 统计卡（对齐 App：待办/完成/清空事件） -->

@@ -236,6 +236,18 @@ exports.main = async (event) => {
 
     // ---- 详情 ----
     if(action === 'get'){
+      const gid = String(event.id || '');
+      // 跨端桥：安卓发布的帖子（app_ 前缀）详情走 PG
+      if(gid.startsWith('app_') && pgReady()){
+        const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+          "SELECT id, nickname, type, name, descr, photos, likes, reports, EXTRACT(EPOCH FROM created_at)::BIGINT AS ts FROM posts WHERE id = '" + pgEsc(gid.slice(4)) + "'" }).catch(() => null);
+        const line = pr && pr.Rows && pr.Rows[0];
+        if(!line) return { ok: false, error: '内容不存在' };
+        const a = Array.isArray(line) ? line : JSON.parse(line);
+        let photos = []; try{ photos = a[6] ? JSON.parse(a[6]) : []; }catch(e){}
+        if(!Array.isArray(photos)) photos = [];
+        return { ok: true, post: { _id: 'app_' + String(a[0]), nickname: String(a[2] || '路过的朋友'), type: String(a[3] || '其他'), name: String(a[4] || ''), desc: String(a[5] || ''), photos, likes: Number(a[7]) || 0, likedBy: [], commentCount: 0, reports: Number(a[8]) || 0, hidden: false, createdAt: (Number(a[9]) || 0) * 1000, fromApp: true } };
+      }
       const r = await db.collection(COL).doc(String(event.id || '')).get().catch(() => null);
       if(!r || !r.data || r.data.hidden) return { ok: false, error: '内容不存在' };
       const d = r.data; delete d.openid;
@@ -285,6 +297,12 @@ exports.main = async (event) => {
     if(action === 'report'){
       const id = String(event.id || '');
       const reason = String(event.reason || '').slice(0, 200);
+      // 跨端桥：安卓帖子的举报走 PG reports 计数
+      if(id.startsWith('app_') && pgReady()){
+        await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+          "UPDATE posts SET reports = reports + 1 WHERE id = '" + pgEsc(id.slice(4)) + "'" });
+        return { ok: true, op: 'report' };
+      }
       const seen = await db.collection(REP).where({ postId: id, openid: OPENID }).count();
       if(seen.total > 0) return { ok: true, op: 'report', already: true };
       await db.collection(REP).add({ data: { postId: id, openid: OPENID, reason, createdAt: nowMs() } });
@@ -328,6 +346,13 @@ exports.main = async (event) => {
       if(hasBadWord(content)) return { ok: false, error: '评论含违规内容，请修改后再发' };
       if(hasBadWord(nickname)) return { ok: false, error: '昵称含违规内容，请修改后再发' };
       if(!(await rateOk(OPENID))) return { ok: false, error: '发送太频繁，请稍后再试' };
+      // 跨端桥：给安卓帖子评论 → 写 PG comments 表
+      if(postId.startsWith('app_') && pgReady()){
+        const cid = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+          "INSERT INTO comments (id, post_id, uid, nickname, content) VALUES ('" + pgEsc(cid) + "', '" + pgEsc(postId.slice(4)) + "', '" + pgEsc(OPENID) + "', '" + pgEsc(nickname) + "', '" + pgEsc(content) + "')" });
+        return { ok: true, op: 'commentAdd' };
+      }
       const head = await db.collection(COL).doc(postId).get().catch(() => null);
       if(!head || !head.data || head.data.hidden) return { ok: false, error: '内容不存在' };
       const sec = await checkText(content);
@@ -344,6 +369,18 @@ exports.main = async (event) => {
     if(action === 'commentList'){
       const postId = String(event.id || '');
       if(!postId) return { ok: false, error: '参数缺失' };
+      // 跨端桥：安卓帖子的评论在 PG comments 表
+      if(postId.startsWith('app_') && pgReady()){
+        const pr = await pgCall('ExecutePGSql', { EnvId: 'gerenceshi-d0gguq5u39b4b86b2', Sql:
+          "SELECT id, uid, nickname, content, EXTRACT(EPOCH FROM created)::BIGINT AS ts FROM comments WHERE post_id = '" + pgEsc(postId.slice(4)) + "' ORDER BY created ASC LIMIT 100" }).catch(() => null);
+        const list = (pr && pr.Rows ? pr.Rows : []).map(line => {
+          try{
+            const a = Array.isArray(line) ? line : JSON.parse(line);
+            return { _id: 'appc_' + String(a[0]), postId, nickname: String(a[2] || '路过的朋友'), content: String(a[3] || ''), likes: 0, hidden: false, createdAt: (Number(a[4]) || 0) * 1000, self: String(a[1] || '') === OPENID };
+          }catch(e){ return null; }
+        }).filter(Boolean);
+        return { ok: true, list };
+      }
       const r = await db.collection(CMT)
         .where({ postId, hidden: false })
         .orderBy('createdAt', 'asc').limit(100)
@@ -442,10 +479,10 @@ exports.main = async (event) => {
         const byKey = {};
         const wxUidOf = (openid) => { const c = require('crypto'); return 'wx_' + c.createHash('sha256').update('choumou-wx:' + openid).digest('hex').slice(0, 24); };
         ur.data.forEach(u => {
-          const rec = { nickname: u.nickname || '', tail: String(u.openid || '').slice(-6), agoSec: u.lastActive ? Math.max(0, Math.floor((Date.now() - u.lastActive) / 1000)) : -1, key: u._openid ? wxUidOf(u._openid) : ('doc_' + String(u._openid || '')) };
+          const rec = { nickname: u.nickname || '', tail: String(u.openid || '').slice(-6), agoSec: u.lastActive ? Math.max(0, Math.floor((Date.now() - u.lastActive) / 1000)) : -1, key: u._openid ? wxUidOf(u._openid) : ('doc_' + String(u._openid || '')), src: 'doc' };
           const ex = byKey[rec.key];
           if(!ex) byKey[rec.key] = rec;
-          else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec < 0 ? Infinity : rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; ex.both = true; }
+          else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec < 0 ? Infinity : rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; if(ex.src !== rec.src) ex.both = true; }
         });
         // PG 桥：读安卓端心跳用户（last_seen 90 天内），uid 与 wxUid(openid) 相同即同一人归并
         if(process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY){
@@ -456,10 +493,10 @@ exports.main = async (event) => {
               // ExecutePGSql 的 Rows 每行已是值数组 [uid, nickname, ago]（外层 JSON.parse 时已解析）
               const arr = Array.isArray(line) ? line : JSON.parse(line);
               if(!Array.isArray(arr) || arr.length < 3) return;
-              const rec = { nickname: String(arr[1] || ''), tail: String(arr[0] || '').slice(-6), agoSec: Number(arr[2]) || 0, key: String(arr[0] || '') };
+              const rec = { nickname: String(arr[1] || ''), tail: String(arr[0] || '').slice(-6), agoSec: Number(arr[2]) || 0, key: String(arr[0] || ''), src: 'pg' };
               const ex = byKey[rec.key];
               if(!ex) byKey[rec.key] = rec;
-              else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; ex.both = true; }
+              else { ex.agoSec = Math.min(ex.agoSec < 0 ? Infinity : ex.agoSec, rec.agoSec); if(!ex.nickname && rec.nickname) ex.nickname = rec.nickname; if(ex.src !== rec.src) ex.both = true; }
             });
             diag.pgRows = (r && r.Rows ? r.Rows.length : 0);
           }catch(e2){ diag.pgError = String(e2 && e2.message || e2).slice(0, 120); }

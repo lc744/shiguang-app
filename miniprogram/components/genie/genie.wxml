@@ -17,11 +17,13 @@
     <view class="genie-close" hover-class="genie-close-hover" bindtap="onCloseTap">✕</view>
   </view>
 
-  <scroll-view class="genie-bubbles" scroll-y scroll-into-view="{{lastId}}" scroll-with-animation>
-    <view wx:for="{{bubbles}}" wx:key="id" id="{{item.id}}" class="genie-bubble genie-{{item.role}}">
-      <text>{{item.text}}</text>
-    </view>
-  </scroll-view>
+  <view class="genie-scroll-wrap">
+    <scroll-view class="genie-bubbles" scroll-y scroll-into-view="{{lastId}}" scroll-with-animation>
+      <view wx:for="{{bubbles}}" wx:key="id" id="{{item.id}}" class="genie-bubble genie-{{item.role}}">
+        <text>{{item.text}}</text>
+      </view>
+    </scroll-view>
+  </view>
 
   <view class="genie-inputbar">
     <input
