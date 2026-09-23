@@ -19,12 +19,17 @@ Component({
     bubbles: [],        // 消息列表 [{id, role:'user'|'assistant', text}]
     inputValue: '',
     lastId: '',         // scroll-into-view 锚点（最后一条消息）
+    scrollTop: 0,       // 滚底兜底（交替值强制变化）
+    scrollH: 0,         // 滚动区像素高（ready 时量算）
     recording: false    // 语音识别进行中
   },
 
   lifetimes: {
     attached(){
       if(this.properties.auto) this.setData({ open: true });
+    },
+    ready(){
+      this.computeScrollH();
     },
     detached(){
       this.stopVoice();
@@ -40,18 +45,36 @@ Component({
       else this.openPanel();
     },
 
+    // 滚到消息底部：scroll-top 交替设超大值，强制每次都触发滚动（比 scroll-into-view 可靠）
+    scrollToBottom(){
+      this.setData({ scrollTop: this.data.scrollTop >= 99999 ? 99998 : 99999 });
+    },
+
+    // 量算滚动区像素高：面板固定高 - 头部 - 输入条（微信组件内百分比高度不可靠，必须显式 px）
+    computeScrollH(){
+      const q = this.createSelectorQuery();
+      q.select('.genie-panel').boundingClientRect();
+      q.select('.genie-head').boundingClientRect();
+      q.select('.genie-inputbar').boundingClientRect();
+      q.exec(res => {
+        if(!res || res.length < 3 || !res[0] || !res[0].height) return;
+        const h = res[0].height - (res[1] ? res[1].height : 0) - (res[2] ? res[2].height : 0);
+        if(h > 120) this.setData({ scrollH: Math.floor(h) });
+      });
+    },
+
     openPanel(){
       // 首次打开插入开场白
       if(!this.data.bubbles.length){
         this.pushBubble('assistant', '你好呀，我是绸缪精灵 🧚 可以陪你聊天，也能帮你添加提醒、换背景、查日程。试试对我说“明天上午9点开会”，或者随便跟我聊聊～');
       }
       this.setData({ open: true });
-      // 打开面板时强制滚到最新消息（lastId 值未变化不会触发 scroll-into-view，需先清再设）
-      const last = this.data.bubbles.length ? this.data.bubbles[this.data.bubbles.length - 1].id : '';
-      if(last){
-        this.setData({ lastId: '' });
-        setTimeout(() => this.setData({ lastId: last }), 120);
-      }
+      // 等面板淡入 + 滚动区量算完成后，滚到最新消息
+      setTimeout(() => {
+        const last = this.data.bubbles.length ? this.data.bubbles[this.data.bubbles.length - 1].id : '';
+        this.setData({ lastId: last });
+        this.scrollToBottom();
+      }, 400);
     },
 
     onCloseTap(){ this.closePanel(); },
@@ -71,6 +94,8 @@ Component({
         bubbles: this.data.bubbles.concat([{ id: id, role: role, text: text }]),
         lastId: id
       });
+      // scroll-top 交替值兜底滚底（等 DOM 渲染）
+      setTimeout(() => this.scrollToBottom(), 80);
     },
 
     /* ---------------- 文字输入（submitGenieText） ---------------- */

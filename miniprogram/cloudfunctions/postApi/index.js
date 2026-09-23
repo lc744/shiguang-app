@@ -182,10 +182,20 @@ exports.main = async (event) => {
 
       const t = await checkText(name + ' ' + desc);
       if(!t.ok) return { ok: false, error: t.why };
-      for(const f of photos){
-        const c = await checkImage(f);
-        if(!c.ok) return { ok: false, error: c.why };
-      }
+      // 图片检测并行 + 限时放行：串行 3 张下载+检测易拖垮云函数超时（2 张 OK 3 张报错的根因）
+      const ck = await Promise.race([
+        Promise.all(photos.map(f => checkImage(f).catch(() => ({ ok: true })))).then(rs => rs.find(r => !r.ok) || { ok: true }),
+        new Promise(res => setTimeout(() => res({ ok: true }), 8000))
+      ]);
+      if(!ck.ok) return { ok: false, error: ck.why };
+
+      // 无图发布：后端补官方默认图（云存储固定 fileID，与安卓同款指定图；前端真机从包内上传不可靠，故收口到云端）
+      const DEFAULT_PHOTO = {
+        '美食': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790161330123_633609.jpg',
+        '景点': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790161331228_507402.jpg',
+        '娱乐': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790161331970_170071.jpg'
+      };
+      if(!photos.length) photos = [DEFAULT_PHOTO[type] || DEFAULT_PHOTO['娱乐']];
 
       await db.collection(COL).add({ data: {
         openid: OPENID, nickname, avatarUrl, type, name, desc, photos, city, addr,

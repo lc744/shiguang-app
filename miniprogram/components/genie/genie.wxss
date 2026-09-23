@@ -21,21 +21,20 @@
 
 /* ---------- 面板 ---------- */
 .genie-panel{
-  position:fixed; left:50%;
+  position:fixed; left:0; right:0;
+  margin:0 auto;   /* 去掉 transform 居中：transform 祖先会导致内部 scroll-view 滚动失效 */
   bottom:calc(80px + env(safe-area-inset-bottom,0px));
-  transform:translateX(-50%) translateY(20px);
   width:min(390px,calc(100vw - 28px));
-  max-height:min(560px,calc(100vh - 120px));
+  height:min(560px,calc(100vh - 140px));   /* 固定高（替代 max-height）：让内部滚动区可用像素精确量算 */
   background:var(--surface,#fff);
   border-radius:22px;
   box-shadow:0 24px 60px rgba(18,48,39,.28);
   display:flex; flex-direction:column; overflow:hidden;
   z-index:45; opacity:0; pointer-events:none;
-  transition:opacity .22s,transform .22s;
+  transition:opacity .22s;
 }
 .genie-panel.show{
   opacity:1; pointer-events:auto;
-  transform:translateX(-50%) translateY(0);
 }
 
 /* ---------- 头部 ---------- */
@@ -61,13 +60,9 @@
 .genie-close-hover{ opacity:.6; }
 
 /* ---------- 消息列表 ---------- */
-/* 滚动区包裹层：flex 分配确定高度，scroll-view 占满（根治消息溢出） */
-.genie-scroll-wrap{
-  flex:1; height:0; min-height:0;
-  overflow:hidden;
-}
+/* scroll-view 显式像素高（ready 时量算）：微信组件内 height:100% 对 flex 父不可靠，会导致滚动失效 */
 .genie-bubbles{
-  height:100%; box-sizing:border-box;
+  box-sizing:border-box;
   padding:14px 16px 4px;
   display:block;
 }

@@ -97,11 +97,12 @@ const ok = (name, pass, note) => {
     ok('精灵面板可打开(20条长消息)', !!panel, '');
     const bubbles = await genie.$$('.genie-bubble');
     ok('精灵消息渲染', bubbles.length === 20, 'bubble=' + bubbles.length);
-    const wrap = await genie.$('.genie-scroll-wrap');
-    ok('滚动包裹层存在(撑高方案)', !!wrap, '');
-    if (wrap && bubbles.length === 20) {
+    const gd = await genie.data();
+    ok('滚动区显式像素高(根治滚动)', gd.scrollH > 100, 'scrollH=' + gd.scrollH + 'px');
+    if (bubbles.length === 20) {
       // 用首尾气泡的几何尺寸对比可视高：内容必须显著高于面板，否则多消息会溢出
-      const wrapSize = await wrap.size();
+      const sv = await genie.$('.genie-bubbles');
+      const wrapSize = await sv.size();
       const first = await bubbles[0].offset();
       const lastSize = await bubbles[19].size();
       const last = await bubbles[19].offset();

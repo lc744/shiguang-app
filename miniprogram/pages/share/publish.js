@@ -197,10 +197,8 @@ Page({
       jobs.push(this._upload(this.data.avatarUrl, 'avatars').then(id => { this.data.avatarUrl = id; }).catch(() => {}));
     }
     let photoList = this.data.photos;
-    if(!photoList.length){
-      // 对齐 App：没选照片自动配一张类型默认图（生成失败才发无图卡片）
-      jobs.push(this._ensureDefaultPhoto(this.data.type).then(def => { if(def) photoList = [def]; }));
-    } else {
+    // 无图时不做前端默认图（真机从包内上传不可靠）：后端会按类型自动补官方默认图
+    if(photoList.length){
       // 关键：上传结果必须回填 photoList（此前上传的 cloud:// fileID 被丢弃，导致永远降级默认图）
       photoList.forEach((p, i) => jobs.push(
         this._upload(p, 'posts').then(id => { photoList[i] = id; }).catch(() => {})
@@ -209,12 +207,7 @@ Page({
     Promise.all(jobs)
       .then(() => {
         // 此时 photoList 已是 cloud:// fileID（上传成功）或原路径（失败，将被过滤）
-        let photos = photoList.map(String).filter(p => /^cloud:\/\//.test(p));
-        if(this.data.photos.length && !photos.length){
-          // 所选照片全部上传失败 → 降级按类型补默认图（对齐安卓兜底）
-          return this._ensureDefaultPhoto(this.data.type).then(def => { if(def) photos = [def]; return photos; });
-        }
-        return photos;
+        return photoList.map(String).filter(p => /^cloud:\/\//.test(p));
       })
       .then(photos => {
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
