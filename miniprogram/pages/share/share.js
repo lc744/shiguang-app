@@ -288,6 +288,8 @@ Page({
 
   /* ---------------- 行程攻略（对齐 App：按城市拉三类推荐 → 随机编排 5 时段 → 一键加入提醒） ---------------- */
   openPlanMaker(){
+    // 对齐安卓：未登录先引导（攻略编排依赖登录态保存/加行程）
+    if(!this.data.hasProfile){ wx.showToast({ title: '先到「我的」登录并完善资料', icon: 'none', duration: 2500 }); return; }
     const d = new Date(); d.setDate(d.getDate() + 1);
     const p = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     const t = new Date();
@@ -304,10 +306,10 @@ Page({
   onPlanDate(e){ this.setData({ planDate: e.detail.value }); },
 
   _fetchFeed(type, city){
-    return callPost({ action: 'feed', page: 0, city, type }).then(r => {
-      if(!r || !r.ok) return [];
-      return r.list || [];
-    });
+    // 对齐安卓：失败自动重试（最多 3 次，900ms 退避，避让云端频控）
+    const once = () => callPost({ action: 'feed', page: 0, city, type }).then(r => (r && r.ok) ? (r.list || []) : []);
+    const attempt = n => once().catch(() => n >= 2 ? [] : new Promise(res => setTimeout(() => attempt(n + 1).then(res), 900)));
+    return attempt(0);
   },
 
   makePlan(){
@@ -350,7 +352,8 @@ Page({
       mk('晚餐', '18:00', '🍲', f3, '用一顿好饭收尾')
     ];
     const used = (f1?1:0)+(p1?1:0)+(f2?1:0)+(p2?1:0)+(f3?1:0);
-    if(!used){ wx.showToast({ title: city + ' 还没有推荐内容，发布几条就有了', icon: 'none', duration: 2500 }); return; }
+    // 对齐安卓：即使该城市暂无推荐也生成（占位通用建议兜底，用户可随内容增多重新编排）
+    if(!used) wx.showToast({ title: city + ' 暂无推荐，先生成通用建议', icon: 'none', duration: 2000 });
     this.setData({
       planForm: false,
       plan: {
