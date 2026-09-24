@@ -217,8 +217,16 @@ exports.main = async (event) => {
       const totalLen = photoDatas.reduce((s, d) => s + d.length, 0);
       if(totalLen > 450 * 1024) return { ok: false, error: '图片总体积过大，请减少张数或换小图重试' };
 
+      // 缩略版（feed 列表 grid 用）：下载转 base64 存主文档 thumbs 字段（每张约9KB，20帖≈740KB < 1MB 响应上限）
+      const thumbIds = Array.isArray(p.thumbs) ? p.thumbs.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
+      let thumbDatas = [];
+      for(const f of thumbIds){
+        try { thumbDatas.push('data:image/jpeg;base64,' + (await downloadBuf(f)).toString('base64')); } catch(e) {}
+      }
+      if(thumbDatas.length !== photoDatas.length) thumbDatas = [];   // 与大图数量不一致时放弃缩略（列表回退首图）
+
       const added = await db.collection(COL).add({ data: {
-        openid: OPENID, nickname, avatarUrl, type, name, desc, photos: photoDatas, city, addr,
+        openid: OPENID, nickname, avatarUrl, type, name, desc, photos: photoDatas, thumbs: thumbDatas, city, addr,
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
       return { ok: true, op: 'publish' };
@@ -233,7 +241,7 @@ exports.main = async (event) => {
 
     // ---- 信息流（分页）----
     if(action === 'feed'){
-      const pageSize = 20;
+      const pageSize = 10;   // base64 图片响应上限 1MB：10 帖混合缩略/首图稳在限内
       const page = Math.max(0, Math.min(50, parseInt(event.page, 10) || 0));
       const cond = { hidden: false };
       if(event.city) cond.city = String(event.city).slice(0, 20);
@@ -244,7 +252,11 @@ exports.main = async (event) => {
         .skip(page * pageSize).limit(pageSize)
         .field({ openid: false })
         .get();
-      let list = r.data.map(p => ({ ...p, likedBy: undefined, openid: undefined }));   // 多图全部返回（列表 grid 排布）
+      let list = r.data.map(p => {
+        // 列表 grid 用缩略版（新帖 thumbs），旧帖无 thumbs 回退首图——确保响应不超 1MB
+        const photos = (Array.isArray(p.thumbs) && p.thumbs.length === (p.photos || []).length) ? p.thumbs : (p.photos || []).slice(0, 1);
+        return { ...p, photos, thumbs: undefined, likedBy: undefined, openid: undefined };
+      });
       // 跨端桥：并入安卓端发布的帖子（PG posts 表），按时间归并（仅第一页，PG 侧最多取 100 条）
       // 城市筛选：PG 帖子无 city 列，用 addr 模糊匹配城市名（安卓地址含省市区）；类型筛选已按 p.type 精确匹配
       let pgSql = "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false";
@@ -274,7 +286,7 @@ exports.main = async (event) => {
           }
         }catch(e2){ /* PG 不可用：仅显示小程序端 */ }
       }
-      return { ok: true, list, page, hasMore: r.data.length === pageSize };
+      return { ok: true, list, page, hasMore: r.data.length === pageSize, dbg: { wxCount: r.data.length, pg: pgReady() } };
     }
 
     // ---- 详情 ----

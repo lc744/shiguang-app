@@ -563,10 +563,18 @@ Page({
   },
 
   onImageTap(e){
-    const { urls, current } = e.currentTarget.dataset;
-    // 自定义预览层：图片按详情页同款大小显示（396px 宽），左右滑切换
+    const { urls, current, pid } = e.currentTarget.dataset;
+    // 预览层即显缩略图，异步拉详情大图替换（列表只为省流量存缩略版）
     const idx = (urls || []).indexOf(current);
     this.setData({ previewOpen: true, previewUrls: urls || [], previewIdx: idx < 0 ? 0 : idx });
+    if(pid){
+      callPost({ action: 'get', id: pid }).then(r => {
+        if(r && r.ok && (r.post.photos || []).length){
+          this.setData({ previewUrls: r.post.photos });
+          this._pvFull = r.post.photos;
+        }
+      }).catch(() => {});
+    }
   },
 
   onPvChange(e){

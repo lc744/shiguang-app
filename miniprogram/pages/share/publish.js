@@ -16,6 +16,7 @@ Page({
     region: [],
     addr: '',
     photos: [],
+    thumbs: [],
     uploading: false
   },
 
@@ -89,11 +90,18 @@ Page({
       mediaType: ['image'],
       sizeType: ['compressed'],
       success: res => {
-        // 单档压缩：1280px/q75（画质=详情页显示水平，全场景共用同一张，约115KB/张）
-        const tasks = res.tempFiles.map(f => wx.compressImage({ src: f.tempFilePath, quality: 75, compressedWidth: 1280 })
-          .then(r => r.tempFilePath).catch(() => f.tempFilePath));
-        Promise.all(tasks).then(paths => {
-          this.setData({ photos: this.data.photos.concat(paths).slice(0, 3) });
+        // 双档：详情版(1280px/q75,详情/预览用,约105KB) + 缩略版(240px/q40,列表grid用,约9KB——feed响应1MB上限)
+        const tasks = res.tempFiles.map(f => Promise.all([
+          wx.compressImage({ src: f.tempFilePath, quality: 75, compressedWidth: 1280 })
+            .then(r => r.tempFilePath).catch(() => f.tempFilePath),
+          wx.compressImage({ src: f.tempFilePath, quality: 40, compressedWidth: 240 })
+            .then(r => r.tempFilePath).catch(() => f.tempFilePath)
+        ]));
+        Promise.all(tasks).then(pairs => {
+          this.setData({
+            photos: this.data.photos.concat(pairs.map(x => x[0])).slice(0, 3),
+            thumbs: (this.data.thumbs || []).concat(pairs.map(x => x[1])).slice(0, 3)
+          });
         });
       }
     });
@@ -102,8 +110,10 @@ Page({
   removePhoto(e){
     const i = e.currentTarget.dataset.i;
     const photos = this.data.photos.slice();
+    const thumbs = (this.data.thumbs || []).slice();
     photos.splice(i, 1);
-    this.setData({ photos });
+    if(thumbs.length) thumbs.splice(i, 1);
+    this.setData({ photos, thumbs });
   },
 
   previewPhoto(e){
@@ -212,24 +222,32 @@ Page({
       jobs.push(this._upload(this.data.avatarUrl, 'avatars').then(id => { this.data.avatarUrl = id; }).catch(() => {}));
     }
     let photoList = this.data.photos;
+    let thumbList = (this.data.thumbs || []).slice();
     // 无图时不做前端默认图（真机从包内上传不可靠）：后端会按类型自动补官方默认图
     if(photoList.length){
       // 关键：上传结果必须回填 photoList（此前上传的 cloud:// fileID 被丢弃，导致永远降级默认图）
       photoList.forEach((p, i) => jobs.push(
         this._upload(p, 'posts').then(id => { photoList[i] = id; }).catch(() => {})
       ));
+      // 缩略版同步上传（feed 列表 grid 用，避开 1MB 响应限制；失败则列表回退首图）
+      thumbList.forEach((p, i) => jobs.push(
+        this._upload(p, 'posts_thumb').then(id => { thumbList[i] = id; }).catch(e => { console.log('[thumb-err]', p, e && (e.errMsg || e.message)); })
+      ));
     }
     Promise.all(jobs)
       .then(() => {
         // 此时 photoList 已是 cloud:// fileID（上传成功）或原路径（失败，将被过滤）
-        return { photos: photoList.map(String).filter(p => /^cloud:\/\//.test(p)) };
+        return {
+          photos: photoList.map(String).filter(p => /^cloud:\/\//.test(p)),
+          thumbs: thumbList.map(String).filter(p => /^cloud:\/\//.test(p))
+        };
       })
       .then(lists => {
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
         const finalName = name || this.data.addr.trim() || (this.data.type + '推荐');
         return wx.cloud.callFunction({
           name: 'postApi',
-          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name: finalName, desc, city: this.data.city, addr: this.data.addr, photos: lists.photos } }
+          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name: finalName, desc, city: this.data.city, addr: this.data.addr, photos: lists.photos, thumbs: lists.thumbs } }
         }).then(r => r.result);
       })
       .then(r => {
