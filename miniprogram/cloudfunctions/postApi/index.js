@@ -157,7 +157,13 @@ exports.main = async (event) => {
         }else{
           await db.collection(USR).add({ data: { openid: OPENID, nickname, avatarUrl, createdAt: nowMs(), updatedAt: nowMs() } });
         }
-        return { ok: true, op: 'profileSave' };
+        // 昵称/头像变更 → 历史帖子快照批量同步（一条 where+update 覆盖全部，改资料低频成本可忽略）
+        let synced = 0;
+        try{
+          const sr = await db.collection(COL).where({ openid: OPENID }).update({ data: { nickname, avatarUrl } });
+          synced = (sr.stats && sr.stats.updated) || 0;
+        }catch(e3){}
+        return { ok: true, op: 'profileSave', synced };
       }
       // mode get
       const g = await db.collection(USR).where({ openid: OPENID }).get();
