@@ -24,12 +24,12 @@
           <input
             class="me-nick-input"
             type="nickname"
-            placeholder="填写昵称"
+            maxlength="30"
+            placeholder="填写昵称（最多 30 字）"
             placeholder-class="ph"
             value="{{draftNickname}}"
             bindinput="onDraftNickname"
             bindblur="onDraftNickname"
-            maxlength="12"
           />
         </view>
         <view class="me-edit-tip">头像默认使用你的微信头像，也可以换</view>

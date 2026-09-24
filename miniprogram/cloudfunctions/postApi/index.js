@@ -149,7 +149,7 @@ exports.main = async (event) => {
     // ---- 个人信息：保存 / 读取 ----
     if(action === 'profile'){
       if(event.mode === 'save'){
-        const nickname = String((event.profile && event.profile.nickname) || '').trim().slice(0, 20) || '路过的朋友';
+        const nickname = String((event.profile && event.profile.nickname) || '').trim().slice(0, 30) || '路过的朋友';
         const avatarUrl = String((event.profile && event.profile.avatarUrl) || '').slice(0, 300);
         const found = await db.collection(USR).where({ openid: OPENID }).get();
         if(found.data.length){
@@ -180,7 +180,7 @@ exports.main = async (event) => {
       const city = String(p.city || '').trim().slice(0, 20);   // 城市名（攻略按城市聚合推荐）
       const addr = String(p.addr || '').trim().slice(0, 60);   // 具体位置（攻略行程引用）
       let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
-      const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
+      const nickname = String(p.nickname || '路过的朋友').slice(0, 30);
       const avatarUrl = String(p.avatarUrl || '').slice(0, 300);
       // 对齐 App：名称与照片均选填（列表展示时回退 addr/类型），仅城市必填
       if(!city) return { ok: false, error: '请选择所在城市' };
@@ -422,7 +422,7 @@ exports.main = async (event) => {
     if(action === 'commentAdd'){
       const postId = String(event.id || '');
       const content = String(event.content || '').trim().slice(0, 200);
-      const nickname = String(event.nickname || '路过的朋友').slice(0, 20);
+      const nickname = String(event.nickname || '路过的朋友').slice(0, 30);
       if(!postId || !content) return { ok: false, error: '评论内容不能为空' };
       if(hasBadWord(content)) return { ok: false, error: '评论含违规内容，请修改后再发' };
       if(hasBadWord(nickname)) return { ok: false, error: '昵称含违规内容，请修改后再发' };
@@ -634,7 +634,7 @@ exports.main = async (event) => {
 
     // ---- 心跳（用户在线状态数据源，对齐安卓 CloudAuth heartbeat） ----
     if(action === 'heartbeat'){
-      const nickname = String(event.nickname || '').slice(0, 20);
+      const nickname = String(event.nickname || '').slice(0, 30);
       try{
         const r = await db.collection(USR).where({ openid: OPENID }).get();
         if(r.data && r.data.length){

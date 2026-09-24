@@ -103,7 +103,15 @@ Page({
     this.setData({ draftAvatar: e.detail.avatarUrl || '' });
   },
 
-  onDraftNickname(e){ this.setData({ draftNickname: e.detail.value || '' }); },
+  onDraftNickname(e){
+    let v = e.detail.value || '';
+    // 微信"使用昵称"快捷填充可能无视 maxlength：超出 30 字截断并提示
+    if(v.length > 30){
+      v = v.slice(0, 30);
+      wx.showToast({ title: '昵称最多 30 个字，已自动截断', icon: 'none', duration: 2200 });
+    }
+    this.setData({ draftNickname: v });
+  },
 
   cancelEdit(){
     if(!readLocal()){ this.setData({ editing: false, loggedIn: false }); return; }

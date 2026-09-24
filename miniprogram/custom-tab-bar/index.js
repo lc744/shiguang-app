@@ -15,6 +15,18 @@ Component({
   methods: {
     // 页面直接调：tabBar 显示/隐藏（自定义 tabBar 专用，替代 wx.hideTabBar）
     setHidden(v){ this.setData({ hidden: !!v }); },
+    // 滚动联动：上划超 80px 隐藏；停止滚动 1.5s 后自动恢复；回到顶部立即恢复
+    onPageScroll(scrollTop){
+      const hide = scrollTop > 80;
+      if(!hide){
+        clearTimeout(this._idleT); this._idleT = null;
+        if(this.data.hidden) this.setHidden(false);
+        return;
+      }
+      if(!this.data.hidden) this.setHidden(true);
+      clearTimeout(this._idleT);
+      this._idleT = setTimeout(() => { this._idleT = null; this.setHidden(false); }, 1500);
+    },
     switchTab(e){
       const { path, index } = e.currentTarget.dataset;
       // 中间精灵（对齐 App）：不切页，在当前页弹出聊天小面板

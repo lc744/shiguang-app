@@ -195,13 +195,13 @@ Page({
   },
 
   doPublish(){
-    if(this.data.uploading) return;
-    if(!this.data.hasProfile){ wx.showToast({ title: '先到「我的」登录并完善资料', icon: 'none', duration: 2200 }); return; }
+    if(this.data.uploading){ wx.showToast({ title: '正在发布中，请稍候', icon: 'none' }); return; }
+    if(!this.data.hasProfile){ wx.showToast({ title: '先到「我的」登录并完善资料', icon: 'none', duration: 2500 }); return; }
     const name = this.data.name.trim();
     const desc = this.data.desc.trim();
     const nickname = (this.data.nickname || '').trim() || '路过的朋友';
-    if(!this.data.city){ wx.showToast({ title: '选一下所在城市', icon: 'none' }); return; }
-    if(!this.data.addr.trim()){ wx.showToast({ title: '还差一步：点击"填写"选择规范地址', icon: 'none', duration: 2200 }); return; }
+    if(!this.data.city){ wx.showToast({ title: '选一下所在城市', icon: 'none', duration: 2500 }); return; }
+    if(!this.data.addr.trim()){ wx.showToast({ title: '还差一步：点击"填写"选择规范地址', icon: 'none', duration: 2500 }); return; }
     // 照片选填（对齐安卓：未选时自动按类型配默认图）
 
     this.setData({ uploading: true });

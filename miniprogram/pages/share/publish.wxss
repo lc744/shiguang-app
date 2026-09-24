@@ -36,8 +36,8 @@
 .publish-btn.disabled{opacity:.6}
 .publish-tip{text-align:center;font-size:11px;color:var(--sub);margin-top:10px}
 
-/* 城市选择器（模拟 input 样式） */
-.picker-sim{color:var(--text);line-height:1.4;padding:16rpx 20rpx}
+/* 城市选择器（模拟 input 样式，文字上下居中） */
+.picker-sim{display:flex;align-items:center;height:46px;color:var(--text);line-height:normal;padding:0 14px}
 /* 地址行（对齐安卓 addrPicker：📍 + 只读回显 + 填写按钮） */
 .p-req{font-size:11px;color:#c65c52}
 .addr-row{display:flex;align-items:center;gap:10px}
