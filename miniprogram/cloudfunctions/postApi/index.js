@@ -286,6 +286,14 @@ exports.main = async (event) => {
           }
         }catch(e2){ /* PG 不可用：仅显示小程序端 */ }
       }
+      // 响应体积保护：云函数响应上限 1MB，超限从尾部逐条弹出（无缩略的旧帖大图可能触发）
+      try{
+        let sz = JSON.stringify(list).length;
+        while(sz > 900 * 1024 && list.length > 1){
+          list.pop();
+          sz = JSON.stringify(list).length;
+        }
+      }catch(e3){}
       return { ok: true, list, page, hasMore: r.data.length === pageSize, dbg: { wxCount: r.data.length, pg: pgReady() } };
     }
 
