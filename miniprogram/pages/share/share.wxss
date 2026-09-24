@@ -19,6 +19,11 @@
 .post-photos{display:flex;gap:6px}
 .post-photos .post-photo{flex:1;height:150px;border-radius:10px;background:var(--bg)}
 .post-photos .post-photo.single{height:210px;flex:none;width:100%}
+/* 图片预览层：与详情页同尺寸（396px 宽）居中，左右滑切换 */
+.img-preview{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(8,20,15,.94);z-index:998;display:flex;align-items:center;justify-content:center}
+.pv-swiper{width:100%;height:72vh}
+.pv-img{display:block;width:792rpx;max-width:100%;margin:0 auto;border-radius:10px}
+.pv-count{position:absolute;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom,0px));text-align:center;color:rgba(255,255,255,.85);font-size:14px}
 .post-body{padding:12px 14px 10px}
 .post-head{display:flex;align-items:center;gap:8px}
 .post-type{flex:none;font-size:11px;color:var(--accent);background:rgba(36,99,83,.1);border-radius:6px;padding:2px 7px}

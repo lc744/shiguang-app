@@ -564,7 +564,16 @@ Page({
 
   onImageTap(e){
     const { urls, current } = e.currentTarget.dataset;
-    // 单档图：直接预览（与详情页同画质）
-    wx.previewImage({ urls: urls, current: current });
+    // 自定义预览层：图片按详情页同款大小显示（396px 宽），左右滑切换
+    const idx = (urls || []).indexOf(current);
+    this.setData({ previewOpen: true, previewUrls: urls || [], previewIdx: idx < 0 ? 0 : idx });
+  },
+
+  onPvChange(e){
+    this.setData({ previewIdx: e.detail.current });
+  },
+
+  closePreview(){
+    this.setData({ previewOpen: false });
   }
 });
