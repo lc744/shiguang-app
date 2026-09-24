@@ -767,16 +767,25 @@ function onShareReport(id){
     .catch(e => toast(e.message || '举报失败'));
 }
 
-/* ---------------- 帖子详情页（列表只显封面，点开看全部大图） ---------------- */
+/* ---------------- 帖子详情页（对齐小程序：顶部图片轮播 + 信息区 + 评论） ---------------- */
 function openPostDetail(idx){
   const p = shareList[idx]; if(!p) return;
-  const photos = (p.photos || []);
+  const norm = s => (typeof s === 'string') ? s : ((s && (s.t || s.f)) || '');
+  const urls = (p.photos || []).map(norm).filter(Boolean);
   const body = document.getElementById('postDetailBody');
   body.innerHTML = `
+    ${urls.length ? `
+    <div class="pd-swiper">
+      <div class="pd-track" id="pdTrack">
+        ${urls.map((u, i) => `<div class="pd-slide"><img src="${esc(u)}" loading="lazy" onclick="previewSharePhoto(${idx}, ${i})" /></div>`).join('')}
+      </div>
+      ${urls.length > 1 ? `<div class="pd-dots" id="pdDots">${urls.map((_, i) => `<span class="pd-dot ${i === 0 ? 'on' : ''}"></span>`).join('')}</div>` : ''}
+    </div>` : ''}
+    <div class="post-body">
     <div class="post-head"><text class="post-type">${esc(p.type || '娱乐')}</text>${p.name ? `<text class="post-name">${esc(p.name)}</text>` : ''}</div>
     ${p.addr ? `<text class="post-addr">📍 ${esc(p.addr)}<small class="addr-note">（地址仅供参考）</small></text>` : ''}
     ${p.desc ? `<text class="post-desc">${esc(p.desc)}</text>` : ''}
-    ${photos.length ? `<div class="pd-photos">${photos.map((ph, i) => `<img class="pd-photo" id="pdImg${i}" src="${esc(ph)}" loading="lazy" onclick="previewSharePhoto(${idx}, ${i})" />`).join('')}</div>` : '<text class="post-desc" style="opacity:.6">（没有配图）</text>'}
+    ${urls.length ? '' : '<text class="post-desc" style="opacity:.6">（没有配图）</text>'}
     <div class="post-meta">
       ${p.avatar ? `<img class="post-avatar" src="${esc(p.avatar)}" />` : '<text class="post-avatar post-avatar-ph">👤</text>'}
       <text class="post-author">${esc(p.nickname || '路过的朋友')}</text>
@@ -792,8 +801,17 @@ function openPostDetail(idx){
         <input id="pdCmtInput" placeholder="说点什么…" maxlength="200" onkeydown="if(event.key==='Enter')sendPostComment(${idx})" />
         <button class="primary" onclick="sendPostComment(${idx})">发送</button>
       </div>
+    </div>
     </div>`;
   document.getElementById('postDetail').style.display = 'flex';
+  // 轮播指示点跟随滑动
+  const track = document.getElementById('pdTrack');
+  if(track && urls.length > 1){
+    track.addEventListener('scroll', () => {
+      const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      document.querySelectorAll('#pdDots .pd-dot').forEach((dt, di) => dt.classList.toggle('on', di === i));
+    }, { passive: true });
+  }
   // 管理员管理行
   isAdminUser().then(am => {
     const bar = document.getElementById('pdAdminBar');
