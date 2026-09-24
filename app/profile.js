@@ -165,7 +165,7 @@ function renderMeCard(){
           <button class="avatar-btn" onclick="onAvatarClick()" title="点击更换头像">
             ${avatarInner ? `<span class="me-avatar me-avatar-lg">${avatarInner}</span>` : '<span class="me-avatar me-avatar-lg me-avatar-ph">📷<text>头像</text></span>'}
           </button>
-          <input class="me-nick-input" id="meNickInput" placeholder="填写昵称" maxlength="12" value="${esc(currentUser.nickname || '')}" />
+          <input class="me-nick-input" id="meNickInput" placeholder="填写昵称（最多 30 字）" maxlength="30" value="${esc(currentUser.nickname || '')}" />
         </div>
         <div class="me-edit-tip">头像默认云同步，也可以换一张</div>
         <div class="me-btn-row">
@@ -179,13 +179,13 @@ function renderMeCard(){
   }
   box.innerHTML = `
     <div class="card me-card">
-      <div class="me-view-row" onclick="startMeEdit()" role="button" title="点这里修改头像和昵称">
+      <div class="me-view-row">
         <span class="me-avatar me-avatar-lg">${avatarInner || '<span class="me-avatar-ph-lg">👤</span>'}</span>
         <span class="me-view-info">
           <text class="me-nick">${esc(currentUser.nickname || '用户')}</text>
-          <text class="me-view-sub">点这里修改头像和昵称</text>
+          <text class="me-view-sub">头像与昵称</text>
         </span>
-        <text class="me-arrow">›</text>
+        <button class="me-edit-btn" onclick="startMeEdit()" title="编辑头像和昵称">✏️ 编辑</button>
       </div>
     </div>
     <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="onAvatarPicked(event)" />`;

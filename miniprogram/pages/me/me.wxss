@@ -39,6 +39,8 @@
 .me-item-label{flex:1;font-size:14px;color:var(--text)}
 .me-item-label.danger{color:#c65c52}
 .me-arrow{color:var(--sub);font-size:16px}
+/* 显式编辑按钮：整行点击不再进编辑态（防误触） */
+.me-edit-btn{flex:none;font-size:12px;font-weight:600;color:var(--accent);background:rgba(36,99,83,.1);border-radius:999px;padding:6px 14px;line-height:1.3}
 .ph{color:var(--sub)}
 
 /* 统计卡 */

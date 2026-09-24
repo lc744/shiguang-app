@@ -40,14 +40,14 @@
       </block>
       <!-- 展示态 -->
       <block wx:else>
-        <view class="me-view-row" bindtap="doLogin">
+        <view class="me-view-row">
           <image wx:if="{{avatarUrl}}" class="me-avatar me-avatar-lg" src="{{avatarUrl}}" mode="aspectFill" />
           <view wx:else class="me-avatar me-avatar-lg me-avatar-ph">👤</view>
           <view class="me-view-info">
             <text class="me-nick">{{nickname}}</text>
-            <text class="me-view-sub">点这里修改头像和昵称</text>
+            <text class="me-view-sub">头像与昵称</text>
           </view>
-          <text class="me-arrow">›</text>
+          <text class="me-edit-btn" catchtap="doLogin">✏️ 编辑</text>
         </view>
       </block>
     </view>
