@@ -182,23 +182,40 @@ exports.main = async (event) => {
 
       const t = await checkText(name + ' ' + desc);
       if(!t.ok) return { ok: false, error: t.why };
-      // 图片检测并行 + 限时放行：串行 3 张下载+检测易拖垮云函数超时（2 张 OK 3 张报错的根因）
+      // 图片转 base64 入库（免费方案：绕过云存储读权限 403，与安卓 dataURL 架构一致）
+      const DEFAULT_PHOTO_FILEID = {
+        '美食': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790215335272_327450.jpg',
+        '景点': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790215336149_116928.jpg',
+        '娱乐': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790215336813_622446.jpg'
+      };
+      const defCache = global.__defPhotoCache || (global.__defPhotoCache = {});
+      const downloadBuf = async fid => (await cloud.downloadFile({ fileID: fid })).fileContent;
+      const defaultPhotoData = async t => {
+        const fid = DEFAULT_PHOTO_FILEID[t] || DEFAULT_PHOTO_FILEID['娱乐'];
+        if(defCache[fid]) return defCache[fid];
+        const d = 'data:image/jpeg;base64,' + (await downloadBuf(fid)).toString('base64');
+        defCache[fid] = d;
+        return d;
+      };
+      const bufs = [];
+      for(const f of photos){
+        try { bufs.push(await downloadBuf(f)); } catch(e) { bufs.push(null); }
+      }
+      // 检测并行 + 限时放行（串行 3 张易拖垮云函数超时）
       const ck = await Promise.race([
-        Promise.all(photos.map(f => checkImage(f).catch(() => ({ ok: true })))).then(rs => rs.find(r => !r.ok) || { ok: true }),
+        Promise.all(bufs.map(b => b ? cloud.openapi.security.imgSecCheck({ media: { contentType: 'image/jpeg', value: b } }).then(r => (r && r.errCode !== 0) ? { ok: false, why: '图片未通过安全检测' } : { ok: true }).catch(e => e && e.errCode === 87014 ? { ok: false, why: '图片包含违规内容' } : ({ ok: true })) : ({ ok: true }))).then(rs => rs.find(r => !r.ok) || { ok: true }),
         new Promise(res => setTimeout(() => res({ ok: true }), 8000))
       ]);
       if(!ck.ok) return { ok: false, error: ck.why };
-
-      // 无图发布：后端补官方默认图（云存储固定 fileID，与安卓同款指定图；前端真机从包内上传不可靠，故收口到云端）
-      const DEFAULT_PHOTO = {
-        '美食': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790161330123_633609.jpg',
-        '景点': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790161331228_507402.jpg',
-        '娱乐': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790161331970_170071.jpg'
-      };
-      if(!photos.length) photos = [DEFAULT_PHOTO[type] || DEFAULT_PHOTO['娱乐']];
+      let photoDatas = bufs.map(b => b ? 'data:image/jpeg;base64,' + b.toString('base64') : null).filter(Boolean);
+      // 无图发布：补官方默认图（base64，云函数管理端读不受存储权限限制）
+      if(!photoDatas.length) photoDatas.push(await defaultPhotoData(type));
+      // 单帖文档 512KB 上限硬校验（base64 总量）
+      const totalLen = photoDatas.reduce((s, d) => s + d.length, 0);
+      if(totalLen > 450 * 1024) return { ok: false, error: '图片总体积过大，请减少张数或换小图重试' };
 
       await db.collection(COL).add({ data: {
-        openid: OPENID, nickname, avatarUrl, type, name, desc, photos, city, addr,
+        openid: OPENID, nickname, avatarUrl, type, name, desc, photos: photoDatas, city, addr,
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
       return { ok: true, op: 'publish' };
@@ -217,7 +234,7 @@ exports.main = async (event) => {
         .skip(page * pageSize).limit(pageSize)
         .field({ openid: false })
         .get();
-      let list = r.data;
+      let list = r.data.map(p => ({ ...p, photos: (p.photos || []).slice(0, 1), likedBy: undefined, openid: undefined }));   // 列表只带第一张图（dataURL 体积大，避免响应爆炸）
       // 跨端桥：并入安卓端发布的帖子（PG posts 表），按时间归并（仅第一页，PG 侧最多取 100 条）
       // 城市筛选：PG 帖子无 city 列，用 addr 模糊匹配城市名（安卓地址含省市区）；类型筛选已按 p.type 精确匹配
       let pgSql = "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false";
@@ -316,7 +333,8 @@ exports.main = async (event) => {
       const id = String(event.id || '');
       const r = await db.collection(COL).where({ _id: id, openid: OPENID }).get();
       if(!r.data.length) return { ok: false, error: '只能删除自己的发布' };
-      const ids = r.data[0].photos || [];
+      // dataURL 帖子无存储文件可删；defaults/ 目录是官方默认图，禁止连带删除
+      const ids = (r.data[0].photos || []).map(String).filter(x => x.indexOf('cloud://') === 0 && x.indexOf('/defaults/') < 0);
       if(ids.length){ await cloud.deleteFile({ fileList: ids }).catch(() => {}); }
       await db.collection(COL).where({ _id: id, openid: OPENID }).remove();
       return { ok: true, op: 'del' };

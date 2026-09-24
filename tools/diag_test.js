@@ -4,6 +4,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
   const mini = await automator.connect({ wsEndpoint: 'ws://localhost:9420' });
+  mini.on('console', msg => { if (msg && (msg.type === 'error' || msg.type === 'warn')) console.log('  [console.' + msg.type + '] ' + JSON.stringify(msg.args || []).slice(0, 260)); });
 
   // ---- A. 精灵：20 条消息后，最后一条是否在面板可视区 ----
   let page = await mini.reLaunch('/pages/home/home');
@@ -59,8 +60,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   } catch (e) { console.log('[发布] 默认图解析异常: ' + e.message); }
   if (pd0.hasProfile) {
     await page.setData({ city: '苏州市', addr: '自动化测试地址', name: '滚底诊断帖' });
-    await page.callMethod('doPublish').catch(() => {});
-    // doPublish 成功会 navigateBack 销毁页面，忽略后续取数
+    try {
+      await page.callMethod('doPublish');
+      console.log('[发布] doPublish 调用完成（成功则已跳回）');
+    } catch (e) { console.log('[发布] doPublish 异常: ' + e.message); }
     await sleep(10000);
   }
   await mini.reLaunch('/pages/share/share');

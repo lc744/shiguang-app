@@ -112,13 +112,30 @@ Page({
     wx.previewImage({ urls: this.data.photos, current: this.data.photos[e.currentTarget.dataset.i] });
   },
 
+  // 大图先压到阈值内（单帖文档 512KB 上限 = 3 图 × ~100KB 的前提）：逐级降质量/宽度，最多 3 轮
+  _ensureSmall(path){
+    const fsm = wx.getFileSystemManager();
+    const sizeOf = p => new Promise(r => fsm.getFileInfo({ filePath: p, success: x => r(x.size), fail: () => r(0) }));
+    const LIMIT = 100 * 1024;
+    return sizeOf(path).then(size => {
+      if(!size || size <= LIMIT) return path;
+      let quality = 55, width = 960;
+      const step = attempt => wx.compressImage({ src: path, quality: quality, compressedWidth: width })
+        .then(r => sizeOf(r.tempFilePath).then(s2 => (s2 && s2 <= LIMIT) || attempt >= 2 ? r.tempFilePath : (quality -= 25, width = 720, step(attempt + 1))))
+        .catch(() => path);
+      return step(0);
+    });
+  },
+
   _upload(localPath, dir){
-    const m = /\.([a-z0-9]+)$/i.exec(localPath);
-    const ext = (m && EXT_MAP[m[1].toLowerCase()]) ? m[1].toLowerCase() : 'jpg';
-    return wx.cloud.uploadFile({
-      cloudPath: dir + '/' + Date.now() + '_' + Math.floor(Math.random() * 1e6) + '.' + ext,
-      filePath: localPath
-    }).then(r => r.fileID);
+    return this._ensureSmall(localPath).then(p2 => {
+      const m = /\.([a-z0-9]+)$/i.exec(p2);
+      const ext = (m && EXT_MAP[m[1].toLowerCase()]) ? m[1].toLowerCase() : 'jpg';
+      return wx.cloud.uploadFile({
+        cloudPath: dir + '/' + Date.now() + '_' + Math.floor(Math.random() * 1e6) + '.' + ext,
+        filePath: p2
+      }).then(r => r.fileID);
+    });
   },
 
   // 对齐 App：优先上传打包高清实拍图（与安卓 app/assets/defaults 同一张），失败退 canvas 插画
@@ -223,12 +240,14 @@ Page({
           wx.showToast({ title: '发布成功', icon: 'success' });
           setTimeout(() => wx.navigateBack(), 700);
         }else{
+          console.error('[publish-fail]', (r && r.error) || '无返回');
           wx.showToast({ title: (r && r.error) || '发布失败', icon: 'none', duration: 2500 });
           this.setData({ uploading: false });
         }
       })
       .catch(e => {
         wx.hideLoading();
+        console.error('[publish-err]', e.message);
         wx.showToast({ title: e.message || '发布失败', icon: 'none', duration: 2500 });
         this.setData({ uploading: false });
       });
