@@ -246,7 +246,7 @@ Page({
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
         const finalName = name || this.data.addr.trim() || (this.data.type + '推荐');
         return wx.cloud.callFunction({
-          name: 'postApi',
+          name: 'postApi', timeout: 60000,
           data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name: finalName, desc, city: this.data.city, addr: this.data.addr, photos: lists.photos, fullPhotos: lists.fullPhotos } }
         }).then(r => r.result);
       })

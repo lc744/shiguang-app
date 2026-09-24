@@ -705,12 +705,12 @@ function renderShareList(errMsg){
   empty.style.display = 'none';
   shareList.forEach((p, i) => { p._idx = i; });
   box.innerHTML = shareList.map(p => {
-    const photos = (p.photos || []);
-    const cover = photos[0] || '';
-    const photoHtml = cover ? `
-      <div class="post-cover" onclick="openPostDetail(${p._idx})">
-        <img src="${esc(cover)}" loading="lazy" />
-        ${photos.length > 1 ? `<text class="pd-badge">📷 ${photos.length}张</text>` : ''}
+    // 多图 grid（与小程序端一致）：兼容 {t,f} 对象与字符串两种形态
+    const norm = s => (typeof s === 'string') ? s : ((s && (s.t || s.f)) || '');
+    const urls = (p.photos || []).map(norm).filter(Boolean);
+    const photoHtml = urls.length ? `
+      <div class="post-photos ${urls.length === 1 ? 'single' : ''}" onclick="openPostDetail(${p._idx})">
+        ${urls.map(u => `<img class="post-photo" src="${esc(u)}" loading="lazy" />`).join('')}
       </div>` : '';
     return `
       <div class="post-card card">

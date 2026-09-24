@@ -231,11 +231,16 @@ exports.main = async (event) => {
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
       const postId = added._id;
-      for(let i = 0; i < fullDatas.length; i++){
-        // 单张高清 base64 ≤ ~400KB，独立文档安全
-        await db.collection('posts_full').add({ data: { postId: postId, idx: i, dataURL: fullDatas[i], createdAt: nowMs() } }).catch(() => {});
+      let fullErr = '';
+      if(fullDatas.length){
+        try { await db.createCollection('posts_full'); } catch(e) {}   // 不存在则自动创建（已存在时报错忽略）
+        for(let i = 0; i < fullDatas.length; i++){
+          // 单张高清 base64 ≤ ~400KB，独立文档安全
+          try { await db.collection('posts_full').add({ data: { postId: postId, idx: i, dataURL: fullDatas[i], createdAt: nowMs() } }); }
+          catch(e) { fullErr = String(e.errMsg || e.message || 'posts_full 写入失败'); }
+        }
       }
-      return { ok: true, op: 'publish' };
+      return { ok: true, op: 'publish', fullErr: fullErr || undefined };
     }
 
     // ---- 查看原图（点击帖子图片时按需拉取高清 base64）----
@@ -258,7 +263,7 @@ exports.main = async (event) => {
         .skip(page * pageSize).limit(pageSize)
         .field({ openid: false })
         .get();
-      let list = r.data.map(p => ({ ...p, photos: (p.photos || []).slice(0, 1), likedBy: undefined, openid: undefined }));   // 列表只带第一张图（dataURL 体积大，避免响应爆炸）
+      let list = r.data.map(p => ({ ...p, likedBy: undefined, openid: undefined }));   // 多图全部返回（列表 grid 排布）
       // 跨端桥：并入安卓端发布的帖子（PG posts 表），按时间归并（仅第一页，PG 侧最多取 100 条）
       // 城市筛选：PG 帖子无 city 列，用 addr 模糊匹配城市名（安卓地址含省市区）；类型筛选已按 p.type 精确匹配
       let pgSql = "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false";
