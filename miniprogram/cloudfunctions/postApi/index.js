@@ -202,10 +202,8 @@ exports.main = async (event) => {
         defCache[fid] = d;
         return d;
       };
-      const bufs = [];
-      for(const f of photos){
-        try { bufs.push(await downloadBuf(f)); } catch(e) { bufs.push(null); }
-      }
+      // 图片下载并行化（服务端总耗时 ≈ 最慢一张，替代前端无法自定义的超时参数）
+      const bufs = await Promise.all(photos.map(f => downloadBuf(f).catch(() => null)));
       // 检测并行 + 限时放行（串行 3 张易拖垮云函数超时）
       const ck = await Promise.race([
         Promise.all(bufs.map(b => b ? cloud.openapi.security.imgSecCheck({ media: { contentType: 'image/jpeg', value: b } }).then(r => (r && r.errCode !== 0) ? { ok: false, why: '图片未通过安全检测' } : { ok: true }).catch(e => e && e.errCode === 87014 ? { ok: false, why: '图片包含违规内容' } : ({ ok: true })) : ({ ok: true }))).then(rs => rs.find(r => !r.ok) || { ok: true }),

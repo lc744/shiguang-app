@@ -1,7 +1,7 @@
 // 绸缪 v2 · 分享页：信息流 / 我的发布 双 tab，点赞、举报、下拉刷新、触底加载（微信云开发）
 const callPost = (data) => new Promise((resolve, reject) => {
   if(!wx.cloud || !wx.cloud.callFunction){ reject(new Error('云开发未开通')); return; }
-  wx.cloud.callFunction({ name: 'postApi', data, timeout: 30000 })
+  wx.cloud.callFunction({ name: 'postApi', data })
     .then(r => resolve(r.result))
     .catch(e => reject(new Error(e.errMsg || e.message || '网络异常')));
 });

@@ -1,7 +1,7 @@
 // 绸缪小程序 · 推荐详情页（帖子大图 + 点赞/举报 + 评论区：发表/删除/举报）——微信云开发
 const callPost = (data) => new Promise((resolve, reject) => {
   if(!wx.cloud || !wx.cloud.callFunction){ reject(new Error('云开发未开通')); return; }
-  wx.cloud.callFunction({ name: 'postApi', data, timeout: 30000 })
+  wx.cloud.callFunction({ name: 'postApi', data })
     .then(r => resolve(r.result))
     .catch(e => reject(new Error(e.errMsg || e.message || '网络异常')));
 });
