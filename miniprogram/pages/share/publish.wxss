@@ -32,7 +32,7 @@
 .p-textarea{width:100%;box-sizing:border-box;min-height:110px;background:var(--bg);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--text)}
 .ph{color:var(--sub)}
 
-.publish-btn{margin-top:6px;height:48px;line-height:48px;border-radius:999px;font-size:15px}
+.publish-btn{margin-top:6px;height:48px;line-height:48px;border-radius:999px;font-size:18px;font-weight:700;text-align:center;letter-spacing:2px}
 .publish-btn.disabled{opacity:.6}
 .publish-tip{text-align:center;font-size:11px;color:var(--sub);margin-top:10px}
 

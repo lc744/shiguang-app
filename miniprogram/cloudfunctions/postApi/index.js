@@ -174,7 +174,7 @@ exports.main = async (event) => {
       const type = ['美食', '景点', '娱乐', '餐厅', '其他'].indexOf(p.type) >= 0 ? p.type : '其他';
       const city = String(p.city || '').trim().slice(0, 20);   // 城市名（攻略按城市聚合推荐）
       const addr = String(p.addr || '').trim().slice(0, 60);   // 具体位置（攻略行程引用）
-      const photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
+      let photos = Array.isArray(p.photos) ? p.photos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
       const nickname = String(p.nickname || '路过的朋友').slice(0, 20);
       const avatarUrl = String(p.avatarUrl || '').slice(0, 300);
       // 对齐 App：名称与照片均选填（列表展示时回退 addr/类型），仅城市必填
