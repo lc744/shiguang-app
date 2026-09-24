@@ -16,7 +16,6 @@ Page({
     region: [],
     addr: '',
     photos: [],
-    fullPhotos: [],
     uploading: false
   },
 
@@ -90,18 +89,11 @@ Page({
       mediaType: ['image'],
       sizeType: ['compressed'],
       success: res => {
-        // 双档：显示版(1280px/q60,列表详情省流) + 高清版(1920px/q80,点击看原图时取)
-        const tasks = res.tempFiles.map(f => Promise.all([
-          wx.compressImage({ src: f.tempFilePath, quality: 60, compressedWidth: 1280 })
-            .then(r => r.tempFilePath).catch(() => f.tempFilePath),
-          wx.compressImage({ src: f.tempFilePath, quality: 80, compressedWidth: 1920 })
-            .then(r => r.tempFilePath).catch(() => f.tempFilePath)
-        ]));
-        Promise.all(tasks).then(pairs => {
-          this.setData({
-            photos: this.data.photos.concat(pairs.map(x => x[0])).slice(0, 3),
-            fullPhotos: (this.data.fullPhotos || []).concat(pairs.map(x => x[1])).slice(0, 3)
-          });
+        // 单档压缩：1280px/q75（画质=详情页显示水平，全场景共用同一张，约115KB/张）
+        const tasks = res.tempFiles.map(f => wx.compressImage({ src: f.tempFilePath, quality: 75, compressedWidth: 1280 })
+          .then(r => r.tempFilePath).catch(() => f.tempFilePath));
+        Promise.all(tasks).then(paths => {
+          this.setData({ photos: this.data.photos.concat(paths).slice(0, 3) });
         });
       }
     });
@@ -110,24 +102,22 @@ Page({
   removePhoto(e){
     const i = e.currentTarget.dataset.i;
     const photos = this.data.photos.slice();
-    const fullPhotos = (this.data.fullPhotos || []).slice();
     photos.splice(i, 1);
-    if(fullPhotos.length) fullPhotos.splice(i, 1);
-    this.setData({ photos, fullPhotos });
+    this.setData({ photos });
   },
 
   previewPhoto(e){
     wx.previewImage({ urls: this.data.photos, current: this.data.photos[e.currentTarget.dataset.i] });
   },
 
-  // 大图先压到阈值内（逐级降质量/宽度，最多 3 轮）：显示版 100KB（文档 512KB 上限），高清版 280KB
+  // 大图先压到阈值内（逐级降质量/宽度，最多 3 轮）：显示版 120KB（单档，全场景共用）
   _ensureSmall(path, limitBytes){
     const fsm = wx.getFileSystemManager();
     const sizeOf = p => new Promise(r => fsm.getFileInfo({ filePath: p, success: x => r(x.size), fail: () => r(0) }));
-    const LIMIT = limitBytes || 100 * 1024;
+    const LIMIT = limitBytes || 120 * 1024;
     return sizeOf(path).then(size => {
       if(!size || size <= LIMIT) return path;
-      let quality = 70, width = 1440;
+      let quality = 70, width = 1120;
       const step = attempt => wx.compressImage({ src: path, quality: quality, compressedWidth: width })
         .then(r => sizeOf(r.tempFilePath).then(s2 => (s2 && s2 <= LIMIT) || attempt >= 3 ? r.tempFilePath : (quality -= 20, width = Math.floor(width * 0.8), step(attempt + 1))))
         .catch(() => path);
@@ -135,8 +125,8 @@ Page({
     });
   },
 
-  _upload(localPath, dir, isFull){
-    return this._ensureSmall(localPath, isFull ? 280 * 1024 : 100 * 1024).then(p2 => {
+  _upload(localPath, dir){
+    return this._ensureSmall(localPath).then(p2 => {
       const m = /\.([a-z0-9]+)$/i.exec(p2);
       const ext = (m && EXT_MAP[m[1].toLowerCase()]) ? m[1].toLowerCase() : 'jpg';
       return wx.cloud.uploadFile({
@@ -222,32 +212,24 @@ Page({
       jobs.push(this._upload(this.data.avatarUrl, 'avatars').then(id => { this.data.avatarUrl = id; }).catch(() => {}));
     }
     let photoList = this.data.photos;
-    let fullList = (this.data.fullPhotos || []).slice();
     // 无图时不做前端默认图（真机从包内上传不可靠）：后端会按类型自动补官方默认图
     if(photoList.length){
       // 关键：上传结果必须回填 photoList（此前上传的 cloud:// fileID 被丢弃，导致永远降级默认图）
       photoList.forEach((p, i) => jobs.push(
         this._upload(p, 'posts').then(id => { photoList[i] = id; }).catch(() => {})
       ));
-      // 高清版同步上传（点击查看原图用；失败不影响发布）
-      fullList.forEach((p, i) => jobs.push(
-        this._upload(p, 'posts_full', true).then(id => { fullList[i] = id; }).catch(() => {})
-      ));
     }
     Promise.all(jobs)
       .then(() => {
         // 此时 photoList 已是 cloud:// fileID（上传成功）或原路径（失败，将被过滤）
-        return {
-          photos: photoList.map(String).filter(p => /^cloud:\/\//.test(p)),
-          fullPhotos: fullList.map(String).filter(p => /^cloud:\/\//.test(p))
-        };
+        return { photos: photoList.map(String).filter(p => /^cloud:\/\//.test(p)) };
       })
       .then(lists => {
         try{ wx.setStorageSync(ID_KEY, { nickname, avatarUrl: this.data.avatarUrl }); }catch(e){}
         const finalName = name || this.data.addr.trim() || (this.data.type + '推荐');
         return wx.cloud.callFunction({
           name: 'postApi', timeout: 60000,
-          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name: finalName, desc, city: this.data.city, addr: this.data.addr, photos: lists.photos, fullPhotos: lists.fullPhotos } }
+          data: { action: 'publish', post: { nickname, avatarUrl: this.data.avatarUrl, type: this.data.type, name: finalName, desc, city: this.data.city, addr: this.data.addr, photos: lists.photos } }
         }).then(r => r.result);
       })
       .then(r => {

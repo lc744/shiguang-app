@@ -219,28 +219,11 @@ exports.main = async (event) => {
       const totalLen = photoDatas.reduce((s, d) => s + d.length, 0);
       if(totalLen > 450 * 1024) return { ok: false, error: '图片总体积过大，请减少张数或换小图重试' };
 
-      // 高清版（点击查看原图用）：base64 存独立集合 posts_full（每张一条文档，避开 512KB 单文档限制）
-      const fullIds = Array.isArray(p.fullPhotos) ? p.fullPhotos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
-      const fullDatas = [];
-      for(const f of fullIds){
-        try { fullDatas.push('data:image/jpeg;base64,' + (await downloadBuf(f)).toString('base64')); } catch(e) {}
-      }
-
       const added = await db.collection(COL).add({ data: {
         openid: OPENID, nickname, avatarUrl, type, name, desc, photos: photoDatas, city, addr,
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
-      const postId = added._id;
-      let fullErr = '';
-      if(fullDatas.length){
-        try { await db.createCollection('posts_full'); } catch(e) {}   // 不存在则自动创建（已存在时报错忽略）
-        for(let i = 0; i < fullDatas.length; i++){
-          // 单张高清 base64 ≤ ~400KB，独立文档安全
-          try { await db.collection('posts_full').add({ data: { postId: postId, idx: i, dataURL: fullDatas[i], createdAt: nowMs() } }); }
-          catch(e) { fullErr = String(e.errMsg || e.message || 'posts_full 写入失败'); }
-        }
-      }
-      return { ok: true, op: 'publish', fullErr: fullErr || undefined };
+      return { ok: true, op: 'publish' };
     }
 
     // ---- 查看原图（点击帖子图片时按需拉取高清 base64）----
