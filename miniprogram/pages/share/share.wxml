@@ -190,13 +190,3 @@
   </view>
 </view>
 <genie id="geniecomp" showfab="{{false}}" />
-
-<!-- 图片预览层：与详情页同尺寸显示（396px 宽），左右滑切换，点击关闭 -->
-<view wx:if="{{previewOpen}}" class="img-preview" catchtap="closePreview">
-  <swiper class="pv-swiper" current="{{previewIdx}}" bindchange="onPvChange">
-    <swiper-item wx:for="{{previewUrls}}" wx:key="*this">
-      <image class="pv-img" src="{{item}}" mode="widthFix" catchtap="closePreview" />
-    </swiper-item>
-  </swiper>
-  <text wx:if="{{previewUrls.length > 1}}" class="pv-count">{{previewIdx + 1}} / {{previewUrls.length}}</text>
-</view>

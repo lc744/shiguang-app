@@ -3,10 +3,10 @@
     <view class="post-card card">
       <swiper wx:if="{{post.photoUrls.length > 1}}" class="post-swiper" indicator-dots circular>
         <swiper-item wx:for="{{post.photoUrls}}" wx:key="*this">
-          <view class="post-img-box"><image class="post-img-fit" src="{{item}}" mode="aspectFit" /></view>
+          <image class="post-img" src="{{item}}" mode="aspectFill" data-urls="{{post.photoUrls}}" data-current="{{item}}" bindtap="onImageTap" />
         </swiper-item>
       </swiper>
-      <image wx:elif="{{post.photoUrls.length === 1}}" class="post-img" src="{{post.photoUrls[0]}}" mode="widthFix" />
+      <image wx:elif="{{post.photoUrls.length === 1}}" class="post-img" src="{{post.photoUrls[0]}}" mode="widthFix" data-urls="{{post.photoUrls}}" data-current="{{post.photoUrls[0]}}" bindtap="onImageTap" />
 
       <view class="post-body">
         <view class="post-head">

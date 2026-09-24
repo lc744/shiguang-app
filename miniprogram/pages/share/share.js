@@ -569,16 +569,6 @@ Page({
 
   onImageTap(e){
     const { urls, current } = e.currentTarget.dataset;
-    // 自定义预览层：直链架构下列表已是可显示的临时链接，直接全档预览
-    const idx = (urls || []).indexOf(current);
-    this.setData({ previewOpen: true, previewUrls: urls || [], previewIdx: idx < 0 ? 0 : idx });
-  },
-
-  onPvChange(e){
-    this.setData({ previewIdx: e.detail.current });
-  },
-
-  closePreview(){
-    this.setData({ previewOpen: false });
+    wx.previewImage({ urls: urls, current: current });
   }
 });
