@@ -563,7 +563,13 @@ Page({
   },
 
   onImageTap(e){
-    const { urls, current } = e.currentTarget.dataset;
-    wx.previewImage({ urls, current });
+    const { urls, current, pid, idx } = e.currentTarget.dataset;
+    // 先即时预览当前图，同时异步拉高清原图替换
+    wx.previewImage({ urls: urls, current: current });
+    callPost({ action: 'fullPhoto', id: pid, idx: idx }).then(r => {
+      if(r && r.ok && r.dataURL){
+        wx.previewImage({ urls: (urls || []).map((u, i) => (i === idx && r.dataURL) ? r.dataURL : u), current: r.dataURL });
+      }
+    }).catch(() => {});
   }
 });

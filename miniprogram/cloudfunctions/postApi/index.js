@@ -170,6 +170,11 @@ exports.main = async (event) => {
     if(action === 'publish'){
       const p = event.post || {};
       const name = String(p.name || '').trim().slice(0, 30);
+      // 防重复发布（超时重试双写）：60 秒内同作者同名同类型视为重复，直接返回已有帖
+      try{
+        const dup = await db.collection(COL).where({ openid: OPENID, name: name, createdAt: db.command.gt(nowMs() - 60000) }).limit(1).get();
+        if(dup.data.length) return { ok: true, op: 'publish', dup: true };
+      }catch(e){}
       const desc = String(p.desc || '').trim().slice(0, 500);
       const type = ['美食', '景点', '娱乐', '餐厅', '其他'].indexOf(p.type) >= 0 ? p.type : '其他';
       const city = String(p.city || '').trim().slice(0, 20);   // 城市名（攻略按城市聚合推荐）
@@ -214,11 +219,30 @@ exports.main = async (event) => {
       const totalLen = photoDatas.reduce((s, d) => s + d.length, 0);
       if(totalLen > 450 * 1024) return { ok: false, error: '图片总体积过大，请减少张数或换小图重试' };
 
-      await db.collection(COL).add({ data: {
+      // 高清版（点击查看原图用）：base64 存独立集合 posts_full（每张一条文档，避开 512KB 单文档限制）
+      const fullIds = Array.isArray(p.fullPhotos) ? p.fullPhotos.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
+      const fullDatas = [];
+      for(const f of fullIds){
+        try { fullDatas.push('data:image/jpeg;base64,' + (await downloadBuf(f)).toString('base64')); } catch(e) {}
+      }
+
+      const added = await db.collection(COL).add({ data: {
         openid: OPENID, nickname, avatarUrl, type, name, desc, photos: photoDatas, city, addr,
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
+      const postId = added._id;
+      for(let i = 0; i < fullDatas.length; i++){
+        // 单张高清 base64 ≤ ~400KB，独立文档安全
+        await db.collection('posts_full').add({ data: { postId: postId, idx: i, dataURL: fullDatas[i], createdAt: nowMs() } }).catch(() => {});
+      }
       return { ok: true, op: 'publish' };
+    }
+
+    // ---- 查看原图（点击帖子图片时按需拉取高清 base64）----
+    if(action === 'fullPhoto'){
+      const r = await db.collection('posts_full').where({ postId: String(event.id || ''), idx: Math.max(0, parseInt(event.idx, 10) || 0) }).limit(1).get();
+      if(r.data.length) return { ok: true, dataURL: r.data[0].dataURL };
+      return { ok: false };
     }
 
     // ---- 信息流（分页）----
@@ -336,6 +360,8 @@ exports.main = async (event) => {
       // dataURL 帖子无存储文件可删；defaults/ 目录是官方默认图，禁止连带删除
       const ids = (r.data[0].photos || []).map(String).filter(x => x.indexOf('cloud://') === 0 && x.indexOf('/defaults/') < 0);
       if(ids.length){ await cloud.deleteFile({ fileList: ids }).catch(() => {}); }
+      // 清理独立存储的高清原图
+      await db.collection('posts_full').where({ postId: r.data[0]._id }).remove().catch(() => {});
       await db.collection(COL).where({ _id: id, openid: OPENID }).remove();
       return { ok: true, op: 'del' };
     }

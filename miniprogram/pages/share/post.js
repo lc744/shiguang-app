@@ -67,8 +67,15 @@ Page({
   goBack(){ wx.navigateBack({ fail: () => wx.navigateTo({ url: '/pages/share/share' }) }); },
 
   onImageTap(e){
-    const { urls, current } = e.currentTarget.dataset;
-    wx.previewImage({ urls, current });
+    const { urls, current, pid, idx } = e.currentTarget.dataset;
+    // 先即时预览当前图，同时异步拉高清原图替换
+    wx.previewImage({ urls: urls, current: current });
+    callPost({ action: 'fullPhoto', id: pid, idx: idx }).then(r => {
+      if(r && r.ok && r.dataURL){
+        // 预览窗仍开着时换上高清图（重新触发预览到同一张，用户滑动可看到高清版本）
+        wx.previewImage({ urls: urls.map((u, i) => (i === idx && r.dataURL) ? r.dataURL : u), current: r.dataURL });
+      }
+    }).catch(() => {});
   },
 
   onLike(){

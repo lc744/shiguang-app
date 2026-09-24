@@ -60,6 +60,8 @@
           lazy-load
           data-urls="{{item.photoUrls}}"
           data-current="{{ph}}"
+          data-pid="{{item._id}}"
+          data-idx="{{pi}}"
           catchtap="onImageTap"
         />
       </view>
