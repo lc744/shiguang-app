@@ -220,6 +220,11 @@ Page({
       .then(() => this.setData({ loading: false }));
   },
 
+  // 开发调试：一次性触发旧帖 base64 → 云存储迁移（服务端幂等，可重复调用直到 migrated 稳定）
+  __migrate(){
+    return callPost({ action: 'migrateBase64' }).catch(e => ({ ok: false, error: e.message }));
+  },
+
   onLike(e){
     const id = e.currentTarget.dataset.id;
     const idx = this.data.list.findIndex(x => x._id === id);
@@ -563,18 +568,10 @@ Page({
   },
 
   onImageTap(e){
-    const { urls, current, pid } = e.currentTarget.dataset;
-    // 预览层即显缩略图，异步拉详情大图替换（列表只为省流量存缩略版）
+    const { urls, current } = e.currentTarget.dataset;
+    // 自定义预览层：直链架构下列表已是可显示的临时链接，直接全档预览
     const idx = (urls || []).indexOf(current);
     this.setData({ previewOpen: true, previewUrls: urls || [], previewIdx: idx < 0 ? 0 : idx });
-    if(pid){
-      callPost({ action: 'get', id: pid }).then(r => {
-        if(r && r.ok && (r.post.photos || []).length){
-          this.setData({ previewUrls: r.post.photos });
-          this._pvFull = r.post.photos;
-        }
-      }).catch(() => {});
-    }
   },
 
   onPvChange(e){

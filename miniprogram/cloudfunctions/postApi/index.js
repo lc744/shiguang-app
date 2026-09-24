@@ -187,22 +187,13 @@ exports.main = async (event) => {
 
       const t = await checkText(name + ' ' + desc);
       if(!t.ok) return { ok: false, error: t.why };
-      // 图片转 base64 入库（免费方案：绕过云存储读权限 403，与安卓 dataURL 架构一致）
+      // 图片安全检测（下载并行 + 限时放行）；图片本身存云存储 fileID（付费版存储权限已开放，URL 直链显示）
       const DEFAULT_PHOTO_FILEID = {
         '美食': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790215335272_327450.jpg',
         '景点': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790215336149_116928.jpg',
         '娱乐': 'cloud://cloud1-d1guu0uxy037691f1.636c-cloud1-d1guu0uxy037691f1-1479206893/defaults/1790215336813_622446.jpg'
       };
-      const defCache = global.__defPhotoCache || (global.__defPhotoCache = {});
       const downloadBuf = async fid => (await cloud.downloadFile({ fileID: fid })).fileContent;
-      const defaultPhotoData = async t => {
-        const fid = DEFAULT_PHOTO_FILEID[t] || DEFAULT_PHOTO_FILEID['娱乐'];
-        if(defCache[fid]) return defCache[fid];
-        const d = 'data:image/jpeg;base64,' + (await downloadBuf(fid)).toString('base64');
-        defCache[fid] = d;
-        return d;
-      };
-      // 图片下载并行化（服务端总耗时 ≈ 最慢一张，替代前端无法自定义的超时参数）
       const bufs = await Promise.all(photos.map(f => downloadBuf(f).catch(() => null)));
       // 检测并行 + 限时放行（串行 3 张易拖垮云函数超时）
       const ck = await Promise.race([
@@ -210,38 +201,55 @@ exports.main = async (event) => {
         new Promise(res => setTimeout(() => res({ ok: true }), 8000))
       ]);
       if(!ck.ok) return { ok: false, error: ck.why };
-      let photoDatas = bufs.map(b => b ? 'data:image/jpeg;base64,' + b.toString('base64') : null).filter(Boolean);
-      // 无图发布：补官方默认图（base64，云函数管理端读不受存储权限限制）
-      if(!photoDatas.length) photoDatas.push(await defaultPhotoData(type));
-      // 单帖文档 512KB 上限硬校验（base64 总量）
-      const totalLen = photoDatas.reduce((s, d) => s + d.length, 0);
-      if(totalLen > 450 * 1024) return { ok: false, error: '图片总体积过大，请减少张数或换小图重试' };
+      // 无图发布：补官方默认图（fileID 直链）
+      if(!photos.length) photos = [DEFAULT_PHOTO_FILEID[type] || DEFAULT_PHOTO_FILEID['娱乐']];
 
-      // 缩略版（feed 列表 grid 用）：下载转 base64 存主文档 thumbs 字段（每张约9KB，20帖≈740KB < 1MB 响应上限）
-      const thumbIds = Array.isArray(p.thumbs) ? p.thumbs.slice(0, MAX_PHOTOS).filter(x => /^cloud:\/\//.test(x)) : [];
-      let thumbDatas = [];
-      for(const f of thumbIds){
-        try { thumbDatas.push('data:image/jpeg;base64,' + (await downloadBuf(f)).toString('base64')); } catch(e) {}
-      }
-      if(thumbDatas.length !== photoDatas.length) thumbDatas = [];   // 与大图数量不一致时放弃缩略（列表回退首图）
-
-      const added = await db.collection(COL).add({ data: {
-        openid: OPENID, nickname, avatarUrl, type, name, desc, photos: photoDatas, thumbs: thumbDatas, city, addr,
+      await db.collection(COL).add({ data: {
+        openid: OPENID, nickname, avatarUrl, type, name, desc, photos, city, addr,
         likes: 0, likedBy: [], commentCount: 0, reports: 0, hidden: false, createdAt: nowMs()
       }});
       return { ok: true, op: 'publish' };
     }
 
-    // ---- 查看原图（点击帖子图片时按需拉取高清 base64）----
-    if(action === 'fullPhoto'){
-      const r = await db.collection('posts_full').where({ postId: String(event.id || ''), idx: Math.max(0, parseInt(event.idx, 10) || 0) }).limit(1).get();
-      if(r.data.length) return { ok: true, dataURL: r.data[0].dataURL };
-      return { ok: false };
+    // ---- 一次性迁移：旧帖 base64 图片 → 云存储 fileID（免费方案历史数据 → 直链架构）----
+    if(action === 'migrateBase64'){
+      try { await db.createCollection('posts'); } catch(e) {}
+      const ids = (await db.collection(COL).where({}).field({ _id: true }).limit(1000).get()).data.map(d => d._id);
+      let migrated = 0, scanned = 0, errs = [];
+      for(const id of ids){
+        try{
+          const one = await db.collection(COL).doc(id).get();
+          const doc = one.data || {};
+          const kinds = ['photos', 'thumbs'];
+          const upd = {};
+          let need = false;
+          for(const k of kinds){
+            const arr = doc[k] || [];
+            if(!arr.length) continue;
+            const out = [];
+            let changed = false;
+            for(let i = 0; i < arr.length; i++){
+              const s = String(arr[i]);
+              if(s.indexOf('data:image') === 0){
+                try{
+                  const buf = Buffer.from(s.split(',')[1] || '', 'base64');
+                  const up = await cloud.uploadFile({ cloudPath: 'migrated/' + id + '_' + k + '_' + i + '.jpg', fileContent: buf });
+                  out.push(up.fileID); changed = true;
+                }catch(e2){ out.push(s); }
+              } else out.push(s);
+            }
+            if(changed){ upd[k] = out; need = true; }
+          }
+          scanned++;
+          if(need){ await db.collection(COL).doc(id).update({ data: upd }); migrated++; }
+        }catch(e){ errs.push(String(id).slice(0, 10) + ':' + String(e.errMsg || e.message).slice(0, 60)); }
+      }
+      return { ok: true, op: 'migrateBase64', scanned, migrated, errs };
     }
 
     // ---- 信息流（分页）----
     if(action === 'feed'){
-      const pageSize = 10;   // base64 图片响应上限 1MB：10 帖混合缩略/首图稳在限内
+      const pageSize = 20;   // fileID 直链架构：响应只有几十字节/帖，20 帖无压力
       const page = Math.max(0, Math.min(50, parseInt(event.page, 10) || 0));
       const cond = { hidden: false };
       if(event.city) cond.city = String(event.city).slice(0, 20);
@@ -252,11 +260,7 @@ exports.main = async (event) => {
         .skip(page * pageSize).limit(pageSize)
         .field({ openid: false })
         .get();
-      let list = r.data.map(p => {
-        // 列表 grid 用缩略版（新帖 thumbs），旧帖无 thumbs 回退首图——确保响应不超 1MB
-        const photos = (Array.isArray(p.thumbs) && p.thumbs.length === (p.photos || []).length) ? p.thumbs : (p.photos || []).slice(0, 1);
-        return { ...p, photos, thumbs: undefined, likedBy: undefined, openid: undefined };
-      });
+      let list = r.data.map(p => ({ ...p, likedBy: undefined, openid: undefined, thumbs: undefined }));
       // 跨端桥：并入安卓端发布的帖子（PG posts 表），按时间归并（仅第一页，PG 侧最多取 100 条）
       // 城市筛选：PG 帖子无 city 列，用 addr 模糊匹配城市名（安卓地址含省市区）；类型筛选已按 p.type 精确匹配
       let pgSql = "SELECT p.id, p.uid, p.nickname, p.type, p.name, p.descr, p.photos, p.likes, p.reports, EXTRACT(EPOCH FROM p.created_at)::BIGINT AS ts, pr.avatar AS avatar, p.addr AS addr FROM posts p LEFT JOIN profiles pr ON pr.uid = p.uid WHERE p.hidden = false";
@@ -294,7 +298,7 @@ exports.main = async (event) => {
           sz = JSON.stringify(list).length;
         }
       }catch(e3){}
-      return { ok: true, list, page, hasMore: r.data.length === pageSize, dbg: { wxCount: r.data.length, pg: pgReady() } };
+      return { ok: true, list, page, hasMore: r.data.length === pageSize };
     }
 
     // ---- 详情 ----
@@ -366,8 +370,6 @@ exports.main = async (event) => {
       // dataURL 帖子无存储文件可删；defaults/ 目录是官方默认图，禁止连带删除
       const ids = (r.data[0].photos || []).map(String).filter(x => x.indexOf('cloud://') === 0 && x.indexOf('/defaults/') < 0);
       if(ids.length){ await cloud.deleteFile({ fileList: ids }).catch(() => {}); }
-      // 清理独立存储的高清原图
-      await db.collection('posts_full').where({ postId: r.data[0]._id }).remove().catch(() => {});
       await db.collection(COL).where({ _id: id, openid: OPENID }).remove();
       return { ok: true, op: 'del' };
     }
